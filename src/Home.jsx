@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Trophy, Zap, Target, Activity, Star, BarChart3, RotateCcw, Snowflake, Crown, Medal, Palette, Sun, Moon, Monitor,
+  Trophy, Coins, Zap, Target, Activity, Star, BarChart3, RotateCcw, Snowflake, Crown, Medal, Palette, Sun, Moon, Monitor,
   FileText, ChevronDown, ChevronRight, Search, CalendarClock, Clock, X,
   BadgeCheck, ClipboardList, Home as HomeIcon, Briefcase, Settings, Gift, ShoppingBag
 } from "lucide-react";
@@ -12,7 +12,6 @@ import { usePalette, cur, P } from "./hooks/usePalette.js";
 import Bg from "./components/Bg.jsx";
 import Apps from "./Apps.jsx";
 import Shop from "./Shop.jsx";
-import GoldPill from "./components/GoldPill.jsx";
 import { Grey, PLATFORMS, STATUSES } from "./data.jsx";
 
 /* HELPERS */
@@ -48,6 +47,17 @@ function Bar({ v, m, from, to, c }) {
     </div>
   );
 }
+function Gold({ children }) {
+  return (
+    <span className="relative inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-extrabold"
+      style={{ color: '#1f2937', background: 'linear-gradient(135deg,#fde68a,#f59e0b)', border: '1px solid rgba(0,0,0,.08)', boxShadow: '0 8px 24px rgba(245,158,11,.45),0 2px 8px rgba(0,0,0,.08)' }}>
+      <Coins className="w-4 h-4" />{children}
+      <span className="pointer-events-none absolute inset-0 rounded-full overflow-hidden">
+        <span className="absolute -left-full top-0 h-full w-1/2" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,.0), rgba(255,255,255,.5), rgba(255,255,255,0))', transform: 'skewX(-20deg)', animation: 'goldShine 2.4s infinite' }} />
+      </span>
+    </span>
+  );
+}
 function Tip({ active, payload, label, c, t }) {
   if (!active || !payload?.length) return null;
   return (
@@ -74,7 +84,7 @@ const Header = ({ mode, eff, c, cycle, cyclePal, palName, gold }) => (
     <div className="flex items-center gap-2" aria-live="polite">
       <Pill t={eff} c={c} icon={<Snowflake className="w-4 h-4" />}>2</Pill>
       <Pill t={eff} c={c} icon={<RotateCcw className="w-4 h-4" />}>1</Pill>
-      <GoldPill c={c}>{gold}</GoldPill>
+      <Gold>{gold}</Gold>
     </div>
   </header>
 );
