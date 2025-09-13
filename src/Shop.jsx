@@ -1,10 +1,25 @@
 import React from "react";
-import { Coins } from "lucide-react";
+import { Coins, Zap, Gift, Clock } from "lucide-react";
 import { Grey } from "./data.jsx";
+import GoldPill from "./components/GoldPill.jsx";
 
 const GAME_EFFECTS = [
-  { id: 1, name: "XP Boost", cost: 10, description: "Double XP for 10 minutes" },
-  { id: 2, name: "Gold Rush", cost: 15, description: "Earn extra gold on next quest" }
+  {
+    id: 1,
+    name: "XP Boost",
+    cost: 10,
+    icon: Zap,
+    description: "Double XP for 10 minutes",
+    duration: 600
+  },
+  {
+    id: 2,
+    name: "Gold Rush",
+    cost: 15,
+    icon: Coins,
+    description: "Earn extra gold on next quest",
+    duration: 300
+  }
 ];
 
 const REAL_REWARDS = [
@@ -31,10 +46,22 @@ const Panel = ({ c, t, children }) => (
 );
 
 export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
+  const [now, setNow] = React.useState(Date.now());
+  React.useEffect(() => {
+    const id = setInterval(() => {
+      setNow(Date.now());
+      setEffects((e) => e.filter((fx) => !fx.expiresAt || fx.expiresAt > Date.now()));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [setEffects]);
+
   const buyEffect = (item) => {
     if (gold >= item.cost) {
       setGold((g) => g - item.cost);
-      setEffects((e) => [...e, item]);
+      setEffects((e) => [
+        ...e,
+        { ...item, expiresAt: Date.now() + (item.duration ?? 0) * 1000 }
+      ]);
     }
   };
 
@@ -63,63 +90,51 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
         )
       }}
     >
-      <Panel c={c} t={eff}>
-        <div className="flex items-center justify-between">
-          <div className="font-semibold">Gold</div>
-          <div className="flex items-center gap-1 font-extrabold">
-            <Coins className="w-4 h-4" />{gold}
-          </div>
-        </div>
-        <div className="mt-3">
-          <div className="text-[12px] mb-1" style={{ color: Grey }}>
-            Active effects
-          </div>
+      <div className="flex items-center justify-between">
+        <GoldPill c={c}>{gold}</GoldPill>
+        <div className="flex items-center gap-2">
           {effects.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {effects.map((e, i) => (
-                <span
-                  key={i}
-                  className="px-2 py-1 text-[12px] rounded-md"
-                  style={{ background: c.chipBg, color: c.text }}
-                >
-                  {e.name}
-                </span>
-              ))}
-            </div>
+            effects.map((e, i) => {
+              const Icon = e.icon || Zap;
+              const remaining = e.expiresAt
+                ? Math.max(0, Math.ceil((e.expiresAt - now) / 1000))
+                : null;
+              return (
+                <div key={i} className="relative" title={e.description}>
+                  <Icon className="w-5 h-5 animate-bounce" />
+                  {remaining !== null && (
+                    <span className="absolute -top-2 -right-2 text-[10px] bg-black text-white rounded-full px-1">
+                      {remaining}
+                    </span>
+                  )}
+                </div>
+              );
+            })
           ) : (
             <div className="text-[12px]" style={{ color: Grey }}>
               None
             </div>
           )}
         </div>
-      </Panel>
+      </div>
 
       <div className="pt-2">
         <div className="text-sm font-semibold mb-2">In-game effects</div>
         <div className="grid gap-2">
           {GAME_EFFECTS.map((item) => (
             <Panel key={item.id} c={c} t={eff}>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between" title={item.description}>
+                <div className="flex items-center gap-2">
+                  <item.icon className="w-5 h-5" />
                   <div className="text-[14px] font-medium">{item.name}</div>
-                  <div className="text-[12px]" style={{ color: Grey }}>
-                    {item.description}
-                  </div>
                 </div>
-                <button
-                  disabled={gold < item.cost}
+                <GoldPill
+                  c={c}
                   onClick={() => buyEffect(item)}
-                  className="px-3 py-1 rounded-full text-[12px] font-semibold"
-                  style={{
-                    background:
-                      gold >= item.cost
-                        ? `linear-gradient(90deg, ${c.amber}, ${c.rose})`
-                        : c.chipBg,
-                    color: gold >= item.cost ? "#0f172a" : Grey
-                  }}
+                  dim={gold < item.cost}
                 >
-                  {item.cost}g
-                </button>
+                  {item.cost}
+                </GoldPill>
               </div>
             </Panel>
           ))}
@@ -133,27 +148,30 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
             const cost = Math.round(item.minutes * (item.pleasure ?? 1));
             return (
               <Panel key={item.id} c={c} t={eff}>
-                <div className="flex items-center justify-between">
+                <div
+                  className="flex items-center justify-between"
+                  title={`${item.minutes} min • ${cost}g`}
+                >
                   <div>
-                    <div className="text-[14px] font-medium">{item.name}</div>
-                    <div className="text-[12px]" style={{ color: Grey }}>
-                      {item.minutes} min • {cost}g
+                    <div className="flex items-center gap-2">
+                      <Gift className="w-5 h-5" />
+                      <div className="text-[14px] font-medium">{item.name}</div>
+                    </div>
+                    <div
+                      className="flex items-center gap-2 text-[12px]"
+                      style={{ color: Grey }}
+                    >
+                      <Clock className="w-3 h-3" /> {item.minutes}
+                      <Coins className="w-3 h-3" /> {cost}
                     </div>
                   </div>
-                  <button
-                    disabled={gold < cost}
+                  <GoldPill
+                    c={c}
                     onClick={() => redeemReward(item)}
-                    className="px-3 py-1 rounded-full text-[12px] font-semibold"
-                    style={{
-                      background:
-                        gold >= cost
-                          ? `linear-gradient(90deg, ${c.amber}, ${c.rose})`
-                          : c.chipBg,
-                      color: gold >= cost ? "#0f172a" : Grey
-                    }}
+                    dim={gold < cost}
                   >
                     Redeem
-                  </button>
+                  </GoldPill>
                 </div>
               </Panel>
             );
