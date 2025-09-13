@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import {
   Trophy, Coins, Zap, Target, Activity, Star, BarChart3, RotateCcw, Snowflake, Crown, Medal, Palette, Sun, Moon, Monitor,
   FileText, ChevronDown, ChevronRight, Search, CalendarClock, Clock, X,
-  BadgeCheck, ClipboardList, Home as HomeIcon, Briefcase, Settings, Ghost, Gift, ShoppingBag
+  BadgeCheck, ClipboardList, Home as HomeIcon, Briefcase, Settings, Ghost, Gift, ShoppingBag,
+  Filter, ArrowUpDown, MoreVertical
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import { useTheme } from "./hooks/useTheme.js";
@@ -277,7 +278,7 @@ function StatusSelect({ value, onChange, c, t }){
 }
 
 /* LOG APPLICATION MODAL */
-function AppFormModal({ open, onClose, onSubmit, c, t, defaults }) {
+function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log application', submitLabel = 'Add' }) {
   const [company, setCompany] = useState(defaults?.company || '');
   const [role, setRole] = useState(defaults?.role || '');
   const [type, setType] = useState(defaults?.type || 'Full');
@@ -310,7 +311,7 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults }) {
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50" style={{ background: t === 'light' ? "rgba(0,0,0,.24)" : "rgba(0,0,0,.45)" }}>
       <div ref={boxRef} tabIndex={-1} className="absolute inset-x-0 bottom-0 rounded-t-2xl p-4 outline-none" style={{ background: c.surface }}>
         <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-semibold" style={{ color: c.text }}>Log application</div>
+          <div className="text-sm font-semibold" style={{ color: c.text }}>{title}</div>
           <button onClick={onClose} aria-label="Close" className="px-2 py-1 rounded-md" style={{ background: c.chipBg }}>×</button>
         </div>
 
@@ -353,7 +354,7 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults }) {
             const iso = new Date(`${date}T${time}:00`).toISOString();
             onSubmit({ company, role, type, status, date: iso, note, cvTailored, motivation, favorite, platform });
           }} className="px-3 py-3 rounded-xl text-[13px] font-semibold"
-            style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>Add</button>
+            style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>{submitLabel}</button>
         </div>
       </div>
     </div>
@@ -395,6 +396,40 @@ export default function App() {
 
   const [showForm, setShowForm] = useState(false);
   const [tab, setTab] = useState('Home');
+  // Apps tab state and helpers
+  const [appsQuery, setAppsQuery] = useState("");
+  const [filterStatuses, setFilterStatuses] = useState([]);
+  const [filterPlatforms, setFilterPlatforms] = useState([]);
+  const [sortKey, setSortKey] = useState('Newest');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [editingApp, setEditingApp] = useState(null);
+
+  const updateApplication = (id, fields) => {
+    setApplications(list => list.map(a => a.id === id ? { ...a, ...fields } : a));
+  };
+
+  const appsView = useMemo(() => {
+    let list = [...applications];
+    const q = appsQuery.trim().toLowerCase();
+    if (q) list = list.filter(a => `${a.company} ${a.role} ${a.platform}`.toLowerCase().includes(q));
+    if (filterStatuses.length) list = list.filter(a => filterStatuses.includes(a.status));
+    if (filterPlatforms.length) list = list.filter(a => filterPlatforms.includes(a.platform));
+    switch (sortKey) {
+      case 'Oldest':
+        list.sort((a,b)=> new Date(a.date) - new Date(b.date));
+        break;
+      case 'Company A-Z':
+        list.sort((a,b)=> a.company.localeCompare(b.company) || (new Date(b.date)-new Date(a.date)));
+        break;
+      case 'Favorites first':
+        list.sort((a,b)=> (b.favorite?1:0) - (a.favorite?1:0) || (new Date(b.date)-new Date(a.date)));
+        break;
+      default:
+        list.sort((a,b)=> new Date(b.date) - new Date(a.date));
+    }
+    return list;
+  }, [applications, appsQuery, filterStatuses, filterPlatforms, sortKey]);
 
   return (
     <div className="relative" style={{ background: c.bg, color: c.text, minHeight: '100dvh' }}>
@@ -404,6 +439,100 @@ export default function App() {
       <div className="mx-auto px-5 pb-24 pt-4" style={{ maxWidth: 430, height: 'min(100dvh,932px)' }}>
         <Header mode={mode} eff={eff} c={c} cycle={cycle} cyclePal={cyclePal} palName={P[key].name} gold={gold} />
         <div style={{ height: 18 }} />
+
+        {tab === 'Apps' && (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-1 px-3 h-10 rounded-xl" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}` }}>
+                <Search className="w-4 h-4" style={{ color: Grey }} />
+                <input value={appsQuery} onChange={e=>setAppsQuery(e.target.value)} placeholder="Search applications" className="flex-1 text-[13px] bg-transparent outline-none" style={{ color: c.text }} />
+              </div>
+              <IconBtn onClick={()=>setFiltersOpen(true)} c={c} t={eff} aria="Filters"><Filter className="w-5 h-5"/></IconBtn>
+              <IconBtn onClick={()=>setSortOpen(true)} c={c} t={eff} aria="Sort"><ArrowUpDown className="w-5 h-5"/></IconBtn>
+            </div>
+
+            <div className="grid gap-3 mt-4">
+              {appsView.map(a=> (
+                <div key={a.id} className="rounded-2xl p-4 flex items-start justify-between" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}` }}>
+                  <div className="min-w-0 pr-2">
+                    <div className="text-[14px] font-semibold truncate" style={{ color: c.text }}>{a.company}</div>
+                    <div className="text-[12px] truncate" style={{ color: Grey }}>{a.role}</div>
+                    <div className="text-[11px] mt-1" style={{ color: Grey }}>{a.platform}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {a.cvTailored && <span className="px-2 py-1 rounded-full text-[10px] font-semibold" style={{ background: c.chipBg, border: `1px solid ${c.surfaceBorder}`, color: c.text }}>CV</span>}
+                    {a.motivation && <span className="px-2 py-1 rounded-full text-[10px] font-semibold" style={{ background: c.chipBg, border: `1px solid ${c.surfaceBorder}`, color: c.text }}>Letter</span>}
+                    {a.favorite && <span className="px-2 py-1 rounded-full text-[10px] font-semibold" style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>Fav</span>}
+                    <button onClick={()=>setEditingApp(a)} aria-label="Edit" className="grid place-items-center rounded-xl" style={{ width: 34, height: 34, background: c.surface, border: `1px solid ${c.surfaceBorder}` }}>
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {appsView.length===0 && (
+                <div className="rounded-2xl p-5 text-center" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: Grey }}>
+                  No applications yet.
+                  <div className="mt-3">
+                    <button onClick={()=>setShowForm(true)} className="px-3 py-2 rounded-xl text-[12px] font-semibold" style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>Log application</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Sheet open={filtersOpen} onClose={()=>setFiltersOpen(false)} title="Filters" c={c} t={eff}>
+              <div className="grid gap-3">
+                <div>
+                  <div className="text-[12px] mb-2" style={{ color: Grey }}>Status</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {STATUSES.map(s=>{
+                      const on = filterStatuses.includes(s.key);
+                      return (
+                        <button key={s.key} onClick={()=> setFilterStatuses(on? filterStatuses.filter(k=>k!==s.key) : [...filterStatuses, s.key])}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px]"
+                          style={{ background: on? `linear-gradient(90deg, ${c.rose}, ${c.amber})` : c.chipBg, border: `1px solid ${c.surfaceBorder}`, color: on? '#0f172a' : c.text }}>
+                          {s.icon}
+                          <span className="truncate">{s.key}</span>
+                          {on ? <BadgeCheck className="w-4 h-4 ml-auto"/> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[12px] mb-2" style={{ color: Grey }}>Platform</div>
+                  <div className="grid gap-2">
+                    {PLATFORMS.map(p=>{
+                      const on = filterPlatforms.includes(p);
+                      return (
+                        <button key={p} onClick={()=> setFilterPlatforms(on? filterPlatforms.filter(k=>k!==p) : [...filterPlatforms, p])}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] text-left"
+                          style={{ background: on? `linear-gradient(90deg, ${c.sky}, ${c.emerald})` : c.chipBg, border: `1px solid ${c.surfaceBorder}`, color: on? '#0f172a' : c.text }}>
+                          <span className="flex-1 truncate">{p}</span>
+                          {on ? <BadgeCheck className="w-4 h-4"/> : <ChevronRight className="w-4 h-4"/>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </Sheet>
+
+            <Sheet open={sortOpen} onClose={()=>setSortOpen(false)} title="Sort by" c={c} t={eff}>
+              {['Newest','Oldest','Company A-Z','Favorites first'].map(k=>{
+                const on = sortKey===k;
+                return (
+                  <button key={k} onClick={()=>{ setSortKey(k); setSortOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] mb-2"
+                    style={{ background: on? `linear-gradient(90deg, ${c.sky}, ${c.emerald})` : c.chipBg, border: `1px solid ${c.surfaceBorder}`, color: on? '#0f172a' : c.text }}>
+                    <span className="flex-1 text-left">{k}</span>
+                    {on ? <BadgeCheck className="w-4 h-4"/> : null}
+                  </button>
+                );
+              })}
+            </Sheet>
+          </>
+        )}
+
+        {tab === 'Home' && (
 
         <Panel c={c} eff={eff}>
           <div className="flex items-center justify-between">
@@ -475,7 +604,12 @@ export default function App() {
         <p className="text-[11px] mt-6" style={{ color: Grey }}>Home-only build. Use “Log application” to open the minimal form.</p>
       </div>
 
+      )}
+
       <AppFormModal open={showForm} onClose={() => setShowForm(false)} onSubmit={(f) => { addApplication(f); setShowForm(false); }} c={c} t={eff} />
+      <AppFormModal open={!!editingApp} onClose={()=>setEditingApp(null)} title="Edit application" submitLabel="Save"
+        onSubmit={(f)=>{ if(editingApp){ updateApplication(editingApp.id, f); setEditingApp(null); } }}
+        c={c} t={eff} defaults={editingApp || undefined} />
 
       <nav className="fixed left-0 right-0" style={{ bottom: 0, background: eff === 'light' ? 'rgba(255,255,255,.72)' : 'rgba(10,14,20,.72)', backdropFilter: 'blur(10px)', borderTop: `1px solid ${c.surfaceBorder}` }}>
         <div className="mx-auto grid grid-cols-5 px-2" style={{ maxWidth: 430 }}>
