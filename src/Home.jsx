@@ -270,6 +270,8 @@ function StatusSelect({ value, onChange, c, t }){
 function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log application', submitLabel = 'Add' }) {
   const [company, setCompany] = useState('');
   const [role, setRole] = useState('');
+  const [country, setCountry] = useState('');
+  const [city, setCity] = useState('');
   const [type, setType] = useState('Full');
   const [status, setStatus] = useState('Applied');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -284,13 +286,15 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
     if (open) {
       setCompany(defaults?.company || '');
       setRole(defaults?.role || '');
+      setCountry(defaults?.country || '');
+      setCity(defaults?.city || '');
       setType(defaults?.type || 'Full');
       setStatus(defaults?.status || 'Applied');
       if (defaults?.date) {
         const d = new Date(defaults.date);
-        const iso = d.toISOString();
-        setDate(iso.slice(0,10));
-        setTime(iso.slice(11,16));
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+        setDate(local.toISOString().slice(0,10));
+        setTime(local.toISOString().slice(11,16));
       } else {
         const now = new Date();
         setDate(now.toISOString().slice(0,10));
@@ -336,6 +340,12 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
             <label className="text-[12px]" style={{ color: Grey }}>Role
               <input value={role} onChange={e => setRole(e.target.value)} className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="Data Analyst" />
             </label>
+            <label className="text-[12px]" style={{ color: Grey }}>Country
+              <input value={country} onChange={e => setCountry(e.target.value)} className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="USA" />
+            </label>
+            <label className="text-[12px]" style={{ color: Grey }}>City
+              <input value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="New York" />
+            </label>
           </div>
 
           <div className="flex items-center gap-2">
@@ -365,7 +375,7 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
           <button onClick={() => {
             if (!company || !role) return;
             const iso = new Date(`${date}T${time}:00`).toISOString();
-            onSubmit({ company, role, type, status, date: iso, note, cvTailored, motivation, favorite, platform });
+            onSubmit({ company, role, country, city, type, status, date: iso, note, cvTailored, motivation, favorite, platform });
           }} className="px-3 py-3 rounded-xl text-[13px] font-semibold"
             style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>{submitLabel}</button>
         </div>
@@ -402,7 +412,7 @@ export default function App() {
 
   function actApp(full) {
     const now = new Date();
-    addApplication({ company: 'New Company', role: full ? 'Frontend Engineer' : 'Easy Apply', type: full ? 'Full' : 'Easy', status: 'Applied', date: now.toISOString(), note: '', cvTailored: false, motivation: false, favorite: false, platform: 'Company website' });
+    addApplication({ company: 'New Company', role: full ? 'Frontend Engineer' : 'Easy Apply', country: '', city: '', type: full ? 'Full' : 'Easy', status: 'Applied', date: now.toISOString(), note: '', cvTailored: false, motivation: false, favorite: false, platform: 'Company website' });
   }
   const actSkill = () => { setXp(x => x + 14); setGold(g => g + 3); };
   const actInterview = () => { setXp(x => x + 18); setGold(g => g + 4); };

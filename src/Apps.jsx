@@ -124,13 +124,13 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
                 {status && (
                   <span
                     className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
-                    style={{ background: c.chipBg, color: c.text }}
+                    style={{ background: 'transparent', border: `1px solid ${c.surfaceBorder}`, color: c.text }}
                   >
                     {status.icon}
                     <span>{status.key}</span>
                   </span>
                 )}
-                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: c.chipBg, color: c.text }}>{a.platform}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'transparent', border: `1px solid ${c.surfaceBorder}`, color: c.text }}>{a.platform}</span>
               </div>
             </div>
           </div>
