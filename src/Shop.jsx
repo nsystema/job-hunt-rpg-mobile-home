@@ -48,6 +48,7 @@ const Panel = ({ c, t, children }) => (
 export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
   const [now, setNow] = React.useState(Date.now());
   const [redeemed, setRedeemed] = React.useState(null);
+  const [confirmReward, setConfirmReward] = React.useState(null);
   React.useEffect(() => {
     const id = setInterval(() => {
       setNow(Date.now());
@@ -186,10 +187,10 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                   </div>
                   <GoldPill
                     c={c}
-                    onClick={() => redeemReward(item)}
+                    onClick={() => setConfirmReward(item)}
                     dim={gold < cost}
                   >
-                    Redeem
+                    {cost}
                   </GoldPill>
                 </div>
               </Panel>
@@ -197,6 +198,55 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
           })}
         </div>
       </div>
+      {confirmReward && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{
+            background: eff === "light" ? "rgba(0,0,0,.25)" : "rgba(0,0,0,.55)",
+            backdropFilter: "blur(2px)"
+          }}
+        >
+          <div
+            className="rounded-xl p-4 text-center space-y-4"
+            style={{
+              background: c.surface,
+              border: `1px solid ${c.surfaceBorder}`
+            }}
+          >
+            <div className="text-sm font-medium">
+              Spend {Math.round(confirmReward.minutes * (confirmReward.pleasure ?? 1))}g for
+              {" "}
+              {confirmReward.name}?
+            </div>
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={() => setConfirmReward(null)}
+                className="px-3 py-2 rounded-lg text-sm font-semibold"
+                style={{
+                  background: c.surface,
+                  border: `1px solid ${c.surfaceBorder}`
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  redeemReward(confirmReward);
+                  setConfirmReward(null);
+                }}
+                className="px-3 py-2 rounded-lg text-sm font-semibold"
+                style={{
+                  background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`,
+                  border: `1px solid ${c.surfaceBorder}`,
+                  color: "#0f172a"
+                }}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {redeemed && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
