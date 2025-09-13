@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Filter, ArrowUpDown, MoreVertical, BadgeCheck, ChevronRight, X, FileText, ClipboardList, Star } from "lucide-react";
+import { Search, Filter, ArrowUpDown, MoreVertical, BadgeCheck, ChevronRight, X, FileText, Mail, Star } from "lucide-react";
 import { Grey, STATUSES, PLATFORMS } from "./data.jsx";
 
 const shadow = (t, l, d) => t === 'light' ? l : d;
@@ -88,17 +88,44 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
                 <div className="text-[14px] font-semibold truncate" style={{ color: c.text }}>{a.company}</div>
                 <div className="text-[12px] truncate" style={{ color: Grey }}>{a.role}</div>
               </div>
-              <div className="flex items-center gap-2 ml-2">
-                {status && <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full" style={{ background: c.chipBg, color: Grey }}>{status.icon}<span>{status.key}</span></span>}
-                <button onClick={()=>onEdit?.(a)} aria-label="Edit" className="grid place-items-center rounded-xl" style={{ width: 32, height: 32, background: c.surface, border: `1px solid ${c.surfaceBorder}` }}>
+              <div className="flex flex-col items-end gap-1 ml-2">
+                {status && (
+                  <span
+                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
+                    style={{ background: c.chipBg, color: c.text }}
+                  >
+                    {status.icon}
+                    <span>{status.key}</span>
+                  </span>
+                )}
+                <button
+                  onClick={() => onEdit?.(a)}
+                  aria-label="Edit"
+                  className="grid place-items-center rounded-xl"
+                  style={{ width: 32, height: 32, background: c.surface, border: `1px solid ${c.surfaceBorder}` }}
+                >
                   <MoreVertical className="w-4 h-4" />
                 </button>
               </div>
             </div>
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-1.5">
-                {a.cvTailored && <span className="w-5 h-5 rounded-md grid place-items-center" style={{ background: c.chipBg, color: c.text }}><FileText className="w-3 h-3"/></span>}
-                {a.motivation && <span className="w-5 h-5 rounded-md grid place-items-center" style={{ background: c.chipBg, color: c.text }}><ClipboardList className="w-3 h-3"/></span>}
+                {a.cvTailored && (
+                  <span
+                    className="w-5 h-5 rounded-md grid place-items-center"
+                    style={{ background: c.chipBg, color: c.text }}
+                  >
+                    <FileText className="w-3 h-3" />
+                  </span>
+                )}
+                {a.motivation && (
+                  <span
+                    className="w-5 h-5 rounded-md grid place-items-center"
+                    style={{ background: c.chipBg, color: c.text }}
+                  >
+                    <Mail className="w-3 h-3" />
+                  </span>
+                )}
                 {a.favorite && <span className="w-5 h-5 rounded-md grid place-items-center" style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}><Star className="w-3 h-3"/></span>}
               </div>
               <div className="text-[11px]" style={{ color: Grey }}>{a.platform}</div>
