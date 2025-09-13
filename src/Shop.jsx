@@ -15,14 +15,14 @@ const REAL_REWARDS = [
 const shadow = (t, l, d) => (t === "light" ? l : d);
 const Panel = ({ c, t, children }) => (
   <section
-    className="rounded-2xl p-4"
+    className="rounded-2xl p-4 backdrop-blur-sm"
     style={{
-      background: c.surface,
+      background: `linear-gradient(135deg, ${c.chipBg}, ${c.surface})`,
       border: `1px solid ${c.surfaceBorder}`,
       boxShadow: shadow(
         t,
-        "0 14px 38px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.06)",
-        "0 16px 44px rgba(0,0,0,.46),0 3px 10px rgba(0,0,0,.30)"
+        "0 8px 24px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.06)",
+        "0 8px 24px rgba(0,0,0,.46),0 2px 6px rgba(0,0,0,.30)"
       )
     }}
   >
@@ -47,7 +47,22 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
   };
 
   return (
-    <div className="grid gap-4">
+    <div
+      className="grid gap-4 p-4 rounded-3xl relative overflow-hidden"
+      style={{
+        background:
+          `radial-gradient(circle at 0% 0%, ${c.rose}55, transparent 70%),` +
+          `radial-gradient(circle at 100% 0%, ${c.sky}55, transparent 70%),` +
+          `radial-gradient(circle at 100% 100%, ${c.emerald}55, transparent 70%),` +
+          `radial-gradient(circle at 0% 100%, ${c.lilac}55, transparent 70%)`,
+        border: `1px solid ${c.surfaceBorder}`,
+        boxShadow: shadow(
+          eff,
+          "0 20px 60px rgba(0,0,0,.12),0 8px 16px rgba(0,0,0,.06)",
+          "0 24px 70px rgba(0,0,0,.46),0 8px 18px rgba(0,0,0,.32)"
+        )
+      }}
+    >
       <Panel c={c} t={eff}>
         <div className="flex items-center justify-between">
           <div className="font-semibold">Gold</div>
@@ -94,11 +109,11 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                 <button
                   disabled={gold < item.cost}
                   onClick={() => buyEffect(item)}
-                  className="px-3 py-1 rounded-xl text-[12px] font-semibold"
+                  className="px-3 py-1 rounded-full text-[12px] font-semibold"
                   style={{
                     background:
                       gold >= item.cost
-                        ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                        ? `linear-gradient(90deg, ${c.amber}, ${c.rose})`
                         : c.chipBg,
                     color: gold >= item.cost ? "#0f172a" : Grey
                   }}
@@ -128,11 +143,11 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                   <button
                     disabled={gold < cost}
                     onClick={() => redeemReward(item)}
-                    className="px-3 py-1 rounded-xl text-[12px] font-semibold"
+                    className="px-3 py-1 rounded-full text-[12px] font-semibold"
                     style={{
                       background:
                         gold >= cost
-                          ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                          ? `linear-gradient(90deg, ${c.amber}, ${c.rose})`
                           : c.chipBg,
                       color: gold >= cost ? "#0f172a" : Grey
                     }}
