@@ -533,6 +533,7 @@ export default function App() {
         )}
 
         {tab === 'Home' && (
+          <>
 
         <Panel c={c} eff={eff}>
           <div className="flex items-center justify-between">
@@ -606,6 +607,7 @@ export default function App() {
 
       )}
 
+      </>)}
       <AppFormModal open={showForm} onClose={() => setShowForm(false)} onSubmit={(f) => { addApplication(f); setShowForm(false); }} c={c} t={eff} />
       <AppFormModal open={!!editingApp} onClose={()=>setEditingApp(null)} title="Edit application" submitLabel="Save"
         onSubmit={(f)=>{ if(editingApp){ updateApplication(editingApp.id, f); setEditingApp(null); } }}
