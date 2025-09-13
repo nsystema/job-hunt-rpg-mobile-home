@@ -1,5 +1,5 @@
 import React from "react";
-import { Coins, Zap, Gift, Clock } from "lucide-react";
+import { Coins, Zap, Gift, Clock, Shield, Timer } from "lucide-react";
 import { Grey } from "./data.jsx";
 import GoldPill from "./components/GoldPill.jsx";
 
@@ -19,6 +19,21 @@ const GAME_EFFECTS = [
     icon: Coins,
     description: "Earn extra gold on next quest",
     // not time bound
+  },
+  {
+    id: 3,
+    name: "Shield of Rejection",
+    cost: 12,
+    icon: Shield,
+    description: "Ignore the next rejection"
+  },
+  {
+    id: 4,
+    name: "Time Warp",
+    cost: 20,
+    icon: Timer,
+    description: "Reduce cooldowns for 5 minutes",
+    duration: 300
   }
 ];
 
