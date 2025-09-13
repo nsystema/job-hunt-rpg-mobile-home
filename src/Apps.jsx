@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Filter, ArrowUpDown, MoreVertical, BadgeCheck, ChevronRight, X } from "lucide-react";
+import { Search, Filter, ArrowUpDown, MoreVertical, BadgeCheck, ChevronRight, X, FileText, ClipboardList, Star } from "lucide-react";
 import { Grey, STATUSES, PLATFORMS } from "./data.jsx";
 
 const shadow = (t, l, d) => t === 'light' ? l : d;
@@ -79,23 +79,27 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
       </div>
 
       <div className="grid gap-3 mt-4">
-        {appsView.map(a=> (
-          <div key={a.id} className="rounded-2xl p-4 flex items-start justify-between" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}` }}>
+        {appsView.map(a=> {
+          const status = STATUSES.find(s=>s.key===a.status);
+          return (
+          <div key={a.id} className="relative rounded-2xl p-4 flex items-start justify-between" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(eff, '0 14px 38px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.06)', '0 16px 44px rgba(0,0,0,.46),0 3px 10px rgba(0,0,0,.30)') }}>
             <div className="min-w-0 pr-2">
               <div className="text-[14px] font-semibold truncate" style={{ color: c.text }}>{a.company}</div>
               <div className="text-[12px] truncate" style={{ color: Grey }}>{a.role}</div>
               <div className="text-[11px] mt-1" style={{ color: Grey }}>{a.platform}</div>
             </div>
             <div className="flex items-center gap-2">
-              {a.cvTailored && <span className="px-2 py-1 rounded-full text-[10px] font-semibold" style={{ background: c.chipBg, border: `1px solid ${c.surfaceBorder}`, color: c.text }}>CV</span>}
-              {a.motivation && <span className="px-2 py-1 rounded-full text-[10px] font-semibold" style={{ background: c.chipBg, border: `1px solid ${c.surfaceBorder}`, color: c.text }}>Letter</span>}
-              {a.favorite && <span className="px-2 py-1 rounded-full text-[10px] font-semibold" style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>Fav</span>}
+              {a.cvTailored && <span className="w-6 h-6 rounded-full grid place-items-center" style={{ background: c.chipBg, color: c.text }}><FileText className="w-3 h-3"/></span>}
+              {a.motivation && <span className="w-6 h-6 rounded-full grid place-items-center" style={{ background: c.chipBg, color: c.text }}><ClipboardList className="w-3 h-3"/></span>}
+              {a.favorite && <span className="w-6 h-6 rounded-full grid place-items-center" style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}><Star className="w-3 h-3"/></span>}
               <button onClick={()=>onEdit?.(a)} aria-label="Edit" className="grid place-items-center rounded-xl" style={{ width: 34, height: 34, background: c.surface, border: `1px solid ${c.surfaceBorder}` }}>
                 <MoreVertical className="w-4 h-4" />
               </button>
             </div>
+            {status && <div className="absolute bottom-3 right-3 flex items-center gap-1 text-[10px]" style={{ color: Grey }}>{status.icon}<span>{status.key}</span></div>}
           </div>
-        ))}
+          );
+        })}
         {appsView.length===0 && (
           <div className="rounded-2xl p-5 text-center" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: Grey }}>
             No applications yet.

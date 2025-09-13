@@ -268,17 +268,41 @@ function StatusSelect({ value, onChange, c, t }){
 
 /* LOG APPLICATION MODAL */
 function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log application', submitLabel = 'Add' }) {
-  const [company, setCompany] = useState(defaults?.company || '');
-  const [role, setRole] = useState(defaults?.role || '');
-  const [type, setType] = useState(defaults?.type || 'Full');
-  const [status, setStatus] = useState(defaults?.status || 'Applied');
-  const [date, setDate] = useState(defaults?.date || new Date().toISOString().slice(0, 10));
-  const [time, setTime] = useState(defaults?.time || new Date().toTimeString().slice(0,5));
-  const [note, setNote] = useState(defaults?.note || '');
-  const [cvTailored, setCvTailored] = useState(!!defaults?.cvTailored);
-  const [motivation, setMotivation] = useState(!!defaults?.motivation);
-  const [favorite, setFavorite] = useState(!!defaults?.favorite);
-  const [platform, setPlatform] = useState(defaults?.platform || 'Company website');
+  const [company, setCompany] = useState('');
+  const [role, setRole] = useState('');
+  const [type, setType] = useState('Full');
+  const [status, setStatus] = useState('Applied');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState(new Date().toTimeString().slice(0,5));
+  const [note, setNote] = useState('');
+  const [cvTailored, setCvTailored] = useState(false);
+  const [motivation, setMotivation] = useState(false);
+  const [favorite, setFavorite] = useState(false);
+  const [platform, setPlatform] = useState('Company website');
+
+  useEffect(() => {
+    if (open) {
+      setCompany(defaults?.company || '');
+      setRole(defaults?.role || '');
+      setType(defaults?.type || 'Full');
+      setStatus(defaults?.status || 'Applied');
+      if (defaults?.date) {
+        const d = new Date(defaults.date);
+        const iso = d.toISOString();
+        setDate(iso.slice(0,10));
+        setTime(iso.slice(11,16));
+      } else {
+        const now = new Date();
+        setDate(now.toISOString().slice(0,10));
+        setTime(now.toTimeString().slice(0,5));
+      }
+      setNote(defaults?.note || '');
+      setCvTailored(!!defaults?.cvTailored);
+      setMotivation(!!defaults?.motivation);
+      setFavorite(!!defaults?.favorite);
+      setPlatform(defaults?.platform || 'Company website');
+    }
+  }, [defaults, open]);
 
   const boxRef = useRef(null);
   useEffect(() => {
