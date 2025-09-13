@@ -11,6 +11,7 @@ import { useTheme } from "./hooks/useTheme.js";
 import { usePalette, cur, P } from "./hooks/usePalette.js";
 import Bg from "./components/Bg.jsx";
 import Apps from "./Apps.jsx";
+import Shop from "./Shop.jsx";
 import { Grey, PLATFORMS, STATUSES } from "./data.jsx";
 
 /* HELPERS */
@@ -539,6 +540,7 @@ export default function App() {
 
   const [showForm, setShowForm] = useState(false);
   const [tab, setTab] = useState('Home');
+  const [activeEffects, setActiveEffects] = useState([]);
   // Apps tab state and helpers
   const [editingApp, setEditingApp] = useState(null);
 
@@ -562,6 +564,9 @@ export default function App() {
 
         {tab === 'Apps' && (
           <Apps applications={applications} c={c} eff={eff} onLog={() => setShowForm(true)} onEdit={setEditingApp} onDelete={deleteApplication} />
+        )}
+        {tab === 'Shop' && (
+          <Shop c={c} eff={eff} gold={gold} setGold={setGold} effects={activeEffects} setEffects={setActiveEffects} />
         )}
         {tab === 'Home' && (
 

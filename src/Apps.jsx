@@ -90,13 +90,15 @@ export default function Apps({ applications, c, eff, onLog, onEdit, onDelete }) 
             { icon: <Mail className="w-3 h-3"/>, on: a.motivation },
             { icon: <Star className="w-3 h-3"/>, on: a.favorite }
           ];
+          // Safe ellipsis for truncated notes
+          const noteStrFixed = a.note ? (a.note.length > 50 ? a.note.slice(0,50) + '…' : a.note) : '';
           return (
           <div key={a.id} className="rounded-2xl p-4 flex flex-col" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(eff, '0 14px 38px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.06)', '0 16px 44px rgba(0,0,0,.46),0 3px 10px rgba(0,0,0,.30)') }}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-semibold truncate" style={{ color: c.text }}>{a.company}</div>
                 <div className="text-[12px] truncate" style={{ color: Grey }}>{a.role}</div>
-                {noteStr && <div className="text-[11px] truncate" style={{ color: Grey }}>{noteStr}</div>}
+                {noteStrFixed && <div className="text-[11px] truncate" style={{ color: Grey }}>{noteStrFixed}</div>}
               </div>
               <div className="flex flex-col items-end gap-1 ml-2">
                 <div className="flex items-center gap-2">
