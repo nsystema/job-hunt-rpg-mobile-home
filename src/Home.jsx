@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Trophy, Coins, Zap, Target, Activity, Star, BarChart3, RotateCcw, Snowflake, Crown, Medal, Palette, Sun, Moon, Monitor,
-  FileText, ChevronDown, ChevronRight, Search, CalendarClock, Clock, X,
+  FileText, ChevronDown, ChevronRight, Search, CalendarClock, Clock, X, Ghost,
   BadgeCheck, ClipboardList, Home as HomeIcon, Briefcase, Settings, Gift, ShoppingBag
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
@@ -515,8 +515,20 @@ export default function App() {
   const [apps, setApps] = useState(48);
   const [weighted, setWeighted] = useState(46.5);
   const [gold, setGold] = useState(260);
+  const [activeEffects, setActiveEffects] = useState([]);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActiveEffects((e) => e.filter((fx) => !fx.expiresAt || fx.expiresAt > Date.now()));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25, into = weighted % step;
+
+  function gainXp(base) {
+    const multiplier = activeEffects.some((e) => e.id === 1 || e.id === 3) ? 2 : 1;
+    setXp((x) => x + base * multiplier);
+  }
 
   const [applications, setApplications] = useState([]);
   function addApplication(fields) {
@@ -527,7 +539,7 @@ export default function App() {
     const g = full ? 26 : 12;
     setApps(a => a + 1);
     setWeighted(w => w + (full ? 1 : .5));
-    setXp(x => x + g);
+    gainXp(g);
     setGold(v => v + (full ? 10 : 5));
   }
 
@@ -535,17 +547,29 @@ export default function App() {
     const now = new Date();
     addApplication({ company: 'New Company', role: full ? 'Frontend Engineer' : 'Easy Apply', country: '', city: '', type: full ? 'Full' : 'Easy', status: 'Applied', date: now.toISOString(), note: '', cvTailored: false, motivation: false, favorite: false, platform: 'Company website' });
   }
-  const actSkill = () => { setXp(x => x + 14); setGold(g => g + 3); };
-  const actInterview = () => { setXp(x => x + 18); setGold(g => g + 4); };
+  const actSkill = () => { gainXp(14); setGold(g => g + 3); };
+  const actInterview = () => { gainXp(18); setGold(g => g + 4); };
 
   const [showForm, setShowForm] = useState(false);
   const [tab, setTab] = useState('Home');
-  const [activeEffects, setActiveEffects] = useState([]);
   // Apps tab state and helpers
   const [editingApp, setEditingApp] = useState(null);
 
   const updateApplication = (id, fields) => {
-    setApplications(list => list.map(a => a.id === id ? { ...a, ...fields } : a));
+    setApplications(list => {
+      const prev = list.find(a => a.id === id);
+      if (prev && fields.status === 'Ghosted' && prev.status !== 'Ghosted') {
+        const expiresAt = Date.now() + 3600 * 1000;
+        setActiveEffects(e => {
+          const existing = e.find(fx => fx.id === 3);
+          if (existing) {
+            return e.map(fx => fx.id === 3 ? { ...fx, expiresAt } : fx);
+          }
+          return [...e, { id: 3, name: "Ghost's Revenge", icon: Ghost, description: "Double XP for 1 hour", expiresAt }];
+        });
+      }
+      return list.map(a => a.id === id ? { ...a, ...fields } : a);
+    });
   };
 
   const deleteApplication = (id) => {

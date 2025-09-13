@@ -1,5 +1,5 @@
 import React from "react";
-import { Coins, Zap, Gift, Clock, Shield, Timer } from "lucide-react";
+import { Coins, Zap, Gift, Clock, Ghost } from "lucide-react";
 import { Grey } from "./data.jsx";
 import GoldPill from "./components/GoldPill.jsx";
 
@@ -22,18 +22,11 @@ const GAME_EFFECTS = [
   },
   {
     id: 3,
-    name: "Shield of Rejection",
-    cost: 12,
-    icon: Shield,
-    description: "Ignore the next rejection"
-  },
-  {
-    id: 4,
-    name: "Time Warp",
-    cost: 20,
-    icon: Timer,
-    description: "Reduce cooldowns for 5 minutes",
-    duration: 300
+    name: "Ghost's Revenge",
+    cost: 25,
+    icon: Ghost,
+    description: "Double XP for 1 hour",
+    duration: 3600
   }
 ];
 
