@@ -272,6 +272,12 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
   const [role, setRole] = useState('');
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
+  const [countryInput, setCountryInput] = useState('');
+  const [cityInput, setCityInput] = useState('');
+  const [allCountries, setAllCountries] = useState([]);
+  const [countryOptions, setCountryOptions] = useState([]);
+  const [allCities, setAllCities] = useState([]);
+  const [cityOptions, setCityOptions] = useState([]);
   const [type, setType] = useState('Full');
   const [status, setStatus] = useState('Applied');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -286,8 +292,12 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
     if (open) {
       setCompany(defaults?.company || '');
       setRole(defaults?.role || '');
-      setCountry(defaults?.country || '');
-      setCity(defaults?.city || '');
+      const dc = defaults?.country || '';
+      const dci = defaults?.city || '';
+      setCountry(dc);
+      setCountryInput(dc);
+      setCity(dci);
+      setCityInput(dci);
       setType(defaults?.type || 'Full');
       setStatus(defaults?.status || 'Applied');
       if (defaults?.date) {
@@ -313,12 +323,38 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
       fetch('https://ipapi.co/json/')
         .then(res => res.json())
         .then(data => {
-          if (data.country_name) setCountry(data.country_name);
-          if (data.city) setCity(data.city);
+          if (data.country_name) { setCountry(data.country_name); setCountryInput(data.country_name); }
+          if (data.city) { setCity(data.city); setCityInput(data.city); }
         })
         .catch(() => {});
     }
   }, [open, defaults]);
+
+  useEffect(() => {
+    if (open && allCountries.length === 0) {
+      fetch('https://restcountries.com/v3.1/all?fields=name')
+        .then(res => res.json())
+        .then(data => setAllCountries(data.map(c => c.name.common).sort()))
+        .catch(() => {});
+    }
+  }, [open, allCountries.length]);
+
+  useEffect(() => {
+    if (country) {
+      fetch('https://countriesnow.space/api/v0.1/countries/cities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country })
+      })
+        .then(res => res.json())
+        .then(res => Array.isArray(res.data) ? setAllCities(res.data) : setAllCities([]))
+        .catch(() => setAllCities([]));
+    } else {
+      setAllCities([]);
+      setCity('');
+      setCityInput('');
+    }
+  }, [country]);
 
   const boxRef = useRef(null);
   useEffect(() => {
@@ -368,10 +404,77 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
 
            <div className="grid grid-cols-2 gap-2">
              <label className="text-[12px]" style={{ color: Grey }}>Country
-               <input value={country} onChange={e => setCountry(e.target.value)} autoComplete="country" className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="USA" />
+               <div className="relative">
+                 <input
+                   value={countryInput}
+                   onChange={e => {
+                     const v = e.target.value;
+                     setCountryInput(v);
+                     setCountry('');
+                     if (v.length >= 2) {
+                       setCountryOptions(allCountries.filter(cn => cn.toLowerCase().includes(v.toLowerCase())));
+                     } else {
+                       setCountryOptions([]);
+                     }
+                   }}
+                   autoComplete="off"
+                   className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]"
+                   style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }}
+                   placeholder="USA"
+                 />
+                 {countryOptions.length > 0 && (
+                   <ul className="absolute left-0 right-0 mt-1 max-h-40 overflow-auto rounded-xl"
+                     style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}` }}>
+                     {countryOptions.map(opt => (
+                       <li key={opt}>
+                         <button
+                           type="button"
+                           onMouseDown={() => { setCountry(opt); setCountryInput(opt); setCountryOptions([]); }}
+                           className="w-full text-left px-3 py-2 text-[13px]"
+                           style={{ color: c.text }}
+                         >{opt}</button>
+                       </li>
+                     ))}
+                   </ul>
+                 )}
+               </div>
              </label>
              <label className="text-[12px]" style={{ color: Grey }}>City
-               <input value={city} onChange={e => setCity(e.target.value)} autoComplete="address-level2" className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="New York" />
+               <div className="relative">
+                 <input
+                   value={cityInput}
+                   onChange={e => {
+                     const v = e.target.value;
+                     setCityInput(v);
+                     setCity('');
+                     if (country && v.length >= 1) {
+                       setCityOptions(allCities.filter(ct => ct.toLowerCase().includes(v.toLowerCase())));
+                     } else {
+                       setCityOptions([]);
+                     }
+                   }}
+                   disabled={!country}
+                   autoComplete="off"
+                   className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]"
+                   style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }}
+                   placeholder="New York"
+                 />
+                 {cityOptions.length > 0 && (
+                   <ul className="absolute left-0 right-0 mt-1 max-h-40 overflow-auto rounded-xl"
+                     style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}` }}>
+                     {cityOptions.map(opt => (
+                       <li key={opt}>
+                         <button
+                           type="button"
+                           onMouseDown={() => { setCity(opt); setCityInput(opt); setCityOptions([]); }}
+                           className="w-full text-left px-3 py-2 text-[13px]"
+                           style={{ color: c.text }}
+                         >{opt}</button>
+                       </li>
+                     ))}
+                   </ul>
+                 )}
+               </div>
              </label>
            </div>
 
@@ -389,6 +492,8 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
           <button onClick={onClose} className="px-3 py-3 rounded-xl text-[13px]" style={{ background: c.chipBg, color: c.text }}>Cancel</button>
           <button onClick={() => {
             if (!company || !role) return;
+            if (countryInput && !country) { alert('Please choose a country from the list'); return; }
+            if (cityInput && !city) { alert('Please choose a city from the list'); return; }
             const iso = new Date(`${date}T${time}:00`).toISOString();
             onSubmit({ company, role, country, city, type, status, date: iso, note, cvTailored, motivation, favorite, platform });
           }} className="px-3 py-3 rounded-xl text-[13px] font-semibold"

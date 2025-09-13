@@ -105,7 +105,7 @@ export default function Apps({ applications, c, eff, onLog, onEdit, onDelete }) 
                     onClick={() => onEdit?.(a)}
                     aria-label="Edit"
                     className="grid place-items-center rounded-xl"
-                    style={{ width: 32, height: 32, background: c.surface, border: `1px solid ${c.surfaceBorder}` }}
+                    style={{ width: 32, height: 32, background: c.surface, border: '1px solid transparent' }}
                   >
                     <MoreVertical className="w-4 h-4" />
                   </button>
@@ -113,14 +113,14 @@ export default function Apps({ applications, c, eff, onLog, onEdit, onDelete }) 
                     onClick={() => { if (window.confirm('Delete this application?')) onDelete?.(a.id); }}
                     aria-label="Delete"
                     className="grid place-items-center rounded-xl"
-                    style={{ width: 32, height: 32, background: c.surface, border: `1px solid ${c.surfaceBorder}` }}
+                    style={{ width: 32, height: 32, background: c.surface, border: '1px solid transparent' }}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between pt-3 mt-2 border-t" style={{ borderColor: c.surfaceBorder }}>
+            <div className="flex items-center justify-between pt-2 mt-4 border-t" style={{ borderColor: c.surfaceBorder }}>
               <div className="flex items-center gap-2">
                 {extras.map((b,i)=>(
                   <span key={i} className="grid place-items-center w-6 h-6 rounded-md" style={b.on ? { background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' } : { background: c.chipBg, color: Grey }}>
