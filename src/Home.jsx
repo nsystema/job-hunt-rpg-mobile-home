@@ -308,6 +308,18 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
     }
   }, [defaults, open]);
 
+  useEffect(() => {
+    if (open && !defaults) {
+      fetch('https://ipapi.co/json/')
+        .then(res => res.json())
+        .then(data => {
+          if (data.country_name) setCountry(data.country_name);
+          if (data.city) setCity(data.city);
+        })
+        .catch(() => {});
+    }
+  }, [open, defaults]);
+
   const boxRef = useRef(null);
   useEffect(() => {
     function onKey(e){ if(e.key === 'Escape') onClose(); }
@@ -340,12 +352,6 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
             <label className="text-[12px]" style={{ color: Grey }}>Role
               <input value={role} onChange={e => setRole(e.target.value)} className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="Data Analyst" />
             </label>
-            <label className="text-[12px]" style={{ color: Grey }}>Country
-              <input value={country} onChange={e => setCountry(e.target.value)} className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="USA" />
-            </label>
-            <label className="text-[12px]" style={{ color: Grey }}>City
-              <input value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="New York" />
-            </label>
           </div>
 
           <div className="flex items-center gap-2">
@@ -353,15 +359,24 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
             <Seg v="Easy" />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <StatusSelect value={status} onChange={setStatus} c={c} t={t} />
-            <PlatformSelect value={platform} onChange={setPlatform} c={c} t={t} />
-          </div>
+           <div className="grid grid-cols-2 gap-2">
+             <StatusSelect value={status} onChange={setStatus} c={c} t={t} />
+             <PlatformSelect value={platform} onChange={setPlatform} c={c} t={t} />
+           </div>
 
-          <DateTimeSelect dateISO={date} timeHM={time} onChange={({date, time})=>{ setDate(date); setTime(time); }} c={c} t={t} />
+           <DateTimeSelect dateISO={date} timeHM={time} onChange={({date, time})=>{ setDate(date); setTime(time); }} c={c} t={t} />
 
-          <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Notes (optional)"
-            className="w-full px-3 py-3 rounded-xl text-[13px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} />
+           <div className="grid grid-cols-2 gap-2">
+             <label className="text-[12px]" style={{ color: Grey }}>Country
+               <input value={country} onChange={e => setCountry(e.target.value)} autoComplete="country" className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="USA" />
+             </label>
+             <label className="text-[12px]" style={{ color: Grey }}>City
+               <input value={city} onChange={e => setCity(e.target.value)} autoComplete="address-level2" className="w-full mt-1 px-3 py-3 rounded-xl text-[14px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} placeholder="New York" />
+             </label>
+           </div>
+
+           <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Notes (optional)"
+             className="w-full px-3 py-3 rounded-xl text-[13px]" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }} />
 
           <div className="grid grid-cols-3 gap-1">
             <IconToggle aria="CV tailored" label="CV" checked={cvTailored} onChange={setCvTailored} c={c} icon={<ClipboardList className="w-5 h-5"/>} />
@@ -426,6 +441,10 @@ export default function App() {
     setApplications(list => list.map(a => a.id === id ? { ...a, ...fields } : a));
   };
 
+  const deleteApplication = (id) => {
+    setApplications(list => list.filter(a => a.id !== id));
+  };
+
 
   return (
     <div className="relative" style={{ background: c.bg, color: c.text, minHeight: '100dvh' }}>
@@ -437,7 +456,7 @@ export default function App() {
         <div style={{ height: 18 }} />
 
         {tab === 'Apps' && (
-          <Apps applications={applications} c={c} eff={eff} onLog={() => setShowForm(true)} onEdit={setEditingApp} />
+          <Apps applications={applications} c={c} eff={eff} onLog={() => setShowForm(true)} onEdit={setEditingApp} onDelete={deleteApplication} />
         )}
         {tab === 'Home' && (
 

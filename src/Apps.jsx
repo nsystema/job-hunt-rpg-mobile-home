@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Filter, ArrowUpDown, MoreVertical, BadgeCheck, ChevronRight, X, FileText, Mail, Star } from "lucide-react";
+import { Search, Filter, ArrowUpDown, MoreVertical, Trash2, BadgeCheck, ChevronRight, X, FileText, Mail, Star } from "lucide-react";
 import { Grey, STATUSES, PLATFORMS } from "./data.jsx";
 
 const shadow = (t, l, d) => t === 'light' ? l : d;
@@ -37,7 +37,7 @@ const Sheet = ({ open, onClose, title, c, t, children, footer }) => {
   );
 };
 
-export default function Apps({ applications, c, eff, onLog, onEdit }) {
+export default function Apps({ applications, c, eff, onLog, onEdit, onDelete }) {
   const [appsQuery, setAppsQuery] = useState("");
   const [filterStatuses, setFilterStatuses] = useState([]);
   const [filterPlatforms, setFilterPlatforms] = useState([]);
@@ -109,6 +109,14 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
                   >
                     <MoreVertical className="w-4 h-4" />
                   </button>
+                  <button
+                    onClick={() => { if (window.confirm('Delete this application?')) onDelete?.(a.id); }}
+                    aria-label="Delete"
+                    className="grid place-items-center rounded-xl"
+                    style={{ width: 32, height: 32, background: c.surface, border: `1px solid ${c.surfaceBorder}` }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -124,13 +132,13 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
                 {status && (
                   <span
                     className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
-                    style={{ background: 'transparent', border: `1px solid ${c.surfaceBorder}`, color: c.text }}
+                    style={{ background: 'transparent', border: '1px solid transparent', color: c.text }}
                   >
                     {status.icon}
                     <span>{status.key}</span>
                   </span>
                 )}
-                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'transparent', border: `1px solid ${c.surfaceBorder}`, color: c.text }}>{a.platform}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'transparent', border: '1px solid transparent', color: c.text }}>{a.platform}</span>
               </div>
             </div>
           </div>
