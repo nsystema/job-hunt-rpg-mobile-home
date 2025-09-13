@@ -18,7 +18,7 @@ const GAME_EFFECTS = [
     cost: 15,
     icon: Coins,
     description: "Earn extra gold on next quest",
-    duration: 300
+    // not time bound
   }
 ];
 
@@ -55,12 +55,23 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
     return () => clearInterval(id);
   }, [setEffects]);
 
+  const pad = (n) => String(n).padStart(2, "0");
+  const formatTime = (s) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+  };
+
   const buyEffect = (item) => {
-    if (gold >= item.cost) {
+    if (gold >= item.cost && !effects.some((fx) => fx.id === item.id)) {
       setGold((g) => g - item.cost);
       setEffects((e) => [
         ...e,
-        { ...item, expiresAt: Date.now() + (item.duration ?? 0) * 1000 }
+        {
+          ...item,
+          expiresAt: item.duration ? Date.now() + item.duration * 1000 : undefined
+        }
       ]);
     }
   };
@@ -93,51 +104,58 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
       <div className="flex items-center justify-between">
         <GoldPill c={c}>{gold}</GoldPill>
         <div className="flex items-center gap-2">
-          {effects.length > 0 ? (
-            effects.map((e, i) => {
-              const Icon = e.icon || Zap;
-              const remaining = e.expiresAt
-                ? Math.max(0, Math.ceil((e.expiresAt - now) / 1000))
-                : null;
-              return (
-                <div key={i} className="relative" title={e.description}>
-                  <Icon className="w-5 h-5 animate-bounce" />
-                  {remaining !== null && (
-                    <span className="absolute -top-2 -right-2 text-[10px] bg-black text-white rounded-full px-1">
-                      {remaining}
-                    </span>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <div className="text-[12px]" style={{ color: Grey }}>
-              None
-            </div>
-          )}
+          {effects.map((e, i) => {
+            const Icon = e.icon || Zap;
+            const remaining = e.expiresAt
+              ? Math.max(0, Math.ceil((e.expiresAt - now) / 1000))
+              : null;
+            return (
+              <div key={i} className="relative" title={e.description}>
+                <Icon className="w-5 h-5 animate-bounce" />
+                {remaining !== null && (
+                  <span
+                    className="absolute -top-2 -right-2 rounded px-1 py-px text-[8px]"
+                    style={{
+                      background:
+                        eff === "light"
+                          ? "rgba(255,255,255,.85)"
+                          : "rgba(0,0,0,.85)",
+                      color: eff === "light" ? "#0f172a" : "#f8fafc",
+                      border: `1px solid ${c.surfaceBorder}`
+                    }}
+                  >
+                    {formatTime(remaining)}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
       <div className="pt-2">
         <div className="text-sm font-semibold mb-2">In-game effects</div>
         <div className="grid gap-2">
-          {GAME_EFFECTS.map((item) => (
-            <Panel key={item.id} c={c} t={eff}>
-              <div className="flex items-center justify-between" title={item.description}>
-                <div className="flex items-center gap-2">
-                  <item.icon className="w-5 h-5" />
-                  <div className="text-[14px] font-medium">{item.name}</div>
+          {GAME_EFFECTS.map((item) => {
+            const active = effects.some((e) => e.id === item.id);
+            return (
+              <Panel key={item.id} c={c} t={eff}>
+                <div className="flex items-center justify-between" title={item.description}>
+                  <div className="flex items-center gap-2">
+                    <item.icon className="w-5 h-5" />
+                    <div className="text-[14px] font-medium">{item.name}</div>
+                  </div>
+                  <GoldPill
+                    c={c}
+                    onClick={() => buyEffect(item)}
+                    dim={gold < item.cost || active}
+                  >
+                    {item.cost}
+                  </GoldPill>
                 </div>
-                <GoldPill
-                  c={c}
-                  onClick={() => buyEffect(item)}
-                  dim={gold < item.cost}
-                >
-                  {item.cost}
-                </GoldPill>
-              </div>
-            </Panel>
-          ))}
+              </Panel>
+            );
+          })}
         </div>
       </div>
 
