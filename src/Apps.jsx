@@ -85,25 +85,32 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
           const dateStr = d.toISOString().slice(0,10);
           const timeStr = d.toTimeString().slice(0,5);
           const noteStr = a.note ? (a.note.length > 50 ? a.note.slice(0,50) + '…' : a.note) : '';
+          const badges = [];
+          if(a.cvTailored) badges.push({icon:<FileText className="w-3 h-3"/>, label:'CV'});
+          if(a.motivation) badges.push({icon:<Mail className="w-3 h-3"/>, label:'Motivation'});
+          if(a.favorite) badges.push({icon:<Star className="w-3 h-3"/>, label:'Fav'});
           return (
-          <div key={a.id} className="rounded-2xl p-4" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(eff, '0 14px 38px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.06)', '0 16px 44px rgba(0,0,0,.46),0 3px 10px rgba(0,0,0,.30)') }}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
+          <div key={a.id} className="rounded-2xl p-4 flex flex-col" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(eff, '0 14px 38px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.06)', '0 16px 44px rgba(0,0,0,.46),0 3px 10px rgba(0,0,0,.30)') }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-semibold truncate" style={{ color: c.text }}>{a.company}</div>
                 <div className="text-[12px] truncate" style={{ color: Grey }}>{a.role}</div>
                 <div className="text-[11px]" style={{ color: Grey }}>{dateStr} {timeStr}</div>
                 {noteStr && <div className="text-[11px] truncate" style={{ color: Grey }}>{noteStr}</div>}
               </div>
-              <div className="flex flex-col items-end gap-1 ml-2">
-                {status && (
-                  <span
-                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
-                    style={{ background: c.chipBg, color: c.text }}
-                  >
-                    {status.icon}
-                    <span>{status.key}</span>
-                  </span>
-                )}
+              <div className="flex flex-col items-end gap-2 ml-2">
+                <div className="flex flex-wrap justify-end gap-1">
+                  {status && (
+                    <span
+                      className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
+                      style={{ background: c.chipBg, color: c.text }}
+                    >
+                      {status.icon}
+                      <span>{status.key}</span>
+                    </span>
+                  )}
+                  <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: c.chipBg, color: c.text }}>{a.platform}</span>
+                </div>
                 <button
                   onClick={() => onEdit?.(a)}
                   aria-label="Edit"
@@ -114,29 +121,16 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="w-5 h-5 rounded-md grid place-items-center"
-                  style={{ background: a.cvTailored ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})` : c.chipBg, color: a.cvTailored ? '#0f172a' : c.text }}
-                >
-                  <FileText className="w-3 h-3" />
-                </span>
-                <span
-                  className="w-5 h-5 rounded-md grid place-items-center"
-                  style={{ background: a.motivation ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})` : c.chipBg, color: a.motivation ? '#0f172a' : c.text }}
-                >
-                  <Mail className="w-3 h-3" />
-                </span>
-                <span
-                  className="w-5 h-5 rounded-md grid place-items-center"
-                  style={{ background: a.favorite ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})` : c.chipBg, color: a.favorite ? '#0f172a' : c.text }}
-                >
-                  <Star className="w-3 h-3" />
-                </span>
+            {badges.length>0 && (
+              <div className="flex flex-wrap items-center gap-2 pt-3 mt-2 border-t" style={{ borderColor: c.surfaceBorder }}>
+                {badges.map((b,i)=>(
+                  <span key={i} className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px]" style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>
+                    {b.icon}
+                    <span>{b.label}</span>
+                  </span>
+                ))}
               </div>
-              <div className="text-[11px]" style={{ color: Grey }}>{a.platform}</div>
-            </div>
+            )}
           </div>
           );
         })}
