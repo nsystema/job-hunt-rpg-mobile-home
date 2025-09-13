@@ -85,10 +85,11 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
           const dateStr = d.toISOString().slice(0,10);
           const timeStr = d.toTimeString().slice(0,5);
           const noteStr = a.note ? (a.note.length > 50 ? a.note.slice(0,50) + '…' : a.note) : '';
-          const badges = [];
-          if(a.cvTailored) badges.push(<FileText className="w-3 h-3"/>);
-          if(a.motivation) badges.push(<Mail className="w-3 h-3"/>);
-          if(a.favorite) badges.push(<Star className="w-3 h-3"/>);
+          const extras = [
+            { icon: <FileText className="w-3 h-3"/>, on: a.cvTailored },
+            { icon: <Mail className="w-3 h-3"/>, on: a.motivation },
+            { icon: <Star className="w-3 h-3"/>, on: a.favorite }
+          ];
           return (
           <div key={a.id} className="rounded-2xl p-4 flex flex-col" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(eff, '0 14px 38px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.06)', '0 16px 44px rgba(0,0,0,.46),0 3px 10px rgba(0,0,0,.30)') }}>
             <div className="flex items-start justify-between gap-3">
@@ -99,7 +100,7 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
               </div>
               <div className="flex flex-col items-end gap-1 ml-2">
                 <div className="flex items-center gap-2">
-                  <div className="text-[11px] whitespace-nowrap" style={{ color: Grey }}>{dateStr} {timeStr}</div>
+                  <div className="text-[11px] whitespace-nowrap" style={{ color: Grey }}>{dateStr} • {timeStr}</div>
                   <button
                     onClick={() => onEdit?.(a)}
                     aria-label="Edit"
@@ -109,29 +110,29 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
                     <MoreVertical className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="flex flex-wrap justify-end gap-1">
-                  {status && (
-                    <span
-                      className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
-                      style={{ background: c.chipBg, color: c.text }}
-                    >
-                      {status.icon}
-                      <span>{status.key}</span>
-                    </span>
-                  )}
-                  <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: c.chipBg, color: c.text }}>{a.platform}</span>
-                </div>
               </div>
             </div>
-            {badges.length>0 && (
-              <div className="flex flex-wrap items-center gap-2 pt-3 mt-2 border-t" style={{ borderColor: c.surfaceBorder }}>
-                {badges.map((icon,i)=>(
-                  <span key={i} className="grid place-items-center w-6 h-6 rounded-md" style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>
-                    {icon}
+            <div className="flex items-center justify-between pt-3 mt-2 border-t" style={{ borderColor: c.surfaceBorder }}>
+              <div className="flex items-center gap-2">
+                {extras.map((b,i)=>(
+                  <span key={i} className="grid place-items-center w-6 h-6 rounded-md" style={b.on ? { background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' } : { background: c.chipBg, color: Grey }}>
+                    {b.icon}
                   </span>
                 ))}
               </div>
-            )}
+              <div className="flex flex-wrap justify-end gap-1">
+                {status && (
+                  <span
+                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full"
+                    style={{ background: c.chipBg, color: c.text }}
+                  >
+                    {status.icon}
+                    <span>{status.key}</span>
+                  </span>
+                )}
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: c.chipBg, color: c.text }}>{a.platform}</span>
+              </div>
+            </div>
           </div>
           );
         })}
