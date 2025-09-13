@@ -17,8 +17,7 @@ const GAME_EFFECTS = [
     name: "Gold Rush",
     cost: 15,
     icon: Coins,
-    description: "Earn extra gold on next quest",
-    duration: 300
+    description: "Earn extra gold on next quest"
   }
 ];
 
@@ -56,11 +55,17 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
   }, [setEffects]);
 
   const buyEffect = (item) => {
+    if (effects.some((e) => e.id === item.id)) return;
     if (gold >= item.cost) {
       setGold((g) => g - item.cost);
       setEffects((e) => [
         ...e,
-        { ...item, expiresAt: Date.now() + (item.duration ?? 0) * 1000 }
+        {
+          ...item,
+          ...(item.duration
+            ? { expiresAt: Date.now() + item.duration * 1000 }
+            : {})
+        }
       ]);
     }
   };
@@ -100,10 +105,17 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                 ? Math.max(0, Math.ceil((e.expiresAt - now) / 1000))
                 : null;
               return (
-                <div key={i} className="relative" title={e.description}>
+                <div key={i} className="flex items-center gap-1" title={e.description}>
                   <Icon className="w-5 h-5 animate-bounce" />
                   {remaining !== null && (
-                    <span className="absolute -top-2 -right-2 text-[10px] bg-black text-white rounded-full px-1">
+                    <span
+                      className="text-[10px] px-1 rounded"
+                      style={{
+                        background: c.chipBg,
+                        border: `1px solid ${c.surfaceBorder}`,
+                        color: c.text
+                      }}
+                    >
                       {remaining}
                     </span>
                   )}
@@ -121,23 +133,26 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
       <div className="pt-2">
         <div className="text-sm font-semibold mb-2">In-game effects</div>
         <div className="grid gap-2">
-          {GAME_EFFECTS.map((item) => (
-            <Panel key={item.id} c={c} t={eff}>
-              <div className="flex items-center justify-between" title={item.description}>
-                <div className="flex items-center gap-2">
-                  <item.icon className="w-5 h-5" />
-                  <div className="text-[14px] font-medium">{item.name}</div>
+          {GAME_EFFECTS.map((item) => {
+            const isActive = effects.some((e) => e.id === item.id);
+            return (
+              <Panel key={item.id} c={c} t={eff}>
+                <div className="flex items-center justify-between" title={item.description}>
+                  <div className="flex items-center gap-2">
+                    <item.icon className="w-5 h-5" />
+                    <div className="text-[14px] font-medium">{item.name}</div>
+                  </div>
+                  <GoldPill
+                    c={c}
+                    onClick={() => !isActive && buyEffect(item)}
+                    dim={gold < item.cost || isActive}
+                  >
+                    {isActive ? "Active" : item.cost}
+                  </GoldPill>
                 </div>
-                <GoldPill
-                  c={c}
-                  onClick={() => buyEffect(item)}
-                  dim={gold < item.cost}
-                >
-                  {item.cost}
-                </GoldPill>
-              </div>
-            </Panel>
-          ))}
+              </Panel>
+            );
+          })}
         </div>
       </div>
 
