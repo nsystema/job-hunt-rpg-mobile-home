@@ -81,12 +81,18 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
       <div className="grid gap-3 mt-4">
         {appsView.map(a=> {
           const status = STATUSES.find(s=>s.key===a.status);
+          const d = new Date(a.date);
+          const dateStr = d.toISOString().slice(0,10);
+          const timeStr = d.toTimeString().slice(0,5);
+          const noteStr = a.note ? (a.note.length > 50 ? a.note.slice(0,50) + '…' : a.note) : '';
           return (
           <div key={a.id} className="rounded-2xl p-4" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(eff, '0 14px 38px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.06)', '0 16px 44px rgba(0,0,0,.46),0 3px 10px rgba(0,0,0,.30)') }}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="text-[14px] font-semibold truncate" style={{ color: c.text }}>{a.company}</div>
                 <div className="text-[12px] truncate" style={{ color: Grey }}>{a.role}</div>
+                <div className="text-[11px]" style={{ color: Grey }}>{dateStr} {timeStr}</div>
+                {noteStr && <div className="text-[11px] truncate" style={{ color: Grey }}>{noteStr}</div>}
               </div>
               <div className="flex flex-col items-end gap-1 ml-2">
                 {status && (
@@ -110,23 +116,24 @@ export default function Apps({ applications, c, eff, onLog, onEdit }) {
             </div>
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-1.5">
-                {a.cvTailored && (
-                  <span
-                    className="w-5 h-5 rounded-md grid place-items-center"
-                    style={{ background: c.chipBg, color: c.text }}
-                  >
-                    <FileText className="w-3 h-3" />
-                  </span>
-                )}
-                {a.motivation && (
-                  <span
-                    className="w-5 h-5 rounded-md grid place-items-center"
-                    style={{ background: c.chipBg, color: c.text }}
-                  >
-                    <Mail className="w-3 h-3" />
-                  </span>
-                )}
-                {a.favorite && <span className="w-5 h-5 rounded-md grid place-items-center" style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}><Star className="w-3 h-3"/></span>}
+                <span
+                  className="w-5 h-5 rounded-md grid place-items-center"
+                  style={{ background: a.cvTailored ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})` : c.chipBg, color: a.cvTailored ? '#0f172a' : c.text }}
+                >
+                  <FileText className="w-3 h-3" />
+                </span>
+                <span
+                  className="w-5 h-5 rounded-md grid place-items-center"
+                  style={{ background: a.motivation ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})` : c.chipBg, color: a.motivation ? '#0f172a' : c.text }}
+                >
+                  <Mail className="w-3 h-3" />
+                </span>
+                <span
+                  className="w-5 h-5 rounded-md grid place-items-center"
+                  style={{ background: a.favorite ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})` : c.chipBg, color: a.favorite ? '#0f172a' : c.text }}
+                >
+                  <Star className="w-3 h-3" />
+                </span>
               </div>
               <div className="text-[11px]" style={{ color: Grey }}>{a.platform}</div>
             </div>
