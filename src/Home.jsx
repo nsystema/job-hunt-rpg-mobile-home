@@ -13,11 +13,9 @@ import Bg from "./components/Bg.jsx";
 import Apps from "./Apps.jsx";
 import Shop from "./Shop.jsx";
 import { Grey, PLATFORMS, STATUSES } from "./data.jsx";
+import { xpl, lvl, last7 } from "./gameMechanics.js";
 
 /* HELPERS */
-const xpl = (L) => Math.max(12, Math.round(20 + .82 * (L - 1)));
-function lvl(x) { let l = 1, r = x; for (;;) { const n = xpl(l); if (r >= n) { r -= n; l++; if (l > 999) break; } else break; } return { l, rem: r, need: xpl(l) }; }
-const last7 = (() => { const now = new Date(); return Array.from({ length: 7 }, (_, i) => { const d = new Date(now); d.setDate(d.getDate() - (6 - i)); return { day: d.toISOString().slice(5, 10), apps: Math.max(0, Math.round((Math.sin(i * 1.1) + 1) * 4 + (i % 3 === 0 ? 3 : 0))) } }) })();
 const shadow = (t, l, d) => t === 'light' ? l : d;
 
 /* MICRO UI */

@@ -1,39 +1,9 @@
 import React from "react";
-import { Coins, Zap, Gift, Clock, Ghost } from "lucide-react";
+import { Gift, Clock, Coins, Zap } from "lucide-react";
 import { Grey } from "./data.jsx";
 import GoldPill from "./components/GoldPill.jsx";
+import { GAME_EFFECTS, REAL_REWARDS, formatTime, buyEffect, redeemReward } from "./gameMechanics.js";
 
-const GAME_EFFECTS = [
-  {
-    id: 1,
-    name: "XP Boost",
-    cost: 10,
-    icon: Zap,
-    description: "Double XP for 10 minutes",
-    duration: 600
-  },
-  {
-    id: 2,
-    name: "Gold Rush",
-    cost: 15,
-    icon: Coins,
-    description: "Earn extra gold on next quest",
-    // not time bound
-  },
-  {
-    id: 3,
-    name: "Ghost's Revenge",
-    cost: 25,
-    icon: Ghost,
-    description: "Double XP for 1 hour",
-    duration: 3600
-  }
-];
-
-const REAL_REWARDS = [
-  { id: 1, name: "Watch anime episode", minutes: 20, pleasure: 1 },
-  { id: 2, name: "Premium coffee", minutes: 15, pleasure: 2 }
-];
 
 const shadow = (t, l, d) => (t === "light" ? l : d);
 const Panel = ({ c, t, children }) => (
@@ -64,35 +34,10 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
     }, 1000);
     return () => clearInterval(id);
   }, [setEffects]);
+  const handleBuyEffect = (item) => buyEffect(item, gold, setGold, effects, setEffects);
+  const handleRedeemReward = (r) => redeemReward(r, gold, setGold, setRedeemed);
 
-  const pad = (n) => String(n).padStart(2, "0");
-  const formatTime = (s) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
-  };
 
-  const buyEffect = (item) => {
-    if (gold >= item.cost && !effects.some((fx) => fx.id === item.id)) {
-      setGold((g) => g - item.cost);
-      setEffects((e) => [
-        ...e,
-        {
-          ...item,
-          expiresAt: item.duration ? Date.now() + item.duration * 1000 : undefined
-        }
-      ]);
-    }
-  };
-
-  const redeemReward = (r) => {
-    const cost = Math.round(r.minutes * (r.pleasure ?? 1));
-    if (gold >= cost) {
-      setGold((g) => g - cost);
-      setRedeemed(r);
-    }
-  };
 
   return (
     <div
@@ -157,7 +102,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                   </div>
                   <GoldPill
                     c={c}
-                    onClick={() => buyEffect(item)}
+                    onClick={() => handleBuyEffect(item)}
                     dim={gold < item.cost || active}
                   >
                     {item.cost}
@@ -239,7 +184,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               </button>
               <button
                 onClick={() => {
-                  redeemReward(confirmReward);
+                  handleRedeemReward(confirmReward);
                   setConfirmReward(null);
                 }}
                 className="px-3 py-2 rounded-lg text-sm font-semibold"
