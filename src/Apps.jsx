@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Search, Filter, ArrowUpDown, MoreVertical, Trash2, BadgeCheck, ChevronRight, X, FileText, Mail, Star } from "lucide-react";
 import { Grey, STATUSES, PLATFORMS } from "./data.jsx";
+import { motion } from "framer-motion";
 
 const shadow = (t, l, d) => t === 'light' ? l : d;
 
@@ -93,7 +94,14 @@ export default function Apps({ applications, c, eff, onLog, onEdit, onDelete }) 
           // Safe ellipsis for truncated notes
           const noteStrFixed = a.note ? (a.note.length > 50 ? a.note.slice(0,50) + '…' : a.note) : '';
           return (
-          <div key={a.id} className="rounded-2xl p-4 flex flex-col" style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(eff, '0 14px 38px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.06)', '0 16px 44px rgba(0,0,0,.46),0 3px 10px rgba(0,0,0,.30)') }}>
+          <motion.div
+            key={a.id}
+            className="rounded-2xl p-4 flex flex-col"
+            style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(eff, '0 14px 38px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.06)', '0 16px 44px rgba(0,0,0,.46),0 3px 10px rgba(0,0,0,.30)') }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-semibold truncate" style={{ color: c.text }}>{a.company}</div>
@@ -143,7 +151,7 @@ export default function Apps({ applications, c, eff, onLog, onEdit, onDelete }) 
                 <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'transparent', border: '1px solid transparent', color: c.text }}>{a.platform}</span>
               </div>
             </div>
-          </div>
+          </motion.div>
           );
         })}
         {appsView.length===0 && (
