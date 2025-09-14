@@ -78,7 +78,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
         )
       }}
     >
-      <div className="flex items-center flex-wrap gap-2">
+      <div className="flex items-center flex-wrap gap-1">
         {effects.map((e, i) => {
           const Icon = e.icon || Zap;
           const remaining = e.expiresAt
@@ -87,10 +87,10 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
           return (
             <div
               key={i}
-              className="flex flex-col items-center w-12 text-center"
+              className="flex flex-col items-center w-10 text-center"
               title={e.description}
             >
-              <div className="relative w-8 h-8 flex items-center justify-center">
+              <div className="relative w-6 h-6 flex items-center justify-center">
                 {remaining !== null && e.duration && (
                   <svg className="absolute inset-0" viewBox="0 0 36 36">
                     <circle
@@ -120,12 +120,12 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                   </svg>
                 )}
                 <span className="relative z-10">
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4" />
                 </span>
               </div>
               {remaining !== null && (
                 <motion.span
-                  className="mt-1 text-[10px] font-semibold leading-none tabular-nums"
+                  className="mt-1 text-[8px] font-semibold leading-none tabular-nums"
                   style={{ color: c.text }}
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
