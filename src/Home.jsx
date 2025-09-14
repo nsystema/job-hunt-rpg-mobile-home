@@ -13,7 +13,7 @@ import Bg from "./components/Bg.jsx";
 import Apps from "./Apps.jsx";
 import Shop from "./Shop.jsx";
 import { Grey, PLATFORMS, STATUSES } from "./data.jsx";
-import { xpl, lvl, last7, FOCUS_BASELINE, focusCost } from "./gameMechanics.js";
+import { xpl, lvl, last7, FOCUS_BASELINE, focusCost, computeRewards } from "./gameMechanics.js";
 
 /* HELPERS */
 const shadow = (t, l, d) => t === 'light' ? l : d;
@@ -554,14 +554,13 @@ export default function App() {
       return false;
     }
     const id = Math.random().toString(36).slice(2, 9);
-    const app = { id, ...fields };
+    const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(fields);
+    const app = { id, ...fields, qs };
     setApplications(list => [app, ...list]);
-    const full = fields.type === 'Full';
-    const g = full ? 26 : 12;
     setApps(a => a + 1);
-    setWeighted(w => w + (full ? 1 : .5));
-    gainXp(g);
-    setGold(v => v + (full ? 10 : 5));
+    setWeighted(w => w + au);
+    gainXp(xpReward);
+    setGold(v => v + goldReward);
     setFocus(f => Math.max(0, f - cost));
     return true;
   }

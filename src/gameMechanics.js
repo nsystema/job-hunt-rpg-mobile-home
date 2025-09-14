@@ -39,6 +39,21 @@ export function focusCost(type, reduction = 0) {
   return Math.max(min, base - reduction);
 }
 
+// XP/Gold reward mechanics
+export function computeRewards(app) {
+  const au = app.type === "Full" ? 1 : 0.5;
+  const qs = (app.type === "Full" ? 1 : 0) + (app.cvTailored ? 1 : 0) + (app.motivation ? 1 : 0);
+  const baseXp = 10 * au;
+  const baseGold = 5 * au;
+  const multiplier = 1 + 0.15 * qs;
+  return {
+    xp: Math.round(baseXp * multiplier),
+    gold: Math.round(baseGold * multiplier),
+    qs,
+    au
+  };
+}
+
 // Shop mechanics
 export const GAME_EFFECTS = [
   {
