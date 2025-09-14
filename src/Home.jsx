@@ -548,6 +548,11 @@ export default function App() {
 
   const [applications, setApplications] = useState([]);
   function addApplication(fields) {
+    const cost = focusCost(fields.type);
+    if (focus < cost) {
+      alert('You are out of focus! Recharge to log more applications.');
+      return false;
+    }
     const id = Math.random().toString(36).slice(2, 9);
     const app = { id, ...fields };
     setApplications(list => [app, ...list]);
@@ -557,8 +562,8 @@ export default function App() {
     setWeighted(w => w + (full ? 1 : .5));
     gainXp(g);
     setGold(v => v + (full ? 10 : 5));
-    const cost = focusCost(fields.type);
     setFocus(f => Math.max(0, f - cost));
+    return true;
   }
 
   function actApp(full) {
@@ -605,7 +610,7 @@ export default function App() {
         <div style={{ height: 18 }} />
 
         {tab === 'Apps' && (
-          <Apps applications={applications} c={c} eff={eff} onLog={() => setShowForm(true)} onEdit={setEditingApp} onDelete={deleteApplication} />
+          <Apps applications={applications} c={c} eff={eff} onLog={() => { if (focus < 0.25) alert('You are out of focus! Recharge to log more applications.'); else setShowForm(true); }} onEdit={setEditingApp} onDelete={deleteApplication} />
         )}
         {tab === 'Shop' && (
           <Shop c={c} eff={eff} gold={gold} setGold={setGold} effects={activeEffects} setEffects={setActiveEffects} />
@@ -672,7 +677,7 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-3 gap-4 mt-6">
-          {[{ k: 'Log application', i: <Zap className="w-5 h-5" />, fn: () => setShowForm(true), hint: 'Open log form' },
+          {[{ k: 'Log application', i: <Zap className="w-5 h-5" />, fn: () => { if (focus < 0.25) alert('You are out of focus! Recharge to log more applications.'); else setShowForm(true); }, hint: 'Open log form' },
             { k: 'Easy apply', i: <Activity className="w-5 h-5" />, fn: () => actApp(false), hint: 'Log easy apply (½)' },
             { k: 'Networking', i: <Star className="w-5 h-5" />, fn: () => { setGold(g => g + 8); }, hint: 'Add networking' },
             { k: 'Skill', i: <Trophy className="w-5 h-5" />, fn: () => actSkill(), hint: 'Add skill block' },
@@ -691,7 +696,7 @@ export default function App() {
         <p className="text-[11px] mt-6" style={{ color: Grey }}>Home-only build. Use “Log application” to open the minimal form.</p>
       </>
         )}
-      <AppFormModal open={showForm} onClose={() => setShowForm(false)} onSubmit={(f) => { addApplication(f); setShowForm(false); }} c={c} t={eff} />
+      <AppFormModal open={showForm} onClose={() => setShowForm(false)} onSubmit={(f) => { if(addApplication(f)) setShowForm(false); }} c={c} t={eff} />
       <AppFormModal open={!!editingApp} onClose={()=>setEditingApp(null)} title="Edit application" submitLabel="Save"
         onSubmit={(f)=>{ if(editingApp){ updateApplication(editingApp.id, f); setEditingApp(null); } }}
         c={c} t={eff} defaults={editingApp || undefined} />
