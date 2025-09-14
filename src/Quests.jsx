@@ -82,6 +82,9 @@ export const countUnclaimedQuests = (claimed) =>
     .flat()
     .filter((q) => q.progress >= q.goal && !claimed.has(q.id)).length;
 
+export const countUnclaimedQuestsByTab = (tabKey, claimed) =>
+  QUESTS[tabKey].filter((q) => q.progress >= q.goal && !claimed.has(q.id)).length;
+
 function Progress({ v, m, c }) {
   const p = Math.min(100, (v / m) * 100);
   return (
@@ -176,6 +179,7 @@ export default function Quests({ c, eff, gainXp, setGold, claimed, setClaimed })
         {TABS.map((t) => {
           const active = tab === t.key;
           const Icon = t.icon;
+          const count = countUnclaimedQuestsByTab(t.key, claimed);
           return (
             <button
               key={t.key}
@@ -190,6 +194,19 @@ export default function Quests({ c, eff, gainXp, setGold, claimed, setClaimed })
               }}
             >
               <Icon className="w-4 h-4" /> {t.key}
+              {count > 0 && (
+                <span
+                  className="absolute -top-1.5 right-2 rounded-[14px] px-1.5 text-[11px] font-semibold shadow"
+                  style={{
+                    background: "#f43f5e",
+                    color: "#fff",
+                    boxShadow: "0 6px 18px rgba(244,63,94,.45)"
+                  }}
+                  aria-label={`${count} quests ready`}
+                >
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}
