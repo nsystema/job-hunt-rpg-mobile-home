@@ -382,6 +382,12 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
   useEffect(() => { if (open) setTimeout(() => boxRef.current?.focus(), 50); }, [open]);
   if (!open) return null;
 
+  const { xp: xpReward, gold: goldReward, qs } = useMemo(
+    () => computeRewards({ type, cvTailored, motivation }),
+    [type, cvTailored, motivation]
+  );
+  const cost = useMemo(() => focusCost(type), [type]);
+
   const Seg = ({v}) => (
     <button onClick={()=>setType(v)} className="flex-1 px-3 py-2 rounded-xl text-[12px] font-semibold"
       style={{ background: type === v ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})` : 'transparent', border: `1px solid ${c.surfaceBorder}`, color: type === v ? '#0f172a' : c.text }}>
@@ -393,7 +399,15 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50" style={{ background: t === 'light' ? "rgba(0,0,0,.24)" : "rgba(0,0,0,.45)" }}>
       <div ref={boxRef} tabIndex={-1} className="absolute inset-x-0 bottom-0 rounded-t-2xl p-4 outline-none" style={{ background: c.surface }}>
         <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-semibold" style={{ color: c.text }}>{title}</div>
+          <div>
+            <div className="text-sm font-semibold" style={{ color: c.text }}>{title}</div>
+            <div className="flex items-center gap-2 mt-0.5 text-[11px]" style={{ color: Grey }}>
+              <span className="flex items-center gap-0.5"><BadgeCheck className="w-3 h-3" />{qs}</span>
+              <span className="flex items-center gap-0.5"><Flame className="w-3 h-3" />-{cost}</span>
+              <span className="flex items-center gap-0.5"><Zap className="w-3 h-3" />+{xpReward}</span>
+              <span className="flex items-center gap-0.5"><Coins className="w-3 h-3" />+{goldReward}</span>
+            </div>
+          </div>
           <button onClick={onClose} aria-label="Close" className="px-2 py-1 rounded-md" style={{ background: c.chipBg }}>×</button>
         </div>
 
