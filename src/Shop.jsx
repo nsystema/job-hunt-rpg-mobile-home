@@ -79,73 +79,63 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
       }}
     >
       <div className="flex items-center flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <GoldPill c={c}>{gold}</GoldPill>
-          <div className="flex items-center gap-2">
-            {effects.map((e, i) => {
-              const Icon = e.icon || Zap;
-              const remaining = e.expiresAt
-                ? Math.max(0, (e.expiresAt - now) / 1000)
-                : null;
-              return (
-                <div
-                  key={i}
-                  className="flex flex-col items-center w-12 text-center"
-                  title={e.description}
+        {effects.map((e, i) => {
+          const Icon = e.icon || Zap;
+          const remaining = e.expiresAt
+            ? Math.max(0, (e.expiresAt - now) / 1000)
+            : null;
+          return (
+            <div
+              key={i}
+              className="flex flex-col items-center w-12 text-center"
+              title={e.description}
+            >
+              <div className="relative w-8 h-8 flex items-center justify-center">
+                {remaining !== null && e.duration && (
+                  <svg className="absolute inset-0" viewBox="0 0 36 36">
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="16"
+                      stroke={c.surfaceBorder}
+                      strokeWidth="2"
+                      fill="none"
+                      opacity="0.3"
+                    />
+                    <motion.circle
+                      cx="18"
+                      cy="18"
+                      r="16"
+                      stroke={c.emerald}
+                      strokeWidth="2"
+                      fill="none"
+                      pathLength="1"
+                      strokeDasharray="1"
+                      animate={{
+                        strokeDashoffset:
+                          1 - Math.max(0, Math.min(1, remaining / e.duration))
+                      }}
+                      transition={{ duration: 1, ease: "linear" }}
+                    />
+                  </svg>
+                )}
+                <span className="relative z-10">
+                  <Icon className="w-5 h-5" />
+                </span>
+              </div>
+              {remaining !== null && (
+                <motion.span
+                  className="mt-1 text-[10px] font-semibold leading-none tabular-nums"
+                  style={{ color: c.text }}
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <div className="relative w-8 h-8 flex items-center justify-center">
-                    {remaining !== null && e.duration && (
-                      <svg
-                        className="absolute inset-0"
-                        viewBox="0 0 36 36"
-                      >
-                        <circle
-                          cx="18"
-                          cy="18"
-                          r="16"
-                          stroke={c.surfaceBorder}
-                          strokeWidth="2"
-                          fill="none"
-                          opacity="0.3"
-                        />
-                        <motion.circle
-                          cx="18"
-                          cy="18"
-                          r="16"
-                          stroke={c.emerald}
-                          strokeWidth="2"
-                          fill="none"
-                          pathLength="1"
-                          strokeDasharray="1"
-                          animate={{
-                            strokeDashoffset:
-                              1 - Math.max(0, Math.min(1, remaining / e.duration))
-                          }}
-                          transition={{ duration: 1, ease: "linear" }}
-                        />
-                      </svg>
-                    )}
-                    <motion.span
-                      className="relative z-10"
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                    >
-                      <Icon className="w-5 h-5" />
-                    </motion.span>
-                  </div>
-                  {remaining !== null && (
-                    <span
-                      className="mt-1 text-[11px] font-bold leading-none tabular-nums"
-                      style={{ color: c.text }}
-                    >
-                      {formatTime(Math.ceil(remaining))}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  {formatTime(Math.ceil(remaining))}
+                </motion.span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="pt-2">
