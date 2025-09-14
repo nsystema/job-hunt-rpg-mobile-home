@@ -88,7 +88,11 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                 ? Math.max(0, Math.ceil((e.expiresAt - now) / 1000))
                 : null;
               return (
-                <div key={i} className="relative" title={e.description}>
+                <div
+                  key={i}
+                  className="flex flex-col items-center text-center"
+                  title={e.description}
+                >
                   <motion.span
                     animate={{ y: [0, -4, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
@@ -97,7 +101,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                   </motion.span>
                   {remaining !== null && (
                     <span
-                      className="absolute -top-2 -right-2 px-1 py-px text-[8px]"
+                      className="mt-1 text-[10px] font-bold leading-none"
                       style={{ color: c.text }}
                     >
                       {formatTime(remaining)}
