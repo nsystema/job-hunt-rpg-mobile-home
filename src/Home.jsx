@@ -2,8 +2,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Trophy, Coins, Zap, Target, Activity, Star, BarChart3, RotateCcw, Snowflake, Crown, Medal, Palette, Sun, Moon, Monitor,
-  FileText, ChevronDown, ChevronRight, Search, CalendarClock, Clock, X, Ghost,
+  Trophy, Coins, Zap, Target, Activity, Star, BarChart3, Crown, Medal, Palette, Sun, Moon, Monitor,
+  FileText, ChevronDown, ChevronRight, Search, CalendarClock, Clock, X, Ghost, Brain, Flame, GraduationCap,
   BadgeCheck, ClipboardList, Home as HomeIcon, Briefcase, Settings, Gift, ShoppingBag
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
@@ -70,7 +70,7 @@ const Panel = ({ c, eff, children }) => (
     {children}
   </section>
 );
-const Header = ({ mode, eff, c, cycle, cyclePal, palName, gold }) => (
+const Header = ({ mode, eff, c, cycle, cyclePal, palName, gold, skillPoints, streak }) => (
   <header className="flex items-center justify-between">
     <div className="flex items-center gap-2">
       <IconBtn onClick={cycle} c={c} t={eff} aria="Cycle theme">{mode === 'light' ? <Sun className="w-5 h-5" /> : mode === 'dark' ? <Moon className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}</IconBtn>
@@ -80,8 +80,8 @@ const Header = ({ mode, eff, c, cycle, cyclePal, palName, gold }) => (
       </button>
     </div>
     <div className="flex items-center gap-2" aria-live="polite">
-      <Pill t={eff} c={c} icon={<Snowflake className="w-4 h-4" />}>2</Pill>
-      <Pill t={eff} c={c} icon={<RotateCcw className="w-4 h-4" />}>1</Pill>
+      <Pill t={eff} c={c} icon={<GraduationCap className="w-4 h-4" />}>{skillPoints}</Pill>
+      <Pill t={eff} c={c} icon={<Flame className="w-4 h-4" />}>{streak}</Pill>
       <Gold>{gold}</Gold>
     </div>
   </header>
@@ -513,6 +513,8 @@ export default function App() {
   const [apps, setApps] = useState(48);
   const [weighted, setWeighted] = useState(46.5);
   const [gold, setGold] = useState(260);
+  const [skillPoints, setSkillPoints] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [activeEffects, setActiveEffects] = useState([]);
   const [focus, setFocus] = useState(FOCUS_BASELINE);
   useEffect(() => {
@@ -605,7 +607,7 @@ export default function App() {
       <div style={{ height: 'max(env(safe-area-inset-top),10px)' }} />
 
       <div className="mx-auto px-5 pb-24 pt-4" style={{ maxWidth: 430, height: 'min(100dvh,932px)' }}>
-        <Header mode={mode} eff={eff} c={c} cycle={cycle} cyclePal={cyclePal} palName={P[key].name} gold={gold} />
+        <Header mode={mode} eff={eff} c={c} cycle={cycle} cyclePal={cyclePal} palName={P[key].name} gold={gold} skillPoints={skillPoints} streak={streak} />
         <div style={{ height: 18 }} />
 
         {tab === 'Apps' && (
@@ -637,7 +639,7 @@ export default function App() {
           </div>
           <div className="mt-3">
             <div className="flex items-center justify-between mb-1">
-              <div className="text-xs flex items-center gap-1" style={{ color: Grey }}><Activity className="w-3.5 h-3.5" />Focus</div>
+              <div className="text-xs flex items-center gap-1" style={{ color: Grey }}><Brain className="w-3.5 h-3.5" />Focus</div>
               <div className="text-xs tabular-nums" style={{ color: Grey }}>{focus.toFixed(1)} / {FOCUS_BASELINE}</div>
             </div>
             <Bar v={focus} m={FOCUS_BASELINE} from={c.lilac} to={c.sky} c={c} />
