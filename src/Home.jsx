@@ -389,6 +389,12 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
     </button>
   );
 
+  const cost = useMemo(() => focusCost(type), [type]);
+  const { xp: xpReward, gold: goldReward, qs } = useMemo(
+    () => computeRewards({ type, cvTailored, motivation }),
+    [type, cvTailored, motivation]
+  );
+
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50" style={{ background: t === 'light' ? "rgba(0,0,0,.24)" : "rgba(0,0,0,.45)" }}>
       <div ref={boxRef} tabIndex={-1} className="absolute inset-x-0 bottom-0 rounded-t-2xl p-4 outline-none" style={{ background: c.surface }}>
@@ -504,8 +510,26 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
             <IconToggle aria="Favorite" label="Fav" checked={favorite} onChange={setFavorite} c={c} icon={<Star className="w-5 h-5"/>} />
           </div>
         </div>
-
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="mt-4 flex flex-col items-end gap-2">
+          <div className="flex gap-1 text-[11px]" style={{ color: Grey }}>
+            <span className="flex items-center gap-1 px-1.5 py-1 rounded-md" style={{ background: c.chipBg }}>
+              <Star className="w-3 h-3" />
+              <span className="tabular-nums">{qs}</span>
+            </span>
+            <span className="flex items-center gap-1 px-1.5 py-1 rounded-md" style={{ background: c.chipBg }}>
+              <Brain className="w-3 h-3" />
+              <span className="tabular-nums">{cost.toFixed(2).replace(/\.00$/, '')}</span>
+            </span>
+            <span className="flex items-center gap-1 px-1.5 py-1 rounded-md" style={{ background: c.chipBg }}>
+              <Zap className="w-3 h-3" />
+              <span className="tabular-nums">{xpReward}</span>
+            </span>
+            <span className="flex items-center gap-1 px-1.5 py-1 rounded-md" style={{ background: c.chipBg }}>
+              <Coins className="w-3 h-3" />
+              <span className="tabular-nums">{goldReward}</span>
+            </span>
+          </div>
+          <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-3 py-3 rounded-xl text-[13px]" style={{ background: c.chipBg, color: c.text }}>Cancel</button>
           <button onClick={() => {
             if (!company || !role) return;
@@ -515,6 +539,7 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
             onSubmit({ company, role, country, city, type, status, date: iso, note, cvTailored, motivation, favorite, platform });
           }} className="px-3 py-3 rounded-xl text-[13px] font-semibold"
             style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>{submitLabel}</button>
+          </div>
         </div>
       </div>
     </div>
