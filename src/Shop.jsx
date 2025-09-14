@@ -1,5 +1,5 @@
 import React from "react";
-import { Gift, Clock, Coins, Zap, Search } from "lucide-react";
+import { Gift, Clock, Coins, Zap } from "lucide-react";
 import { Grey } from "./data.jsx";
 import GoldPill from "./components/GoldPill.jsx";
 import {
@@ -37,7 +37,6 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
   const [now, setNow] = React.useState(Date.now());
   const [redeemed, setRedeemed] = React.useState(null);
   const [confirmReward, setConfirmReward] = React.useState(null);
-  const [query, setQuery] = React.useState("");
   React.useEffect(() => {
     const id = setInterval(() => {
       setNow(Date.now());
@@ -79,7 +78,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
         )
       }}
     >
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <GoldPill c={c}>{gold}</GoldPill>
           <div className="flex items-center gap-2">
@@ -111,34 +110,12 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
             })}
           </div>
         </div>
-        <div className="relative flex-1 max-w-xs">
-          <Search
-            className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2"
-            style={{ color: Grey }}
-            aria-hidden="true"
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search..."
-            aria-label="Search shop"
-            className="w-full pl-7 pr-2 py-1.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-400"
-            style={{
-              background: c.surface,
-              border: `1px solid ${c.surfaceBorder}`,
-              color: eff === "light" ? "#0f172a" : "#f8fafc"
-            }}
-          />
-        </div>
       </div>
 
       <div className="pt-2">
         <div className="text-sm font-semibold mb-2">In-game effects</div>
         <div className="grid gap-2">
-          {GAME_EFFECTS.filter((item) =>
-            item.name.toLowerCase().includes(query.toLowerCase())
-          )
+          {GAME_EFFECTS.slice()
             .sort((a, b) => a.cost - b.cost)
             .map((item) => {
               const active = effects.some((e) => e.id === item.id);
@@ -169,9 +146,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
       <div className="pt-4">
         <div className="text-sm font-semibold mb-2">Real-life rewards</div>
         <div className="grid gap-2">
-          {REAL_REWARDS.filter((item) =>
-            item.name.toLowerCase().includes(query.toLowerCase())
-          )
+          {REAL_REWARDS.slice()
             .sort((a, b) => {
               const costA = Math.round(a.minutes * (a.pleasure ?? 1));
               const costB = Math.round(b.minutes * (b.pleasure ?? 1));
