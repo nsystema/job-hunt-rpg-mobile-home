@@ -284,7 +284,7 @@ function StatusSelect({ value, onChange, c, t }){
 }
 
 /* LOG APPLICATION MODAL */
-function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log application', submitLabel = 'Add' }) {
+function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log application', submitLabel = 'Add', effects = [] }) {
   const [company, setCompany] = useState('');
   const [role, setRole] = useState('');
   const [country, setCountry] = useState('');
@@ -381,8 +381,8 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
   }, [open, onClose]);
   useEffect(() => { if (open) setTimeout(() => boxRef.current?.focus(), 50); }, [open]);
   const { xp: xpReward, gold: goldReward, qs } = useMemo(
-    () => computeRewards({ type, cvTailored, motivation }),
-    [type, cvTailored, motivation]
+    () => computeRewards({ type, cvTailored, motivation }, { effects }),
+    [type, cvTailored, motivation, effects]
   );
   const cost = useMemo(() => focusCost(type), [type]);
   if (!open) return null;
@@ -574,8 +574,8 @@ export default function App() {
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25, into = weighted % step;
 
-  function gainXp(base) {
-    const multiplier = activeEffects.some((e) => e.id === 1 || e.id === 3) ? 2 : 1;
+  function gainXp(base, applyBuff = true) {
+    const multiplier = applyBuff && activeEffects.some((e) => e.id === 1 || e.id === 3) ? 2 : 1;
     setXp((x) => x + base * multiplier);
   }
 
@@ -587,12 +587,12 @@ export default function App() {
       return false;
     }
     const id = Math.random().toString(36).slice(2, 9);
-    const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(fields);
+    const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(fields, { effects: activeEffects });
     const app = { id, ...fields, qs };
     setApplications(list => [app, ...list]);
     setApps(a => a + 1);
     setWeighted(w => w + au);
-    gainXp(xpReward);
+    gainXp(xpReward, false);
     setGold(v => v + goldReward);
     setFocus(f => Math.max(0, f - cost));
     return true;
@@ -728,10 +728,10 @@ export default function App() {
         <p className="text-[11px] mt-6" style={{ color: Grey }}>Home-only build. Use “Log application” to open the minimal form.</p>
       </>
         )}
-      <AppFormModal open={showForm} onClose={() => setShowForm(false)} onSubmit={(f) => { if(addApplication(f)) setShowForm(false); }} c={c} t={eff} />
+      <AppFormModal open={showForm} onClose={() => setShowForm(false)} onSubmit={(f) => { if(addApplication(f)) setShowForm(false); }} c={c} t={eff} effects={activeEffects} />
       <AppFormModal open={!!editingApp} onClose={()=>setEditingApp(null)} title="Edit application" submitLabel="Save"
         onSubmit={(f)=>{ if(editingApp){ updateApplication(editingApp.id, f); setEditingApp(null); } }}
-        c={c} t={eff} defaults={editingApp || undefined} />
+        c={c} t={eff} defaults={editingApp || undefined} effects={activeEffects} />
       </div>
 
       <nav className="fixed left-0 right-0" style={{ bottom: 0, background: eff === 'light' ? 'rgba(255,255,255,.72)' : 'rgba(10,14,20,.72)', backdropFilter: 'blur(10px)', borderTop: `1px solid ${c.surfaceBorder}` }}>
