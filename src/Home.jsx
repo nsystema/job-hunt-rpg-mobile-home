@@ -398,11 +398,11 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50" style={{ background: t === 'light' ? "rgba(0,0,0,.24)" : "rgba(0,0,0,.45)" }}>
       <div ref={boxRef} tabIndex={-1} className="absolute inset-x-0 bottom-0 rounded-t-2xl p-4 outline-none" style={{ background: c.surface }}>
         <div className="flex items-center justify-between mb-2">
-          <div>
+          <div className="flex items-center gap-2">
             <div className="text-sm font-semibold" style={{ color: c.text }}>{title}</div>
-            <div className="flex items-center gap-2 mt-0.5 text-[11px]" style={{ color: Grey }}>
+            <div className="flex items-center gap-2 text-[11px]" style={{ color: Grey }}>
               <span className="flex items-center gap-0.5"><BadgeCheck className="w-3 h-3" />{qs}</span>
-              <span className="flex items-center gap-0.5"><Flame className="w-3 h-3" />-{cost}</span>
+              <span className="flex items-center gap-0.5"><Brain className="w-3 h-3" />-{cost}</span>
               <span className="flex items-center gap-0.5"><Zap className="w-3 h-3" />+{xpReward}</span>
               <span className="flex items-center gap-0.5"><Coins className="w-3 h-3" />+{goldReward}</span>
             </div>
