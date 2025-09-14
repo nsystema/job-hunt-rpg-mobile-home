@@ -12,7 +12,7 @@ const TABS = [
   { key: "Events", icon: Sparkles }
 ];
 
-const QUESTS = {
+export const QUESTS = {
   Daily: [
     {
       id: "d1",
@@ -76,6 +76,11 @@ const QUESTS = {
     }
   ]
 };
+
+export const countUnclaimedQuests = (claimed) =>
+  Object.values(QUESTS)
+    .flat()
+    .filter((q) => q.progress >= q.goal && !claimed.has(q.id)).length;
 
 function Progress({ v, m, c }) {
   const p = Math.min(100, (v / m) * 100);
@@ -155,15 +160,14 @@ function QuestCard({ q, c, t, onClaim, claimed }) {
   );
 }
 
-export default function Quests({ c, eff, gainXp, setGold }) {
+export default function Quests({ c, eff, gainXp, setGold, claimed, setClaimed }) {
   const [tab, setTab] = useState("Daily");
-  const [claimed, setClaimed] = useState(new Set());
   const quests = QUESTS[tab];
   const handleClaim = (q) => {
     if (q.progress >= q.goal && !claimed.has(q.id)) {
       gainXp?.(q.xp);
       setGold?.((g) => g + q.gold);
-      setClaimed((prev) => new Set(prev).add(q.id));
+      setClaimed?.((prev) => new Set(prev).add(q.id));
     }
   };
   return (

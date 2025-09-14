@@ -12,7 +12,7 @@ import { usePalette, cur, P } from "./hooks/usePalette.js";
 import Bg from "./components/Bg.jsx";
 import Apps from "./Apps.jsx";
 import Shop from "./Shop.jsx";
-import Quests from "./Quests.jsx";
+import Quests, { countUnclaimedQuests } from "./Quests.jsx";
 import Rewards, { PLACEHOLDER_CHESTS } from "./Rewards.jsx";
 import { Grey, PLATFORMS, STATUSES } from "./data.jsx";
 import { xpl, lvl, last7, FOCUS_BASELINE, focusCost, computeRewards } from "./gameMechanics.js";
@@ -551,6 +551,11 @@ export default function App() {
   const [activeEffects, setActiveEffects] = useState([]);
   const [focus, setFocus] = useState(FOCUS_BASELINE);
   const [chests, setChests] = useState(PLACEHOLDER_CHESTS);
+  const [claimedQuests, setClaimedQuests] = useState(new Set());
+  const unclaimedQuests = useMemo(
+    () => countUnclaimedQuests(claimedQuests),
+    [claimedQuests]
+  );
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
     const saved = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('jh_focus') || 'null') : null;
@@ -651,7 +656,14 @@ export default function App() {
           <Shop c={c} eff={eff} gold={gold} setGold={setGold} effects={activeEffects} setEffects={setActiveEffects} />
         )}
         {tab === 'Quests' && (
-          <Quests c={c} eff={eff} gainXp={gainXp} setGold={setGold} />
+          <Quests
+            c={c}
+            eff={eff}
+            gainXp={gainXp}
+            setGold={setGold}
+            claimed={claimedQuests}
+            setClaimed={setClaimedQuests}
+          />
         )}
         {tab === 'Rewards' && (
           <Rewards c={c} eff={eff} gold={gold} setGold={setGold} gainXp={gainXp} chests={chests} setChests={setChests} />
@@ -758,7 +770,7 @@ export default function App() {
           {[
             { k: 'Home', i: <HomeIcon className="w-6 h-6" /> },
             { k: 'Apps', i: <Briefcase className="w-6 h-6" /> },
-            { k: 'Quests', i: <Target className="w-6 h-6" /> },
+            { k: 'Quests', i: <Target className="w-6 h-6" />, b: unclaimedQuests ? String(unclaimedQuests) : undefined },
             { k: 'Rewards', i: <Gift className="w-6 h-6" />, b: chests.length ? String(chests.length) : undefined },
             { k: 'Shop', i: <ShoppingBag className="w-6 h-6" /> },
           ].map((t) => (
