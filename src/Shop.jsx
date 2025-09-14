@@ -102,7 +102,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                       fill="none"
                       opacity="0.3"
                     />
-                    <motion.circle
+                    <circle
                       cx="18"
                       cy="18"
                       r="16"
@@ -111,11 +111,9 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                       fill="none"
                       pathLength="1"
                       strokeDasharray="1"
-                      animate={{
-                        strokeDashoffset:
-                          1 - Math.max(0, Math.min(1, remaining / e.duration))
-                      }}
-                      transition={{ duration: 1, ease: "linear" }}
+                      strokeDashoffset={
+                        1 - Math.max(0, Math.min(1, remaining / e.duration))
+                      }
                     />
                   </svg>
                 )}
@@ -124,14 +122,12 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                 </span>
               </div>
               {remaining !== null && (
-                <motion.span
+                <span
                   className="mt-1 text-[8px] font-semibold leading-none tabular-nums"
                   style={{ color: c.text }}
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                 >
                   {formatTime(Math.ceil(remaining))}
-                </motion.span>
+                </span>
               )}
             </div>
           );
