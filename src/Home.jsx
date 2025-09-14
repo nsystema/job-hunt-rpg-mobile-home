@@ -13,7 +13,7 @@ import Bg from "./components/Bg.jsx";
 import Apps from "./Apps.jsx";
 import Shop from "./Shop.jsx";
 import { Grey, PLATFORMS, STATUSES } from "./data.jsx";
-import { xpl, lvl, last7 } from "./gameMechanics.js";
+import { xpl, lvl, last7, FOCUS_BASELINE, focusCost } from "./gameMechanics.js";
 
 /* HELPERS */
 const shadow = (t, l, d) => t === 'light' ? l : d;
@@ -514,6 +514,24 @@ export default function App() {
   const [weighted, setWeighted] = useState(46.5);
   const [gold, setGold] = useState(260);
   const [activeEffects, setActiveEffects] = useState([]);
+  const [focus, setFocus] = useState(FOCUS_BASELINE);
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const saved = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('jh_focus') || 'null') : null;
+    if (saved && saved.date === today) {
+      setFocus(saved.value);
+    } else {
+      setFocus(FOCUS_BASELINE);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('jh_focus', JSON.stringify({ value: FOCUS_BASELINE, date: today }));
+      }
+    }
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const today = new Date().toISOString().slice(0, 10);
+    localStorage.setItem('jh_focus', JSON.stringify({ value: focus, date: today }));
+  }, [focus]);
   useEffect(() => {
     const id = setInterval(() => {
       setActiveEffects((e) => e.filter((fx) => !fx.expiresAt || fx.expiresAt > Date.now()));
@@ -539,6 +557,8 @@ export default function App() {
     setWeighted(w => w + (full ? 1 : .5));
     gainXp(g);
     setGold(v => v + (full ? 10 : 5));
+    const cost = focusCost(fields.type);
+    setFocus(f => Math.max(0, f - cost));
   }
 
   function actApp(full) {
@@ -610,6 +630,13 @@ export default function App() {
               <div className="text-xs tabular-nums" style={{ color: Grey }}>{Math.floor(rem)} / {need}</div>
             </div>
             <Bar v={rem} m={need} from={c.rose} to={c.amber} c={c} />
+          </div>
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs flex items-center gap-1" style={{ color: Grey }}><Activity className="w-3.5 h-3.5" />Focus</div>
+              <div className="text-xs tabular-nums" style={{ color: Grey }}>{focus.toFixed(1)} / {FOCUS_BASELINE}</div>
+            </div>
+            <Bar v={focus} m={FOCUS_BASELINE} from={c.lilac} to={c.sky} c={c} />
           </div>
         </Panel>
 

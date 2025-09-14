@@ -31,6 +31,14 @@ export const last7 = (() => {
   });
 })();
 
+// Focus (Stamina) mechanics
+export const FOCUS_BASELINE = 20;
+export function focusCost(type, reduction = 0) {
+  const base = type === "Full" ? 1 : 0.5;
+  const min = type === "Full" ? 0.5 : 0.25;
+  return Math.max(min, base - reduction);
+}
+
 // Shop mechanics
 export const GAME_EFFECTS = [
   {
