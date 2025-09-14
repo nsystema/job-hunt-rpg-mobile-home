@@ -90,7 +90,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               className="flex flex-col items-center w-10 text-center"
               title={e.description}
             >
-              <div className="relative w-6 h-6 flex items-center justify-center">
+              <div className="relative w-7 h-7 flex items-center justify-center">
                 {remaining !== null && e.duration && (
                   <svg className="absolute inset-0" viewBox="0 0 36 36">
                     <circle
@@ -123,7 +123,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               </div>
               {remaining !== null && (
                 <span
-                  className="mt-1 text-[8px] font-semibold leading-none tabular-nums"
+                  className="mt-1 text-[9px] font-semibold leading-none tabular-nums"
                   style={{ color: c.text }}
                 >
                   {formatTime(Math.ceil(remaining))}
