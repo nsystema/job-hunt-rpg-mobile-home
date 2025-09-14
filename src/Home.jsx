@@ -12,7 +12,6 @@ import { usePalette, cur, P } from "./hooks/usePalette.js";
 import Bg from "./components/Bg.jsx";
 import Apps from "./Apps.jsx";
 import Shop from "./Shop.jsx";
-import EffectBar from "./components/EffectBar.jsx";
 import { Grey, PLATFORMS, STATUSES } from "./data.jsx";
 import { xpl, lvl, last7, FOCUS_BASELINE, focusCost, computeRewards } from "./gameMechanics.js";
 
@@ -640,7 +639,6 @@ export default function App() {
 
       <div className="mx-auto px-5 pb-24 pt-4" style={{ maxWidth: 430, height: 'min(100dvh,932px)' }}>
         <Header mode={mode} eff={eff} c={c} cycle={cycle} cyclePal={cyclePal} palName={P[key].name} gold={gold} skillPoints={skillPoints} streak={streak} />
-        <EffectBar c={c} effects={activeEffects} setEffects={setActiveEffects} />
         <div style={{ height: 18 }} />
 
         {tab === 'Apps' && (
