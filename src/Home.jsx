@@ -716,12 +716,22 @@ export default function App() {
             { k: 'Interview', i: <Target className="w-5 h-5" />, fn: () => actInterview(), hint: 'Add interview prep' },
             { k: 'Prestige', i: <Crown className="w-5 h-5" />, fn: () => {}, hint: 'Prestige (requires Level 100)', dis: l < 100 }]
             .map(a => (
-              <button key={a.k} onClick={() => { if (!a.dis) a.fn(); }} aria-disabled={a.dis}
-                className="flex flex-col items-center gap-1.5 py-2 px-1 active:scale-95 transition text-[12px] font-medium"
-                style={{ background: 'transparent', border: 'none', color: Grey, opacity: a.dis ? .55 : 1 }} aria-label={a.hint}>
+              <motion.button
+                key={a.k}
+                onClick={() => {
+                  if (!a.dis) a.fn();
+                }}
+                aria-disabled={a.dis}
+                className="flex flex-col items-center gap-1.5 py-2 px-1 text-[12px] font-medium"
+                style={{ background: 'transparent', border: 'none', color: Grey, opacity: a.dis ? .55 : 1 }}
+                aria-label={a.hint}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              >
                 <span style={{ opacity: a.dis ? .6 : 1 }}>{a.i}</span>
                 <div className="leading-tight text-center">{a.k}</div>
-              </button>
+              </motion.button>
             ))}
         </div>
 
