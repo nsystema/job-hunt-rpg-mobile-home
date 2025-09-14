@@ -82,8 +82,9 @@ export default function Apps({ applications, c, eff, onLog, onEdit, onDelete }) 
         {appsView.map(a=> {
           const status = STATUSES.find(s=>s.key===a.status);
           const d = new Date(a.date);
-          const dateStr = d.toISOString().slice(0,10);
-          const timeStr = d.toTimeString().slice(0,5);
+          const valid = !isNaN(d.getTime());
+          const dateStr = valid ? d.toISOString().slice(0,10) : '';
+          const timeStr = valid ? d.toTimeString().slice(0,5) : '';
           const noteStr = a.note ? (a.note.length > 50 ? a.note.slice(0,50) + '…' : a.note) : '';
           const extras = [
             { icon: <FileText className="w-3 h-3"/>, on: a.cvTailored },

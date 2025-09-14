@@ -505,8 +505,9 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
             if (!company || !role) return;
             if (countryInput && !country) { alert('Please choose a country from the list'); return; }
             if (cityInput && !city) { alert('Please choose a city from the list'); return; }
-            const iso = new Date(`${date}T${time}:00`).toISOString();
-            onSubmit({ company, role, country, city, type, status, date: iso, note, cvTailored, motivation, favorite, platform });
+            const dt = new Date(`${date}T${time}:00`);
+            if (isNaN(dt.getTime())) { alert('Invalid date or time'); return; }
+            onSubmit({ company, role, country, city, type, status, date: dt.toISOString(), note, cvTailored, motivation, favorite, platform });
           }} className="px-3 py-3 rounded-xl text-[13px] font-semibold"
             style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, color: '#0f172a' }}>{submitLabel}</button>
         </div>
