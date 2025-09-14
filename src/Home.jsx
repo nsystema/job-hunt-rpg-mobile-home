@@ -37,8 +37,8 @@ function StatBadge({ icon, count, c, t }) {
     >
       {icon}
       <span
-        className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-semibold tabular-nums"
-        style={{ background: c.chipBg, border: `1px solid ${c.surfaceBorder}`, color: c.text }}
+        className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-xl text-[10px] font-semibold tabular-nums"
+        style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, color: c.text }}
       >
         {count}
       </span>
