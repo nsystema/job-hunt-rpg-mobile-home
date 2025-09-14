@@ -5,7 +5,7 @@ import { Grey } from "./data.jsx";
 
 const shadow = (t, l, d) => (t === "light" ? l : d);
 
-const PLACEHOLDER_CHESTS = Array.from({ length: 12 }, (_, i) => ({
+export const PLACEHOLDER_CHESTS = Array.from({ length: 12 }, (_, i) => ({
   id: i,
   xp: [10, 20],
   gold: [5, 15],
@@ -122,8 +122,7 @@ function ChestCard({ chest, c, t, onOpen }) {
   );
 }
 
-export default function Rewards({ c, eff, gold, setGold, gainXp }) {
-  const [chests, setChests] = useState(PLACEHOLDER_CHESTS);
+export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChests }) {
 
   const openChest = (chest) => {
     const xp = rand(chest.xp);

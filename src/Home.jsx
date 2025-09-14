@@ -13,7 +13,7 @@ import Bg from "./components/Bg.jsx";
 import Apps from "./Apps.jsx";
 import Shop from "./Shop.jsx";
 import Quests from "./Quests.jsx";
-import Rewards from "./Rewards.jsx";
+import Rewards, { PLACEHOLDER_CHESTS } from "./Rewards.jsx";
 import { Grey, PLATFORMS, STATUSES } from "./data.jsx";
 import { xpl, lvl, last7, FOCUS_BASELINE, focusCost, computeRewards } from "./gameMechanics.js";
 
@@ -550,6 +550,7 @@ export default function App() {
   const [streak, setStreak] = useState(0);
   const [activeEffects, setActiveEffects] = useState([]);
   const [focus, setFocus] = useState(FOCUS_BASELINE);
+  const [chests, setChests] = useState(PLACEHOLDER_CHESTS);
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
     const saved = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('jh_focus') || 'null') : null;
@@ -653,7 +654,7 @@ export default function App() {
           <Quests c={c} eff={eff} gainXp={gainXp} setGold={setGold} />
         )}
         {tab === 'Rewards' && (
-          <Rewards c={c} eff={eff} gold={gold} setGold={setGold} gainXp={gainXp} />
+          <Rewards c={c} eff={eff} gold={gold} setGold={setGold} gainXp={gainXp} chests={chests} setChests={setChests} />
         )}
         {tab === 'Home' && (
 
@@ -758,7 +759,7 @@ export default function App() {
             { k: 'Home', i: <HomeIcon className="w-6 h-6" /> },
             { k: 'Apps', i: <Briefcase className="w-6 h-6" /> },
             { k: 'Quests', i: <Target className="w-6 h-6" /> },
-            { k: 'Rewards', i: <Gift className="w-6 h-6" />, b: (gold + apps) % 3 < 1 ? '1' : undefined },
+            { k: 'Rewards', i: <Gift className="w-6 h-6" />, b: chests.length ? String(chests.length) : undefined },
             { k: 'Shop', i: <ShoppingBag className="w-6 h-6" /> },
           ].map((t) => (
             <motion.button key={t.k} onClick={() => setTab(t.k)}
@@ -772,7 +773,7 @@ export default function App() {
               )}
               <span className="glint" aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.08), rgba(255,255,255,0))', transform: 'skewX(-18deg)', opacity: .7 }} />
               {t.b && (
-                <span className="absolute -top-1.5 right-3 rounded-[14px] px-1.5 text-[11px] font-semibold shadow" style={{ background: '#f43f5e', color: '#0f172a', boxShadow: '0 6px 18px rgba(244,63,94,.45)' }} aria-label={`${t.b} rewards ready`}>{t.b}</span>
+                <span className="absolute -top-1.5 right-3 rounded-[14px] px-1.5 text-[11px] font-semibold shadow" style={{ background: '#f43f5e', color: '#fff', boxShadow: '0 6px 18px rgba(244,63,94,.45)' }} aria-label={`${t.b} rewards ready`}>{t.b}</span>
               )}
             </motion.button>
           ))}
