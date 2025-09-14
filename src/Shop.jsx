@@ -89,18 +89,16 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                 : null;
               return (
                 <div key={i} className="relative" title={e.description}>
-                  <Icon className="w-5 h-5 animate-bounce" />
+                  <motion.span
+                    animate={{ y: [0, -4, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </motion.span>
                   {remaining !== null && (
                     <span
-                      className="absolute -top-2 -right-2 rounded px-1 py-px text-[8px]"
-                      style={{
-                        background:
-                          eff === "light"
-                            ? "rgba(255,255,255,.85)"
-                            : "rgba(0,0,0,.85)",
-                        color: eff === "light" ? "#0f172a" : "#f8fafc",
-                        border: `1px solid ${c.surfaceBorder}`
-                      }}
+                      className="absolute -top-2 -right-2 px-1 py-px text-[8px]"
+                      style={{ color: c.text }}
                     >
                       {formatTime(remaining)}
                     </span>
