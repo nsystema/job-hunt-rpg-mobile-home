@@ -87,7 +87,8 @@ export const GAME_EFFECTS = [
     name: "Gold Rush",
     cost: 15,
     icon: Coins,
-    description: "Earn extra gold on next quest"
+    description: "Double gold for 10 minutes",
+    duration: 600
   },
   {
     id: 3,
