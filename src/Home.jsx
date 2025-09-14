@@ -19,11 +19,29 @@ import { xpl, lvl, last7, FOCUS_BASELINE, focusCost, computeRewards } from "./ga
 const shadow = (t, l, d) => t === 'light' ? l : d;
 
 /* MICRO UI */
-function Pill({ icon, children, c, t }) {
+function StatBadge({ icon, count, c, t }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-semibold"
-      style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(t, '0 8px 22px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.06)', '0 10px 26px rgba(0,0,0,.45),0 2px 8px rgba(0,0,0,.25)') }}>
-      {icon}{children}
+    <span
+      className="relative grid place-items-center rounded-xl"
+      style={{
+        width: 38,
+        height: 38,
+        background: c.surface,
+        border: `1px solid ${c.surfaceBorder}`,
+        boxShadow: shadow(
+          t,
+          '0 14px 38px rgba(0,0,0,.12),0 3px 10px rgba(0,0,0,.06)',
+          '0 18px 50px rgba(0,0,0,.46),0 4px 12px rgba(0,0,0,.32)'
+        )
+      }}
+    >
+      {icon}
+      <span
+        className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-semibold tabular-nums"
+        style={{ background: c.chipBg, border: `1px solid ${c.surfaceBorder}`, color: c.text }}
+      >
+        {count}
+      </span>
     </span>
   );
 }
@@ -80,8 +98,8 @@ const Header = ({ mode, eff, c, cycle, cyclePal, palName, gold, skillPoints, str
       </button>
     </div>
     <div className="flex items-center gap-2" aria-live="polite">
-      <Pill t={eff} c={c} icon={<GraduationCap className="w-4 h-4" />}>{skillPoints}</Pill>
-      <Pill t={eff} c={c} icon={<Flame className="w-4 h-4" />}>{streak}</Pill>
+      <StatBadge t={eff} c={c} icon={<GraduationCap className="w-5 h-5" />} count={skillPoints} />
+      <StatBadge t={eff} c={c} icon={<Flame className="w-5 h-5" />} count={streak} />
       <Gold>{gold}</Gold>
     </div>
   </header>
