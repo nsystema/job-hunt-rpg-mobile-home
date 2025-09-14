@@ -371,11 +371,23 @@ function AppFormModal({ open, onClose, onSubmit, c, t, defaults, title = 'Log ap
     </button>
   );
 
+  const { xp: expectedXp, gold: expectedGold, qs } = useMemo(
+    () => computeRewards({ type, cvTailored, motivation }),
+    [type, cvTailored, motivation]
+  );
+
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50" style={{ background: t === 'light' ? "rgba(0,0,0,.24)" : "rgba(0,0,0,.45)" }}>
       <div ref={boxRef} tabIndex={-1} className="absolute inset-x-0 bottom-0 rounded-t-2xl p-4 outline-none" style={{ background: c.surface }}>
         <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-semibold" style={{ color: c.text }}>{title}</div>
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold" style={{ color: c.text }}>{title}</div>
+            <div className="flex items-center gap-2 text-[11px]" style={{ color: Grey }}>
+              <span className="flex items-center gap-1"><Star className="w-3 h-3" />{qs}</span>
+              <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{expectedXp}</span>
+              <span className="flex items-center gap-1"><Coins className="w-3 h-3" />{expectedGold}</span>
+            </div>
+          </div>
           <button onClick={onClose} aria-label="Close" className="px-2 py-1 rounded-md" style={{ background: c.chipBg }}>×</button>
         </div>
 
