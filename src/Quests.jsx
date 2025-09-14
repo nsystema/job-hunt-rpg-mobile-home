@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { CalendarCheck2, CalendarClock, Sparkles, Zap, Coins, Target } from "lucide-react";
+import {
+  CalendarCheck2,
+  CalendarClock,
+  Sparkles,
+  Zap,
+  Coins,
+  Target,
+  Gift
+} from "lucide-react";
 import { Grey } from "./data.jsx";
 import { motion } from "framer-motion";
 
@@ -76,6 +84,50 @@ const QUESTS = {
     }
   ]
 };
+
+const CHEST_MILESTONES = {
+  Daily: [40, 80, 120],
+  Weekly: [120, 270, 400]
+};
+
+function ChestBar({ progress, milestones, c }) {
+  const max = milestones[milestones.length - 1];
+  const pct = Math.min(100, (progress / max) * 100);
+  return (
+    <div className="relative h-12 mt-2">
+      <div
+        className="absolute top-5 w-full h-2 rounded-full overflow-hidden"
+        style={{ background: c.chipBg }}
+      >
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, height: "100%" }}
+        />
+      </div>
+      {milestones.map((m) => {
+        const left = (m / max) * 100;
+        const reached = progress >= m;
+        return (
+          <div
+            key={m}
+            className="absolute top-0 flex flex-col items-center"
+            style={{ left: `${left}%`, transform: "translateX(-50%)" }}
+          >
+            <Gift
+              className="w-5 h-5 mb-1"
+              style={{ color: reached ? c.emerald : c.text }}
+            />
+            <span className="text-[10px]" style={{ color: c.text }}>
+              {m}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function Progress({ v, m, c }) {
   const p = Math.min(100, (v / m) * 100);
@@ -159,6 +211,11 @@ export default function Quests({ c, eff, gainXp, setGold }) {
   const [tab, setTab] = useState("Daily");
   const [claimed, setClaimed] = useState(new Set());
   const quests = QUESTS[tab];
+  const points = quests.reduce(
+    (sum, q) => sum + q.xp * Math.min(1, q.progress / q.goal),
+    0
+  );
+  const milestones = CHEST_MILESTONES[tab];
   const handleClaim = (q) => {
     if (q.progress >= q.goal && !claimed.has(q.id)) {
       gainXp?.(q.xp);
@@ -190,6 +247,9 @@ export default function Quests({ c, eff, gainXp, setGold }) {
           );
         })}
       </div>
+      {milestones && (
+        <ChestBar progress={points} milestones={milestones} c={c} />
+      )}
       <div className="grid gap-3">
         {quests.map((q) => (
           <QuestCard
