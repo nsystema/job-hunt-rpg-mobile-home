@@ -1,14 +1,5 @@
 import React, { useState } from "react";
-import {
-  CalendarCheck2,
-  CalendarClock,
-  Sparkles,
-  Zap,
-  Coins,
-  Target,
-  Package,
-  PackageCheck
-} from "lucide-react";
+import { CalendarCheck2, CalendarClock, Sparkles, Zap, Coins, Target } from "lucide-react";
 import { Grey } from "./data.jsx";
 import { motion } from "framer-motion";
 
@@ -85,70 +76,6 @@ const QUESTS = {
     }
   ]
 };
-
-function RewardTrack({ tab, quests, c, milestone, setMilestone, gainXp, setGold }) {
-  const total = quests.length;
-  const completed = quests.filter((q) => q.progress >= q.goal).length;
-  const pct = total > 0 ? (completed / total) * 100 : 0;
-  const thresholds = [1 / 3, 2 / 3, 1];
-  const rewards = [
-    { xp: 40, gold: 10 },
-    { xp: 80, gold: 20 },
-    { xp: 120, gold: 30 }
-  ];
-  const claim = (i) => {
-    if (completed / total >= thresholds[i] && !milestone[tab][i]) {
-      gainXp?.(rewards[i].xp);
-      setGold?.((g) => g + rewards[i].gold);
-      setMilestone((prev) => ({
-        ...prev,
-        [tab]: prev[tab].map((v, idx) => (idx === i ? true : v))
-      }));
-    }
-  };
-  return (
-    <div className="relative h-6">
-      <div
-        className="w-full h-full rounded-full overflow-hidden"
-        style={{ background: c.chipBg }}
-      >
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          style={{
-            background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`,
-            height: "100%"
-          }}
-        />
-      </div>
-      {thresholds.map((t, i) => {
-        const left = `${t * 100}%`;
-        const done = completed / total >= t;
-        const claimed = milestone[tab][i];
-        const Icon = claimed ? PackageCheck : Package;
-        return (
-          <motion.button
-            key={i}
-            onClick={() => claim(i)}
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 p-1 rounded-full border"
-            style={{
-              left,
-              background: c.surface,
-              borderColor: c.surfaceBorder,
-              color: done ? (claimed ? c.emerald : c.text) : Grey,
-              cursor: done && !claimed ? "pointer" : "default"
-            }}
-            whileHover={done && !claimed ? { scale: 1.1 } : {}}
-            whileTap={done && !claimed ? { scale: 0.9 } : {}}
-          >
-            <Icon className="w-4 h-4" />
-          </motion.button>
-        );
-      })}
-    </div>
-  );
-}
 
 function Progress({ v, m, c }) {
   const p = Math.min(100, (v / m) * 100);
@@ -231,10 +158,6 @@ function QuestCard({ q, c, t, onClaim, claimed }) {
 export default function Quests({ c, eff, gainXp, setGold }) {
   const [tab, setTab] = useState("Daily");
   const [claimed, setClaimed] = useState(new Set());
-  const [milestone, setMilestone] = useState({
-    Daily: [false, false, false],
-    Weekly: [false, false, false]
-  });
   const quests = QUESTS[tab];
   const handleClaim = (q) => {
     if (q.progress >= q.goal && !claimed.has(q.id)) {
@@ -267,17 +190,6 @@ export default function Quests({ c, eff, gainXp, setGold }) {
           );
         })}
       </div>
-      {(["Daily", "Weekly"].includes(tab)) && (
-        <RewardTrack
-          tab={tab}
-          quests={quests}
-          c={c}
-          milestone={milestone}
-          setMilestone={setMilestone}
-          gainXp={gainXp}
-          setGold={setGold}
-        />
-      )}
       <div className="grid gap-3">
         {quests.map((q) => (
           <QuestCard
