@@ -37,6 +37,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
   const [now, setNow] = React.useState(Date.now());
   const [redeemed, setRedeemed] = React.useState(null);
   const [confirmReward, setConfirmReward] = React.useState(null);
+  const [premiumProgress, setPremiumProgress] = React.useState(0);
   React.useEffect(() => {
     const id = setInterval(() => {
       setNow(Date.now());
@@ -58,6 +59,19 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
     buyEffect(item, gold, setGold, effects, setEffects);
   const handleRedeemReward = (r) =>
     redeemReward(r, gold, setGold, setRedeemed);
+
+  const handlePremiumSave = (item) => {
+    const cost = Math.round(item.minutes * (item.pleasure ?? 1));
+    if (premiumProgress >= cost) {
+      setConfirmReward(item);
+    } else {
+      const toSave = Math.min(gold, cost - premiumProgress);
+      if (toSave > 0) {
+        setGold((g) => g - toSave);
+        setPremiumProgress((p) => p + toSave);
+      }
+    }
+  };
 
 
 
@@ -178,30 +192,66 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               const cost = Math.round(item.minutes * (item.pleasure ?? 1));
               return (
                 <Panel key={item.id} c={c} t={eff}>
-                  <div
-                    className="flex items-center justify-between"
-                    title={`${item.minutes} min • ${cost}g`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Gift className="w-5 h-5" />
-                        <div className="text-[14px] font-medium">{item.name}</div>
+                  <div title={`${item.minutes} min • ${cost}g`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Gift className="w-5 h-5" />
+                          <div className="text-[14px] font-medium">{item.name}</div>
+                        </div>
+                        <div
+                          className="flex items-center gap-2 text-[12px]"
+                          style={{ color: Grey }}
+                        >
+                          <Clock className="w-3 h-3" /> {item.minutes}
+                          <Coins className="w-3 h-3" /> {cost}
+                        </div>
                       </div>
-                      <div
-                        className="flex items-center gap-2 text-[12px]"
-                        style={{ color: Grey }}
+                      <GoldPill
+                        c={c}
+                        onClick={() =>
+                          item.premium
+                            ? handlePremiumSave(item)
+                            : setConfirmReward(item)
+                        }
+                        dim={
+                          item.premium
+                            ? premiumProgress < cost && gold <= 0
+                            : gold < cost
+                        }
                       >
-                        <Clock className="w-3 h-3" /> {item.minutes}
-                        <Coins className="w-3 h-3" /> {cost}
-                      </div>
+                        {item.premium
+                          ? premiumProgress >= cost
+                            ? "Claim"
+                            : cost - premiumProgress
+                          : cost}
+                      </GoldPill>
                     </div>
-                    <GoldPill
-                      c={c}
-                      onClick={() => setConfirmReward(item)}
-                      dim={gold < cost}
-                    >
-                      {cost}
-                    </GoldPill>
+                    {item.premium && (
+                      <div className="mt-2">
+                        <div
+                          className="w-full h-2 rounded-full overflow-hidden"
+                          style={{ background: c.surfaceBorder }}
+                        >
+                          <div
+                            className="h-full"
+                            style={{
+                              width: `${Math.min(
+                                (premiumProgress / cost) * 100,
+                                100
+                              )}%`,
+                              background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                            }}
+                          />
+                        </div>
+                        <div
+                          className="text-xs font-semibold mt-1"
+                          style={{ color: c.text }}
+                        >
+                          {Math.floor((premiumProgress / cost) * 100)}%
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Panel>
               );
@@ -235,8 +285,11 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-sm font-medium">
-                Spend {Math.round(confirmReward.minutes * (confirmReward.pleasure ?? 1))}g
-                for {confirmReward.name}?
+                {confirmReward.premium
+                  ? `Redeem ${confirmReward.name}?`
+                  : `Spend ${Math.round(
+                      confirmReward.minutes * (confirmReward.pleasure ?? 1)
+                    )}g for ${confirmReward.name}?`}
               </div>
               <div className="flex justify-center gap-2">
                 <button
@@ -251,7 +304,12 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                 </button>
                 <button
                   onClick={() => {
-                    handleRedeemReward(confirmReward);
+                    if (confirmReward.premium) {
+                      setRedeemed(confirmReward);
+                      setPremiumProgress(0);
+                    } else {
+                      handleRedeemReward(confirmReward);
+                    }
                     setConfirmReward(null);
                   }}
                   className="px-3 py-2 rounded-lg text-sm font-semibold"
