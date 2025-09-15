@@ -20,6 +20,8 @@ body {
   60% { left: 120%; }
   100% { left: 120%; }
 }
+<<<<<<< Current (Your changes)
+=======
 
 /* Enhanced animations for the overhauled shop */
 @keyframes pulse-glow {
@@ -131,3 +133,4 @@ select {
 select:hover {
   transform: translateY(-1px);
 }
+>>>>>>> Incoming (Background Agent changes)
