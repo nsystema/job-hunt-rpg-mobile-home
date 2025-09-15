@@ -1,10 +1,14 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Gift, Clock, Coins } from "lucide-react";
+import { Clock, Coins, Crown, PiggyBank, Sparkles } from "lucide-react";
 import GoldPill from "./GoldPill.jsx";
 import { Grey } from "../data.jsx";
 
 const shadow = (t, l, d) => (t === "light" ? l : d);
+const formatGold = (value) =>
+  `${Math.max(0, value).toLocaleString(undefined, {
+    maximumFractionDigits: 0
+  })}g`;
 
 export default function PremiumRewardCard({
   c,
@@ -18,61 +22,94 @@ export default function PremiumRewardCard({
   const completed = progress >= cost;
   const savedGold = Math.min(progress, cost);
   const remainingGold = Math.max(cost - savedGold, 0);
-  const progressPercent = cost > 0 ? Math.min((progress / cost) * 100, 100) : 100;
-  const formatGold = value =>
-    `${Math.max(value, 0).toLocaleString(undefined, {
-      maximumFractionDigits: 1
-    })}g`;
+  const progressPercent =
+    cost > 0 ? Math.min((savedGold / cost) * 100, 100) : 100;
+
   return (
     <motion.div
-      className="relative p-4 rounded-2xl overflow-hidden"
+      className="relative overflow-hidden rounded-3xl p-5 space-y-4"
       style={{
-        background: `linear-gradient(135deg, ${c.surface}, ${c.chipBg}) padding-box,` +
-          `linear-gradient(135deg, ${c.sky}, ${c.emerald}) border-box`,
-        border: "2px solid transparent",
+        background: `linear-gradient(140deg, ${c.surface}, ${c.chipBg})`,
+        border: `1px solid ${c.surfaceBorder}`,
         boxShadow: shadow(
           eff,
-          "0 8px 24px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.06)",
-          "0 8px 24px rgba(0,0,0,.46),0 2px 6px rgba(0,0,0,.30)"
+          "0 18px 48px rgba(0,0,0,.14),0 6px 18px rgba(0,0,0,.08)",
+          "0 22px 60px rgba(0,0,0,.48),0 10px 24px rgba(0,0,0,.32)"
         )
       }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ translateY: -3 }}
       whileTap={{ scale: 0.98 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      transition={{ type: "spring", stiffness: 260, damping: 22 }}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            className="grid h-12 w-12 place-items-center rounded-2xl"
             style={{
               background: `linear-gradient(135deg, ${c.sky}, ${c.emerald})`,
-              color: "#0f172a"
+              color: "#0f172a",
+              boxShadow: "0 12px 32px rgba(15,23,42,.18)"
             }}
           >
-            <Gift className="w-5 h-5" />
+            <Crown className="w-6 h-6" aria-hidden="true" />
           </div>
-          <div>
-            <div className="text-[14px] font-semibold">{item.name}</div>
-            <div
-              className="flex items-center gap-2 text-[12px]"
-              style={{ color: Grey }}
-            >
-              <Clock className="w-3 h-3" /> {item.minutes}
-              <Coins className="w-3 h-3" /> {cost}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap text-[11px] uppercase tracking-wide font-semibold">
+              <span style={{ color: Grey }}>Premium goal</span>
+              {completed && (
+                <span
+                  className="px-2 py-0.5 rounded-full"
+                  style={{
+                    background: `linear-gradient(135deg, ${c.sky}, ${c.emerald})`,
+                    color: "#0f172a"
+                  }}
+                >
+                  Ready to claim
+                </span>
+              )}
             </div>
+            <div
+              className="text-sm font-semibold leading-tight"
+              style={{ color: c.text }}
+            >
+              {item.name}
+            </div>
+            <p className="text-xs leading-snug" style={{ color: Grey }}>
+              Set aside gold to unlock {item.minutes} minutes of elevated
+              recovery.
+            </p>
           </div>
         </div>
         <GoldPill
           c={c}
           onClick={() => onAction(item)}
-          dim={completed ? false : gold <= 0}
+          dim={!completed && gold <= 0}
         >
           {completed ? "Claim" : "Save"}
         </GoldPill>
       </div>
-      <div className="mt-4">
+      <div
+        className="flex flex-wrap items-center gap-3 text-xs"
+        style={{ color: c.text }}
+      >
+        <span className="inline-flex items-center gap-1 opacity-80">
+          <Clock className="w-3 h-3" aria-hidden="true" />
+          {item.minutes} min
+        </span>
+        <span className="inline-flex items-center gap-1 opacity-80">
+          <Coins className="w-3 h-3" aria-hidden="true" />
+          Goal {formatGold(cost)}
+        </span>
+        {item.pleasure > 1 && (
+          <span className="inline-flex items-center gap-1 opacity-80">
+            <Sparkles className="w-3 h-3" aria-hidden="true" />
+            Pleasure x{item.pleasure}
+          </span>
+        )}
+      </div>
+      <div className="space-y-2">
         <div
-          className="w-full h-2 rounded-full overflow-hidden"
+          className="h-2 rounded-full overflow-hidden"
           style={{ background: c.surfaceBorder }}
         >
           <div
@@ -84,11 +121,14 @@ export default function PremiumRewardCard({
           />
         </div>
         <div
-          className="flex items-center justify-between text-xs mt-1"
+          className="flex items-center justify-between text-[11px]"
           style={{ color: c.text }}
         >
-          <span className="font-semibold">{formatGold(savedGold)} saved</span>
-          <span className="font-medium opacity-70">
+          <span className="inline-flex items-center gap-1 font-semibold">
+            <PiggyBank className="w-3 h-3" aria-hidden="true" />
+            {formatGold(savedGold)} saved
+          </span>
+          <span className="opacity-70">
             {remainingGold === 0
               ? "Goal reached"
               : `${formatGold(remainingGold)} to go`}
