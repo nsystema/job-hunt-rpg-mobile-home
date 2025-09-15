@@ -299,6 +299,10 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                       item.minutes * (item.pleasure ?? 1)
                     );
                     const progress = premiumProgress[item.id] || 0;
+                    const pct = (progress / cost) * 100;
+                    const percent = Math.min(100, Math.round(pct));
+                    const pos = Math.min(100, Math.max(0, pct));
+                    const translate = pos < 10 ? "0%" : pos > 90 ? "-100%" : "-50%";
                     return (
                       <Panel key={item.id} c={c} t={eff}>
                         <div title={`${item.minutes} min • ${cost}g`}>
@@ -332,20 +336,26 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                               style={{ background: c.surfaceBorder }}
                             >
                               <div
-                                className="h-full"
+                                className="h-full transition-all duration-300"
                                 style={{
-                                  width: `${Math.min(
-                                    (progress / cost) * 100,
-                                    100
-                                  )}%`,
+                                  width: `${pos}%`,
                                   background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
                                 }}
                               />
                               <span
-                                className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold"
-                                style={{ color: "#0f172a" }}
+                                className="absolute text-[10px] font-semibold px-1 rounded-sm transition-all duration-300"
+                                style={{
+                                  top: "50%",
+                                  left: `${pos}%`,
+                                  transform: `translate(${translate}, -50%)`,
+                                  color: eff === "light" ? "#0f172a" : "#f1f5f9",
+                                  background:
+                                    eff === "light"
+                                      ? "rgba(255,255,255,.8)"
+                                      : "rgba(0,0,0,.4)"
+                                }}
                               >
-                                {Math.min(100, Math.round((progress / cost) * 100))}%
+                                {percent}%
                               </span>
                             </div>
                           </div>
