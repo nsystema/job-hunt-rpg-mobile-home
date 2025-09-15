@@ -16,6 +16,13 @@ export default function PremiumRewardCard({
   onAction
 }) {
   const completed = progress >= cost;
+  const savedGold = Math.min(progress, cost);
+  const remainingGold = Math.max(cost - savedGold, 0);
+  const progressPercent = cost > 0 ? Math.min((progress / cost) * 100, 100) : 100;
+  const formatGold = value =>
+    `${Math.max(value, 0).toLocaleString(undefined, {
+      maximumFractionDigits: 1
+    })}g`;
   return (
     <motion.div
       className="relative p-4 rounded-2xl overflow-hidden"
@@ -71,16 +78,21 @@ export default function PremiumRewardCard({
           <div
             className="h-full"
             style={{
-              width: `${Math.min((progress / cost) * 100, 100)}%`,
+              width: `${progressPercent}%`,
               background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
             }}
           />
         </div>
         <div
-          className="text-xs font-semibold mt-1"
+          className="flex items-center justify-between text-xs mt-1"
           style={{ color: c.text }}
         >
-          {progress}/{cost}g
+          <span className="font-semibold">{formatGold(savedGold)} saved</span>
+          <span className="font-medium opacity-70">
+            {remainingGold === 0
+              ? "Goal reached"
+              : `${formatGold(remainingGold)} to go`}
+          </span>
         </div>
       </div>
     </motion.div>
