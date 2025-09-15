@@ -101,12 +101,11 @@ export const GAME_EFFECTS = [
 ];
 
 export const REAL_REWARDS = [
-  { id: 0, name: "Watch anime episode", minutes: 20, pleasure: 1 },
   { id: 1, name: "Watch TV show", minutes: 40, pleasure: 1 },
   { id: 2, name: "Guilt free gaming session", minutes: 60, pleasure: 1 },
   { id: 3, name: "Microdose", minutes: 120, pleasure: 1 },
-  { id: 4, name: "Luxury Spa", minutes: 120, pleasure: 2 },
-  { id: 5, name: "Premium Reward", minutes: 50, pleasure: 20, premium: true }
+  { id: 4, name: "Wellness Voucher", minutes: 120, pleasure: 2 },
+  { id: 5, name: "Premium Reward", minutes: 45, pleasure: 20, premium: true }
 ];
 
 const pad = (n) => String(n).padStart(2, "0");
