@@ -180,36 +180,37 @@ export default function Quests({ c, eff, gainXp, setGold, claimed, setClaimed })
           const active = tab === t.key;
           const Icon = t.icon;
           const count = countUnclaimedQuestsByTab(t.key, claimed);
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-semibold relative"
-              style={{
-                background: active
-                  ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
-                  : c.chipBg,
-                border: `1px solid ${c.surfaceBorder}`,
-                color: active ? "#0f172a" : c.text
-              }}
-            >
-              <Icon className="w-4 h-4" /> {t.key}
-              {count > 0 && (
-                <span
-                  className="absolute -top-1.5 right-2 rounded-[14px] px-1.5 text-[11px] font-semibold shadow"
+            return (
+              <div key={t.key} className="relative flex-1">
+                <button
+                  onClick={() => setTab(t.key)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-semibold"
                   style={{
-                    background: "#f43f5e",
-                    color: "#fff",
-                    boxShadow: "0 6px 18px rgba(244,63,94,.45)"
+                    background: active
+                      ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                      : c.chipBg,
+                    border: `1px solid ${c.surfaceBorder}`,
+                    color: active ? "#0f172a" : c.text
                   }}
-                  aria-label={`${count} quests ready`}
                 >
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+                  <Icon className="w-4 h-4" /> {t.key}
+                </button>
+                {count > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 rounded-[14px] px-1.5 text-[11px] font-semibold shadow"
+                    style={{
+                      background: "#f43f5e",
+                      color: "#fff",
+                      boxShadow: "0 6px 18px rgba(244,63,94,.45)"
+                    }}
+                    aria-label={`${count} quests ready`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </div>
+            );
+          })}
       </div>
       <div className="grid gap-3">
         {quests.map((q) => (
