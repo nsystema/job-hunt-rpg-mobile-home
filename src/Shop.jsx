@@ -2,6 +2,7 @@ import React from "react";
 import { Gift, Clock, Coins, Zap } from "lucide-react";
 import { Grey } from "./data.jsx";
 import GoldPill from "./components/GoldPill.jsx";
+import PremiumRewardCard from "./components/PremiumRewardCard.jsx";
 import {
   GAME_EFFECTS,
   REAL_REWARDS,
@@ -301,57 +302,16 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                   );
                   const progress = premiumProgress[item.id] || 0;
                   return (
-                    <Panel key={item.id} c={c} t={eff}>
-                      <div title={`${item.minutes} min • ${cost}g`}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Gift className="w-5 h-5" />
-                              <div className="text-[14px] font-medium">
-                                {item.name}
-                              </div>
-                            </div>
-                            <div
-                              className="flex items-center gap-2 text-[12px]"
-                              style={{ color: Grey }}
-                            >
-                              <Clock className="w-3 h-3" /> {item.minutes}
-                              <Coins className="w-3 h-3" /> {cost}
-                            </div>
-                          </div>
-                          <GoldPill
-                            c={c}
-                            onClick={() => handlePremiumAction(item)}
-                            dim={progress >= cost ? false : gold <= 0}
-                          >
-                            {progress >= cost ? "Claim" : "Save"}
-                          </GoldPill>
-                        </div>
-                        <div className="mt-2">
-                          <div
-                            className="w-full h-2 rounded-full overflow-hidden"
-                            style={{ background: c.surfaceBorder }}
-                          >
-                            <div
-                              className="h-full"
-                              style={{
-                                width: `${Math.min(
-                                  (progress / cost) * 100,
-                                  100
-                                )}%`,
-                                background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
-                              }}
-                            />
-                          </div>
-                          <div
-                            className="text-xs font-semibold mt-1"
-                            style={{ color: c.text }}
-                          >
-                            {progress}/{cost}g
-                          </div>
-                        </div>
-                      </div>
-                    </Panel>
+                    <PremiumRewardCard
+                      key={item.id}
+                      c={c}
+                      eff={eff}
+                      item={item}
+                      cost={cost}
+                      progress={progress}
+                      gold={gold}
+                      onAction={handlePremiumAction}
+                    />
                   );
                 })}
               </div>
