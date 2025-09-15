@@ -109,7 +109,7 @@ export const REAL_REWARDS = [
 ];
 
 export const PREMIUM_REWARDS = [
-  { id: 5, name: "Premium Reward", minutes: 45, pleasure: 20 }
+  { id: 5, name: "Premium Reward", minutes: 50, pleasure: 20 }
 ];
 
 const pad = (n) => String(n).padStart(2, "0");

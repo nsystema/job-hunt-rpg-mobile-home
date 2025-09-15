@@ -41,6 +41,12 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
   const [premiumProgress, setPremiumProgress] = React.useState({});
   const [savingItem, setSavingItem] = React.useState(null);
   const [saveAmount, setSaveAmount] = React.useState(0);
+  const tabs = [
+    { key: "effects", label: "In-game effects" },
+    { key: "rewards", label: "Real-life rewards" },
+    { key: "premium", label: "Premium rewards" }
+  ];
+  const [activeTab, setActiveTab] = React.useState("effects");
   React.useEffect(() => {
     const id = setInterval(() => {
       setNow(Date.now());
@@ -168,134 +174,190 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
       </div>
 
       <div className="pt-2">
-        <div className="text-sm font-semibold mb-2">In-game effects</div>
-        <div className="grid gap-2">
-          {GAME_EFFECTS.slice()
-            .sort((a, b) => a.cost - b.cost)
-            .map((item) => {
-              const active = effects.some((e) => e.id === item.id);
-              return (
-                <Panel key={item.id} c={c} t={eff}>
-                  <div
-                    className="flex items-center justify-between"
-                    title={item.description}
-                  >
-                    <div className="flex items-center gap-2">
-                      <item.icon className="w-5 h-5" />
-                      <div className="text-[14px] font-medium">{item.name}</div>
-                    </div>
-                    <GoldPill
-                      c={c}
-                      onClick={() => handleBuyEffect(item)}
-                      dim={gold < item.cost || active}
-                    >
-                      {item.cost}
-                    </GoldPill>
-                  </div>
-                </Panel>
-              );
-            })}
+        <div className="flex gap-2 mb-4" role="tablist">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={activeTab === t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                activeTab === t.key ? "text-slate-900" : ""
+              }`}
+              style={{
+                background:
+                  activeTab === t.key
+                    ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                    : c.surface,
+                border: `1px solid ${c.surfaceBorder}`
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
-      </div>
-
-      <div className="pt-4">
-        <div className="text-sm font-semibold mb-2">Real-life rewards</div>
-        <div className="grid gap-2">
-          {REAL_REWARDS.slice()
-            .sort((a, b) => {
-              const costA = Math.round(a.minutes * (a.pleasure ?? 1));
-              const costB = Math.round(b.minutes * (b.pleasure ?? 1));
-              return costA - costB;
-            })
-            .map((item) => {
-              const cost = Math.round(item.minutes * (item.pleasure ?? 1));
-              return (
-                <Panel key={item.id} c={c} t={eff}>
-                  <div title={`${item.minutes} min • ${cost}g`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Gift className="w-5 h-5" />
-                          <div className="text-[14px] font-medium">{item.name}</div>
-                        </div>
+        <AnimatePresence mode="wait">
+          {activeTab === "effects" && (
+            <motion.div
+              key="effects"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <div className="grid gap-2">
+                {GAME_EFFECTS.slice()
+                  .sort((a, b) => a.cost - b.cost)
+                  .map((item) => {
+                    const active = effects.some((e) => e.id === item.id);
+                    return (
+                      <Panel key={item.id} c={c} t={eff}>
                         <div
-                          className="flex items-center gap-2 text-[12px]"
-                          style={{ color: Grey }}
+                          className="flex items-center justify-between"
+                          title={item.description}
                         >
-                          <Clock className="w-3 h-3" /> {item.minutes}
-                          <Coins className="w-3 h-3" /> {cost}
+                          <div className="flex items-center gap-2">
+                            <item.icon className="w-5 h-5" />
+                            <div className="text-[14px] font-medium">
+                              {item.name}
+                            </div>
+                          </div>
+                          <GoldPill
+                            c={c}
+                            onClick={() => handleBuyEffect(item)}
+                            dim={gold < item.cost || active}
+                          >
+                            {item.cost}
+                          </GoldPill>
+                        </div>
+                      </Panel>
+                    );
+                  })}
+              </div>
+            </motion.div>
+          )}
+          {activeTab === "rewards" && (
+            <motion.div
+              key="rewards"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <div className="grid gap-2">
+                {REAL_REWARDS.slice()
+                  .sort((a, b) => {
+                    const costA = Math.round(a.minutes * (a.pleasure ?? 1));
+                    const costB = Math.round(b.minutes * (b.pleasure ?? 1));
+                    return costA - costB;
+                  })
+                  .map((item) => {
+                    const cost = Math.round(
+                      item.minutes * (item.pleasure ?? 1)
+                    );
+                    return (
+                      <Panel key={item.id} c={c} t={eff}>
+                        <div title={`${item.minutes} min • ${cost}g`}>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Gift className="w-5 h-5" />
+                                <div className="text-[14px] font-medium">
+                                  {item.name}
+                                </div>
+                              </div>
+                              <div
+                                className="flex items-center gap-2 text-[12px]"
+                                style={{ color: Grey }}
+                              >
+                                <Clock className="w-3 h-3" /> {item.minutes}
+                                <Coins className="w-3 h-3" /> {cost}
+                              </div>
+                            </div>
+                            <GoldPill
+                              c={c}
+                              onClick={() => setConfirmReward(item)}
+                              dim={gold < cost}
+                            >
+                              {cost}
+                            </GoldPill>
+                          </div>
+                        </div>
+                      </Panel>
+                    );
+                  })}
+              </div>
+            </motion.div>
+          )}
+          {activeTab === "premium" && (
+            <motion.div
+              key="premium"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <div className="grid gap-2">
+                {PREMIUM_REWARDS.map((item) => {
+                  const cost = Math.round(
+                    item.minutes * (item.pleasure ?? 1)
+                  );
+                  const progress = premiumProgress[item.id] || 0;
+                  return (
+                    <Panel key={item.id} c={c} t={eff}>
+                      <div title={`${item.minutes} min • ${cost}g`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Gift className="w-5 h-5" />
+                              <div className="text-[14px] font-medium">
+                                {item.name}
+                              </div>
+                            </div>
+                            <div
+                              className="flex items-center gap-2 text-[12px]"
+                              style={{ color: Grey }}
+                            >
+                              <Clock className="w-3 h-3" /> {item.minutes}
+                              <Coins className="w-3 h-3" /> {cost}
+                            </div>
+                          </div>
+                          <GoldPill
+                            c={c}
+                            onClick={() => handlePremiumAction(item)}
+                            dim={progress >= cost ? false : gold <= 0}
+                          >
+                            {progress >= cost ? "Claim" : "Save"}
+                          </GoldPill>
+                        </div>
+                        <div className="mt-2">
+                          <div
+                            className="w-full h-2 rounded-full overflow-hidden"
+                            style={{ background: c.surfaceBorder }}
+                          >
+                            <div
+                              className="h-full"
+                              style={{
+                                width: `${Math.min(
+                                  (progress / cost) * 100,
+                                  100
+                                )}%`,
+                                background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                              }}
+                            />
+                          </div>
+                          <div
+                            className="text-xs font-semibold mt-1"
+                            style={{ color: c.text }}
+                          >
+                            {progress}/{cost}g
+                          </div>
                         </div>
                       </div>
-                      <GoldPill
-                        c={c}
-                        onClick={() => setConfirmReward(item)}
-                        dim={gold < cost}
-                      >
-                        {cost}
-                      </GoldPill>
-                    </div>
-                  </div>
-                </Panel>
-              );
-            })}
-        </div>
-      </div>
-      <div className="pt-4">
-        <div className="text-sm font-semibold mb-2">Premium rewards</div>
-        <div className="grid gap-2">
-          {PREMIUM_REWARDS.map((item) => {
-            const cost = Math.round(item.minutes * (item.pleasure ?? 1));
-            const progress = premiumProgress[item.id] || 0;
-            return (
-              <Panel key={item.id} c={c} t={eff}>
-                <div title={`${item.minutes} min • ${cost}g`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Gift className="w-5 h-5" />
-                        <div className="text-[14px] font-medium">{item.name}</div>
-                      </div>
-                      <div
-                        className="flex items-center gap-2 text-[12px]"
-                        style={{ color: Grey }}
-                      >
-                        <Clock className="w-3 h-3" /> {item.minutes}
-                        <Coins className="w-3 h-3" /> {cost}
-                      </div>
-                    </div>
-                    <GoldPill
-                      c={c}
-                      onClick={() => handlePremiumAction(item)}
-                      dim={progress >= cost ? false : gold <= 0}
-                    >
-                      {progress >= cost ? "Claim" : "Save"}
-                    </GoldPill>
-                  </div>
-                  <div className="mt-2">
-                    <div
-                      className="w-full h-2 rounded-full overflow-hidden"
-                      style={{ background: c.surfaceBorder }}
-                    >
-                      <div
-                        className="h-full"
-                        style={{
-                          width: `${Math.min((progress / cost) * 100, 100)}%`,
-                          background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
-                        }}
-                      />
-                    </div>
-                    <div
-                      className="text-xs font-semibold mt-1"
-                      style={{ color: c.text }}
-                    >
-                      {progress}/{cost}g
-                    </div>
-                  </div>
-                </div>
-              </Panel>
-            );
-          })}
-        </div>
+                    </Panel>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <AnimatePresence>
         {savingItem && (
