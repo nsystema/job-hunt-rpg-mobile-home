@@ -336,27 +336,15 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                               style={{ background: c.surfaceBorder }}
                             >
                               <div
-                                className="h-full transition-all duration-300"
+                                className="h-full flex items-center justify-end text-[10px] font-semibold px-1 transition-all duration-300"
                                 style={{
                                   width: `${pos}%`,
-                                  background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
-                                }}
-                              />
-                              <span
-                                className="absolute text-[10px] font-semibold px-1 rounded-sm transition-all duration-300"
-                                style={{
-                                  top: "50%",
-                                  left: `${pos}%`,
-                                  transform: `translate(${translate}, -50%)`,
                                   color: eff === "light" ? "#0f172a" : "#f1f5f9",
-                                  background:
-                                    eff === "light"
-                                      ? "rgba(255,255,255,.8)"
-                                      : "rgba(0,0,0,.4)"
+                                  background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
                                 }}
                               >
                                 {percent}%
-                              </span>
+                              </div>
                             </div>
                           </div>
                         </div>
