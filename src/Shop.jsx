@@ -339,7 +339,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                                 className="h-full flex items-center justify-end text-[10px] font-semibold px-1 transition-all duration-300"
                                 style={{
                                   width: `${pos}%`,
-                                  color: c.surface,
+                                  color: eff === "light" ? "#0f172a" : "#f1f5f9",
                                   background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
                                 }}
                               >
