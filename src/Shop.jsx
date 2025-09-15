@@ -5,6 +5,7 @@ import GoldPill from "./components/GoldPill.jsx";
 import {
   GAME_EFFECTS,
   REAL_REWARDS,
+  PREMIUM_REWARDS,
   formatTime,
   buyEffect,
   redeemReward
@@ -37,7 +38,9 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
   const [now, setNow] = React.useState(Date.now());
   const [redeemed, setRedeemed] = React.useState(null);
   const [confirmReward, setConfirmReward] = React.useState(null);
-  const [premiumProgress, setPremiumProgress] = React.useState(0);
+  const [premiumProgress, setPremiumProgress] = React.useState({});
+  const [savingItem, setSavingItem] = React.useState(null);
+  const [saveAmount, setSaveAmount] = React.useState(0);
   React.useEffect(() => {
     const id = setInterval(() => {
       setNow(Date.now());
@@ -60,17 +63,33 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
   const handleRedeemReward = (r) =>
     redeemReward(r, gold, setGold, setRedeemed);
 
-  const handlePremiumSave = (item) => {
+  const handlePremiumAction = (item) => {
     const cost = Math.round(item.minutes * (item.pleasure ?? 1));
-    if (premiumProgress >= cost) {
-      setConfirmReward(item);
+    const progress = premiumProgress[item.id] || 0;
+    if (progress >= cost) {
+      setConfirmReward({ ...item, premium: true });
     } else {
-      const toSave = Math.min(gold, cost - premiumProgress);
-      if (toSave > 0) {
-        setGold((g) => g - toSave);
-        setPremiumProgress((p) => p + toSave);
-      }
+      setSavingItem(item);
+      setSaveAmount(Math.min(gold, cost - progress));
     }
+  };
+
+  const confirmSave = () => {
+    if (!savingItem) return;
+    const cost = Math.round(
+      savingItem.minutes * (savingItem.pleasure ?? 1)
+    );
+    const progress = premiumProgress[savingItem.id] || 0;
+    const max = Math.min(gold, cost - progress);
+    const amount = Math.max(0, Math.min(saveAmount, max));
+    if (amount > 0) {
+      setGold((g) => g - amount);
+      setPremiumProgress((p) => ({
+        ...p,
+        [savingItem.id]: progress + amount
+      }));
+    }
+    setSavingItem(null);
   };
 
 
@@ -209,55 +228,153 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                       </div>
                       <GoldPill
                         c={c}
-                        onClick={() =>
-                          item.premium
-                            ? handlePremiumSave(item)
-                            : setConfirmReward(item)
-                        }
-                        dim={
-                          item.premium
-                            ? premiumProgress < cost && gold <= 0
-                            : gold < cost
-                        }
+                        onClick={() => setConfirmReward(item)}
+                        dim={gold < cost}
                       >
-                        {item.premium
-                          ? premiumProgress >= cost
-                            ? "Claim"
-                            : cost - premiumProgress
-                          : cost}
+                        {cost}
                       </GoldPill>
                     </div>
-                    {item.premium && (
-                      <div className="mt-2">
-                        <div
-                          className="w-full h-2 rounded-full overflow-hidden"
-                          style={{ background: c.surfaceBorder }}
-                        >
-                          <div
-                            className="h-full"
-                            style={{
-                              width: `${Math.min(
-                                (premiumProgress / cost) * 100,
-                                100
-                              )}%`,
-                              background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
-                            }}
-                          />
-                        </div>
-                        <div
-                          className="text-xs font-semibold mt-1"
-                          style={{ color: c.text }}
-                        >
-                          {Math.floor((premiumProgress / cost) * 100)}%
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </Panel>
               );
             })}
         </div>
       </div>
+      <div className="pt-4">
+        <div className="text-sm font-semibold mb-2">Premium rewards</div>
+        <div className="grid gap-2">
+          {PREMIUM_REWARDS.map((item) => {
+            const cost = Math.round(item.minutes * (item.pleasure ?? 1));
+            const progress = premiumProgress[item.id] || 0;
+            return (
+              <Panel key={item.id} c={c} t={eff}>
+                <div title={`${item.minutes} min • ${cost}g`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Gift className="w-5 h-5" />
+                        <div className="text-[14px] font-medium">{item.name}</div>
+                      </div>
+                      <div
+                        className="flex items-center gap-2 text-[12px]"
+                        style={{ color: Grey }}
+                      >
+                        <Clock className="w-3 h-3" /> {item.minutes}
+                        <Coins className="w-3 h-3" /> {cost}
+                      </div>
+                    </div>
+                    <GoldPill
+                      c={c}
+                      onClick={() => handlePremiumAction(item)}
+                      dim={progress >= cost ? false : gold <= 0}
+                    >
+                      {progress >= cost ? "Claim" : "Save"}
+                    </GoldPill>
+                  </div>
+                  <div className="mt-2">
+                    <div
+                      className="w-full h-2 rounded-full overflow-hidden"
+                      style={{ background: c.surfaceBorder }}
+                    >
+                      <div
+                        className="h-full"
+                        style={{
+                          width: `${Math.min((progress / cost) * 100, 100)}%`,
+                          background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                        }}
+                      />
+                    </div>
+                    <div
+                      className="text-xs font-semibold mt-1"
+                      style={{ color: c.text }}
+                    >
+                      {progress}/{cost}g
+                    </div>
+                  </div>
+                </div>
+              </Panel>
+            );
+          })}
+        </div>
+      </div>
+      <AnimatePresence>
+        {savingItem && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{
+              background: eff === "light" ? "rgba(0,0,0,.25)" : "rgba(0,0,0,.55)",
+              backdropFilter: "blur(2px)"
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSavingItem(null)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <motion.div
+              className="rounded-xl p-4 text-center space-y-4"
+              style={{
+                background: c.surface,
+                border: `1px solid ${c.surfaceBorder}`
+              }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-sm font-medium">
+                Save gold for {savingItem?.name}
+              </div>
+              <div>
+                <input
+                  type="range"
+                  min="0"
+                  max={Math.min(
+                    gold,
+                    Math.round(
+                      savingItem.minutes * (savingItem.pleasure ?? 1)
+                    ) - (premiumProgress[savingItem.id] || 0)
+                  )}
+                  value={saveAmount}
+                  onChange={(e) => setSaveAmount(Number(e.target.value))}
+                  className="w-full"
+                />
+                <div
+                  className="text-xs font-semibold mt-1"
+                  style={{ color: c.text }}
+                >
+                  {saveAmount}g
+                </div>
+              </div>
+              <div className="flex justify-center gap-2">
+                <button
+                  onClick={() => setSavingItem(null)}
+                  className="px-3 py-2 rounded-lg text-sm font-semibold"
+                  style={{
+                    background: c.surface,
+                    border: `1px solid ${c.surfaceBorder}`
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSave}
+                  disabled={saveAmount <= 0}
+                  className="px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+                  style={{
+                    background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`,
+                    border: `1px solid ${c.surfaceBorder}`,
+                    color: "#0f172a"
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {confirmReward && (
           <motion.div
@@ -306,7 +423,10 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                   onClick={() => {
                     if (confirmReward.premium) {
                       setRedeemed(confirmReward);
-                      setPremiumProgress(0);
+                      setPremiumProgress((p) => ({
+                        ...p,
+                        [confirmReward.id]: 0
+                      }));
                     } else {
                       handleRedeemReward(confirmReward);
                     }

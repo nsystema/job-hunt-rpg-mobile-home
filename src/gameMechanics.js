@@ -105,8 +105,11 @@ export const REAL_REWARDS = [
   { id: 2, name: "Guilt free gaming session", minutes: 60, pleasure: 1 },
   { id: 3, name: "Microdose", minutes: 120, pleasure: 1 },
   { id: 4, name: "Wellness Voucher", minutes: 120, pleasure: 2 },
-  { id: 5, name: "Premium Reward", minutes: 45, pleasure: 20, premium: true },
   { id: 6, name: "Watch anime", minutes: 20, pleasure: 1 }
+];
+
+export const PREMIUM_REWARDS = [
+  { id: 5, name: "Premium Reward", minutes: 45, pleasure: 20 }
 ];
 
 const pad = (n) => String(n).padStart(2, "0");
