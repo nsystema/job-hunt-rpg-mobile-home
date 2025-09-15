@@ -328,7 +328,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                           </div>
                           <div className="mt-2">
                             <div
-                              className="relative w-full h-4 rounded-full overflow-hidden"
+                              className="w-full h-2 rounded-full overflow-hidden"
                               style={{ background: c.surfaceBorder }}
                             >
                               <div
@@ -341,12 +341,12 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                                   background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
                                 }}
                               />
-                              <span
-                                className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold"
-                                style={{ color: "#0f172a" }}
-                              >
-                                {Math.min(100, Math.round((progress / cost) * 100))}%
-                              </span>
+                            </div>
+                            <div
+                              className="text-xs font-semibold mt-1"
+                              style={{ color: c.text }}
+                            >
+                              {progress}/{cost}g
                             </div>
                           </div>
                         </div>
