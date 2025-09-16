@@ -1,5 +1,5 @@
 import 'react-native-url-polyfill/auto';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -21,8 +21,87 @@ import { useTheme } from './hooks/useTheme';
 import { xpl, lvl, FOCUS_BASELINE, focusCost, computeRewards } from './gameMechanics';
 import { STATUSES } from './data';
 
+const buildInitialFormValues = () => ({
+  company: '',
+  role: '',
+  type: 'Full',
+  status: 'Applied',
+  platform: 'Company website',
+  cvTailored: false,
+  motivation: false,
+  favorite: false,
+  note: '',
+  country: '',
+  city: '',
+});
+
+const TYPE_OPTIONS = ['Full', 'Easy'];
+
+const TextField = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  colors,
+  multiline = false,
+  numberOfLines = 1,
+}) => (
+  <View style={styles.formGroup}>
+    <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={`${colors.text}80`}
+      multiline={multiline}
+      numberOfLines={multiline ? numberOfLines : 1}
+      style={[
+        multiline ? styles.textArea : styles.textInput,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.surfaceBorder,
+          color: colors.text,
+        },
+      ]}
+    />
+  </View>
+);
+
+const ToggleControl = ({ label, value, onValueChange, colors }) => (
+  <View style={styles.toggleItem}>
+    <Text style={[styles.toggleLabel, { color: colors.text }]}>{label}</Text>
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      trackColor={{ false: colors.chipBg, true: colors.sky }}
+      thumbColor={value ? '#0f172a' : colors.text}
+    />
+  </View>
+);
+
+const TypeSelector = ({ value, onChange, colors }) => (
+  <View style={styles.segmentedControl}>
+    {TYPE_OPTIONS.map((option) => {
+      const isActive = value === option;
+      return (
+        <TouchableOpacity
+          key={option}
+          onPress={() => onChange(option)}
+          style={[
+            styles.segmentButton,
+            { borderColor: colors.surfaceBorder },
+            isActive && { backgroundColor: colors.sky },
+          ]}
+        >
+          <Text style={[styles.segmentText, { color: isActive ? '#0f172a' : colors.text }]}>{option}</Text>
+        </TouchableOpacity>
+      );
+    })}
+  </View>
+);
+
 // Helper components
-const StatBadge = ({ icon, count, colors, theme }) => (
+const StatBadge = ({ icon, count, colors }) => (
   <View style={[styles.statBadge, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
     <Ionicons name={icon} size={20} color={colors.text} />
     <View style={[styles.statBadgeCount, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
@@ -31,7 +110,7 @@ const StatBadge = ({ icon, count, colors, theme }) => (
   </View>
 );
 
-const IconButton = ({ onPress, icon, colors, theme, accessibilityLabel }) => (
+const IconButton = ({ onPress, icon, colors, accessibilityLabel }) => (
   <TouchableOpacity
     onPress={onPress}
     style={[styles.iconButton, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
@@ -83,66 +162,50 @@ const formatDateTime = (value) => {
   const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${month} ${day} • ${hours}:${minutes}`;
+  return `${month} ${day} at ${hours}:${minutes}`;
 };
 
 const truncate = (value, limit = 70) => {
   if (!value) return '';
   if (value.length <= limit) return value;
-  return `${value.slice(0, limit - 1)}…`;
+  return `${value.slice(0, limit - 3)}...`;
 };
 
-// Application Form Modal
-const AppFormModal = ({ visible, onClose, onSubmit, colors, theme, effects = [] }) => {
-  const [company, setCompany] = useState('');
-  const [role, setRole] = useState('');
-  const [type, setType] = useState('Full');
-  const [status, setStatus] = useState('Applied');
-  const [platform, setPlatform] = useState('Company website');
-  const [cvTailored, setCvTailored] = useState(false);
-  const [motivation, setMotivation] = useState(false);
-  const [favorite, setFavorite] = useState(false);
-  const [note, setNote] = useState('');
+const MIN_FOCUS_FOR_LOG = 0.25;
 
-  const { xp: xpReward, gold: goldReward, qs } = useMemo(
+// Application Form Modal
+const AppFormModal = ({ visible, onClose, onSubmit, colors, effects = [] }) => {
+  const [form, setForm] = useState(() => buildInitialFormValues());
+
+  const setField = useCallback(
+    (field) => (value) => {
+      setForm((prev) => ({ ...prev, [field]: value }));
+    },
+    []
+  );
+
+  const resetForm = useCallback(() => {
+    setForm(buildInitialFormValues());
+  }, []);
+
+  const { company, role, type, note, cvTailored, motivation, favorite } = form;
+
+  const { xp: xpReward, gold: goldReward } = useMemo(
     () => computeRewards({ type, cvTailored, motivation }, { effects }),
     [type, cvTailored, motivation, effects]
   );
   const cost = useMemo(() => focusCost(type), [type]);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!company || !role) {
       Alert.alert('Error', 'Please fill in company and role');
       return;
     }
-    
+
     const now = new Date();
-    onSubmit({
-      company,
-      role,
-      type,
-      status,
-      platform,
-      date: now.toISOString(),
-      note,
-      cvTailored,
-      motivation,
-      favorite,
-      country: '',
-      city: ''
-    });
-    
-    // Reset form
-    setCompany('');
-    setRole('');
-    setType('Full');
-    setStatus('Applied');
-    setPlatform('Company website');
-    setCvTailored(false);
-    setMotivation(false);
-    setFavorite(false);
-    setNote('');
-  };
+    onSubmit({ ...form, date: now.toISOString() });
+    resetForm();
+  }, [company, role, form, onSubmit, resetForm]);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -153,97 +216,58 @@ const AppFormModal = ({ visible, onClose, onSubmit, colors, theme, effects = [] 
             <Ionicons name="close" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
-        
+
         <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Company</Text>
-            <TextInput
-              value={company}
-              onChangeText={setCompany}
-              placeholder="Acme Inc."
-              placeholderTextColor={colors.text + '80'}
-              style={[styles.textInput, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, color: colors.text }]}
+          <TextField
+            label="Company"
+            value={company}
+            onChangeText={setField('company')}
+            placeholder="Acme Inc."
+            colors={colors}
+          />
+
+          <TextField
+            label="Role"
+            value={role}
+            onChangeText={setField('role')}
+            placeholder="Data Analyst"
+            colors={colors}
+          />
+
+          <TypeSelector value={type} onChange={setField('type')} colors={colors} />
+
+          <TextField
+            label="Notes (optional)"
+            value={note}
+            onChangeText={setField('note')}
+            placeholder="Additional notes..."
+            colors={colors}
+            multiline
+            numberOfLines={3}
+          />
+
+          <View style={styles.toggleRow}>
+            <ToggleControl
+              label="CV Tailored"
+              value={cvTailored}
+              onValueChange={setField('cvTailored')}
+              colors={colors}
             />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Role</Text>
-            <TextInput
-              value={role}
-              onChangeText={setRole}
-              placeholder="Data Analyst"
-              placeholderTextColor={colors.text + '80'}
-              style={[styles.textInput, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, color: colors.text }]}
-            />
-          </View>
-
-          <View style={styles.segmentedControl}>
-            <TouchableOpacity
-              onPress={() => setType('Full')}
-              style={[
-                styles.segmentButton,
-                type === 'Full' && { backgroundColor: colors.sky },
-                { borderColor: colors.surfaceBorder }
-              ]}
-            >
-              <Text style={[styles.segmentText, { color: type === 'Full' ? '#0f172a' : colors.text }]}>Full</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setType('Easy')}
-              style={[
-                styles.segmentButton,
-                type === 'Easy' && { backgroundColor: colors.sky },
-                { borderColor: colors.surfaceBorder }
-              ]}
-            >
-              <Text style={[styles.segmentText, { color: type === 'Easy' ? '#0f172a' : colors.text }]}>Easy</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Notes (optional)</Text>
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              placeholder="Additional notes..."
-              placeholderTextColor={colors.text + '80'}
-              multiline
-              numberOfLines={3}
-              style={[styles.textArea, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, color: colors.text }]}
+            <ToggleControl
+              label="Motivation Letter"
+              value={motivation}
+              onValueChange={setField('motivation')}
+              colors={colors}
             />
           </View>
 
           <View style={styles.toggleRow}>
-            <View style={styles.toggleItem}>
-              <Text style={[styles.toggleLabel, { color: colors.text }]}>CV Tailored</Text>
-              <Switch
-                value={cvTailored}
-                onValueChange={setCvTailored}
-                trackColor={{ false: colors.chipBg, true: colors.sky }}
-                thumbColor={cvTailored ? '#0f172a' : colors.text}
-              />
-            </View>
-            <View style={styles.toggleItem}>
-              <Text style={[styles.toggleLabel, { color: colors.text }]}>Motivation Letter</Text>
-              <Switch
-                value={motivation}
-                onValueChange={setMotivation}
-                trackColor={{ false: colors.chipBg, true: colors.sky }}
-                thumbColor={motivation ? '#0f172a' : colors.text}
-              />
-            </View>
-          </View>
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleItem}>
-              <Text style={[styles.toggleLabel, { color: colors.text }]}>Favorite</Text>
-              <Switch
-                value={favorite}
-                onValueChange={setFavorite}
-                trackColor={{ false: colors.chipBg, true: colors.sky }}
-                thumbColor={favorite ? '#0f172a' : colors.text}
-              />
-            </View>
+            <ToggleControl
+              label="Favorite"
+              value={favorite}
+              onValueChange={setField('favorite')}
+              colors={colors}
+            />
           </View>
 
           <View style={styles.rewardInfo}>
@@ -276,7 +300,7 @@ const AppFormModal = ({ visible, onClose, onSubmit, colors, theme, effects = [] 
 // Main App Component
 export default function App() {
   const { mode, eff, cycle } = useTheme();
-  const { key, cycle: cyclePal, pal } = usePalette();
+  const { cycle: cyclePal, pal } = usePalette();
   const colors = cur(eff, pal);
 
   // Game state
@@ -286,7 +310,7 @@ export default function App() {
   const [gold, setGold] = useState(260);
   const [skillPoints, setSkillPoints] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [activeEffects, setActiveEffects] = useState([]);
+  const [activeEffects] = useState([]);
   const [focus, setFocus] = useState(FOCUS_BASELINE);
   const [applications, setApplications] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -295,116 +319,112 @@ export default function App() {
   const step = 25;
   const into = weighted % step;
 
-  function gainXp(base, applyBuff = true) {
-    const multiplier = applyBuff && activeEffects.some((e) => e.id === 1 || e.id === 3) ? 2 : 1;
-    setXp((x) => x + base * multiplier);
-  }
+  const gainXp = useCallback(
+    (base, applyBuff = true) => {
+      const hasBuff = applyBuff && activeEffects.some((effect) => effect.id === 1 || effect.id === 3);
+      const multiplier = hasBuff ? 2 : 1;
+      setXp((value) => value + base * multiplier);
+    },
+    [activeEffects]
+  );
 
-  function addApplication(fields) {
-    const cost = focusCost(fields.type);
-    if (focus < cost) {
+  const addApplication = useCallback(
+    (fields) => {
+      const cost = focusCost(fields.type);
+      if (focus < cost) {
+        Alert.alert('Out of Focus', 'You are out of focus! Recharge to log more applications.');
+        return false;
+      }
+
+      const id = Math.random().toString(36).slice(2, 9);
+      const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(fields, { effects: activeEffects });
+      const app = { id, ...fields, qs };
+
+      setApplications((list) => [app, ...list]);
+      setApps((value) => value + 1);
+      setWeighted((value) => value + au);
+      gainXp(xpReward, false);
+      setGold((value) => value + goldReward);
+      setFocus((value) => Math.max(0, value - cost));
+      return true;
+    },
+    [focus, activeEffects, gainXp]
+  );
+
+  const handleLogPress = useCallback(() => {
+    if (focus < MIN_FOCUS_FOR_LOG) {
       Alert.alert('Out of Focus', 'You are out of focus! Recharge to log more applications.');
-      return false;
+      return;
     }
-    
-    const id = Math.random().toString(36).slice(2, 9);
-    const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(fields, { effects: activeEffects });
-    const app = { id, ...fields, qs };
-    
-    setApplications(list => [app, ...list]);
-    setApps(a => a + 1);
-    setWeighted(w => w + au);
-    gainXp(xpReward, false);
-    setGold(v => v + goldReward);
-    setFocus(f => Math.max(0, f - cost));
-    return true;
-  }
+    setShowForm(true);
+  }, [focus]);
 
-  const quickActions = [
-    {
-      key: 'Log application',
-      icon: 'flash',
-      onPress: () => {
-        if (focus < 0.25) {
-          Alert.alert('Out of Focus', 'You are out of focus! Recharge to log more applications.');
-        } else {
-          setShowForm(true);
-        }
+  const handleEasyApply = useCallback(() => {
+    const now = new Date();
+    addApplication({
+      company: 'New Company',
+      role: 'Easy Apply',
+      country: '',
+      city: '',
+      type: 'Easy',
+      status: 'Applied',
+      date: now.toISOString(),
+      note: '',
+      cvTailored: false,
+      motivation: false,
+      favorite: false,
+      platform: 'Company website',
+    });
+  }, [addApplication]);
+
+  const handleNetworking = useCallback(() => {
+    setGold((value) => value + 8);
+  }, []);
+
+  const handleSkill = useCallback(() => {
+    gainXp(14);
+    setGold((value) => value + 3);
+  }, [gainXp]);
+
+  const handleInterview = useCallback(() => {
+    gainXp(18);
+    setGold((value) => value + 4);
+  }, [gainXp]);
+
+  const handlePrestige = useCallback(() => {}, []);
+
+  const quickActions = useMemo(
+    () => [
+      { key: 'Log application', icon: 'flash', onPress: handleLogPress, hint: 'Open log form' },
+      { key: 'Easy apply', icon: 'trending-up', onPress: handleEasyApply, hint: 'Log easy apply' },
+      { key: 'Networking', icon: 'people', onPress: handleNetworking, hint: 'Add networking' },
+      { key: 'Skill', icon: 'school', onPress: handleSkill, hint: 'Add skill block' },
+      { key: 'Interview', icon: 'chatbubbles', onPress: handleInterview, hint: 'Add interview prep' },
+      {
+        key: 'Prestige',
+        icon: 'trophy',
+        onPress: handlePrestige,
+        hint: 'Prestige (requires Level 100)',
+        disabled: l < 100,
       },
-      hint: 'Open log form'
-    },
-    {
-      key: 'Easy apply',
-      icon: 'trending-up',
-      onPress: () => {
-        const now = new Date();
-        addApplication({
-          company: 'New Company',
-          role: 'Easy Apply',
-          country: '',
-          city: '',
-          type: 'Easy',
-          status: 'Applied',
-          date: now.toISOString(),
-          note: '',
-          cvTailored: false,
-          motivation: false,
-          favorite: false,
-          platform: 'Company website'
-        });
-      },
-      hint: 'Log easy apply'
-    },
-    {
-      key: 'Networking',
-      icon: 'people',
-      onPress: () => setGold(g => g + 8),
-      hint: 'Add networking'
-    },
-    {
-      key: 'Skill',
-      icon: 'school',
-      onPress: () => {
-        gainXp(14);
-        setGold(g => g + 3);
-      },
-      hint: 'Add skill block'
-    },
-    {
-      key: 'Interview',
-      icon: 'chatbubbles',
-      onPress: () => {
-        gainXp(18);
-        setGold(g => g + 4);
-      },
-      hint: 'Add interview prep'
-    },
-    {
-      key: 'Prestige',
-      icon: 'trophy',
-      onPress: () => {},
-      hint: 'Prestige (requires Level 100)',
-      disabled: l < 100
-    }
-  ];
+    ],
+    [handleLogPress, handleEasyApply, handleNetworking, handleSkill, handleInterview, handlePrestige, l]
+  );
 
   const statusIcons = useMemo(
     () => ({
       Applied: { icon: 'document-text-outline', tint: colors.sky },
       Interview: { icon: 'chatbubble-ellipses-outline', tint: colors.emerald },
       Ghosted: { icon: 'skull-outline', tint: colors.rose },
-      Rejected: { icon: 'close-circle-outline', tint: colors.rose }
+      Rejected: { icon: 'close-circle-outline', tint: colors.rose },
     }),
     [colors]
   );
 
-  const statusLookup = useMemo(() => {
-    const map = {};
-    STATUSES.forEach((status) => {
-      map[status.key] = status;
-    });
-    return map;
-  }, []);
+  const statusLookup = useMemo(
+    () => Object.fromEntries(STATUSES.map((status) => [status.key, status])),
+    []
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -417,7 +437,6 @@ export default function App() {
             onPress={cycle}
             icon={mode === 'light' ? 'sunny' : mode === 'dark' ? 'moon' : 'desktop'}
             colors={colors}
-            theme={eff}
             accessibilityLabel="Cycle theme"
           />
           <TouchableOpacity
@@ -430,8 +449,8 @@ export default function App() {
         </View>
         
         <View style={styles.headerRight}>
-          <StatBadge icon="school" count={skillPoints} colors={colors} theme={eff} />
-          <StatBadge icon="flame" count={streak} colors={colors} theme={eff} />
+          <StatBadge icon="school" count={skillPoints} colors={colors} />
+          <StatBadge icon="flame" count={streak} colors={colors} />
           <GoldPill colors={colors}>{gold}</GoldPill>
         </View>
       </View>
@@ -651,7 +670,6 @@ export default function App() {
           }
         }}
         colors={colors}
-        theme={eff}
         effects={activeEffects}
       />
     </SafeAreaView>
