@@ -1,5 +1,5 @@
 import 'react-native-url-polyfill/auto';
-import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -100,228 +100,233 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const CommonChest = ({ size = 56 }) => {
-  const gradientId = useId();
-  const baseId = `${gradientId}-common-base`;
-  const topId = `${gradientId}-common-top`;
-  return (
-    <Svg width={size} height={size} viewBox="0 0 80 80">
-      <Defs>
-        <SvgLinearGradient id={baseId} x1="16" y1="28" x2="64" y2="68">
-          <Stop offset="0" stopColor="#D7B48A" />
-          <Stop offset="1" stopColor="#B28755" />
-        </SvgLinearGradient>
-        <SvgLinearGradient id={topId} x1="16" y1="16" x2="64" y2="32">
-          <Stop offset="0" stopColor="#E4C59B" />
-          <Stop offset="1" stopColor="#C89B69" />
-        </SvgLinearGradient>
-      </Defs>
-      <Rect
-        x="14"
-        y="30"
-        width="52"
-        height="32"
-        rx="8"
-        fill={`url(#${baseId})`}
-        stroke="#4E3621"
-        strokeOpacity={0.45}
-        strokeWidth={2}
-      />
-      <Path d="M20 30V62" stroke="#4E3621" strokeOpacity={0.25} strokeWidth={2} />
-      <Path d="M60 30V62" stroke="#4E3621" strokeOpacity={0.25} strokeWidth={2} />
-      <Rect
-        x="18"
-        y="20"
-        width="44"
-        height="16"
-        rx="7"
-        fill={`url(#${topId})`}
-        stroke="#4E3621"
-        strokeOpacity={0.35}
-        strokeWidth={2}
-      />
-      <Rect
-        x="36"
-        y="40"
-        width="8"
-        height="12"
-        rx="3"
-        fill="#F7E6C8"
-        stroke="#4E3621"
-        strokeOpacity={0.6}
-        strokeWidth={2}
-      />
-    </Svg>
-  );
+const createChestArt = ({
+  baseGradient,
+  lidGradient,
+  outline,
+  strapColor,
+  strapHighlight,
+  latchColor,
+  latchOutline,
+  accentLine,
+  baseDividers,
+}) => {
+  return ({ size = 56 }) => {
+    const baseWidth = size * 0.82;
+    const baseHeight = size * 0.48;
+    const lidHeight = size * 0.3;
+    const strapWidth = size * 0.18;
+    const strapHeight = size * 0.56;
+    const latchWidth = size * 0.24;
+    const latchHeight = size * 0.24;
+    const radius = size * 0.18;
+    const outlineWidth = Math.max(1, Math.round(size * 0.035));
+    const baseLeft = (size - baseWidth) / 2;
+    const lidTop = size * 0.12;
+    const baseBottom = size * 0.16;
+
+    return (
+      <View
+        style={{
+          width: size,
+          height: size,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            bottom: baseBottom - baseHeight * 0.1,
+            width: baseWidth * 1.04,
+            height: baseHeight * 0.22,
+            backgroundColor: outline,
+            opacity: 0.18,
+            borderRadius: baseHeight * 0.3,
+            transform: [{ scaleY: 0.8 }],
+          }}
+        />
+        <LinearGradient
+          colors={lidGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            position: 'absolute',
+            top: lidTop,
+            left: baseLeft,
+            width: baseWidth,
+            height: lidHeight,
+            borderTopLeftRadius: radius,
+            borderTopRightRadius: radius,
+            borderBottomLeftRadius: radius * 0.6,
+            borderBottomRightRadius: radius * 0.6,
+            borderWidth: outlineWidth,
+            borderColor: outline,
+          }}
+        />
+        <LinearGradient
+          colors={baseGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            position: 'absolute',
+            bottom: baseBottom,
+            left: baseLeft,
+            width: baseWidth,
+            height: baseHeight,
+            borderRadius: radius,
+            borderWidth: outlineWidth,
+            borderColor: outline,
+          }}
+        />
+        {(baseDividers || []).map((offset, index) => (
+          <View
+            key={`divider-${index}`}
+            style={{
+              position: 'absolute',
+              bottom: baseBottom + outlineWidth,
+              left: baseLeft + baseWidth * offset - outlineWidth / 2,
+              width: outlineWidth,
+              height: baseHeight - outlineWidth * 2,
+              backgroundColor: outline,
+              opacity: 0.22,
+              borderRadius: outlineWidth,
+            }}
+          />
+        ))}
+        <View
+          style={{
+            position: 'absolute',
+            top: size * 0.1,
+            left: size / 2 - strapWidth / 2,
+            width: strapWidth,
+            height: strapHeight,
+            borderRadius: strapWidth / 2,
+            backgroundColor: strapColor,
+            borderWidth: outlineWidth,
+            borderColor: outline,
+            justifyContent: 'center',
+          }}
+        >
+          {strapHighlight ? (
+            <View
+              style={{
+                alignSelf: 'center',
+                width: strapWidth * 0.36,
+                height: strapHeight - outlineWidth * 3,
+                borderRadius: strapWidth / 2,
+                backgroundColor: strapHighlight,
+                opacity: 0.85,
+              }}
+            />
+          ) : null}
+        </View>
+        {accentLine ? (
+          <View
+            style={{
+              position: 'absolute',
+              bottom: size * (accentLine.offset ?? 0.26),
+              width: baseWidth * (accentLine.width ?? 0.56),
+              left:
+                size / 2 - (baseWidth * (accentLine.width ?? 0.56)) / 2,
+              height: Math.max(1, size * (accentLine.thickness ?? 0.05)),
+              borderRadius: size * (accentLine.radius ?? 0.04),
+              backgroundColor: accentLine.color,
+              opacity: accentLine.opacity ?? 0.35,
+            }}
+          />
+        ) : null}
+        <View
+          style={{
+            position: 'absolute',
+            bottom: size * 0.2,
+            width: latchWidth,
+            height: latchHeight,
+            borderRadius: latchWidth * 0.3,
+            backgroundColor: latchColor,
+            borderWidth: outlineWidth,
+            borderColor: latchOutline || outline,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              width: latchWidth * 0.34,
+              height: latchHeight * 0.5,
+              borderRadius: latchWidth * 0.18,
+              backgroundColor: 'rgba(255, 255, 255, 0.6)',
+            }}
+          />
+        </View>
+      </View>
+    );
+  };
 };
 
-const RareChest = ({ size = 56 }) => {
-  const gradientId = useId();
-  const baseId = `${gradientId}-rare-base`;
-  const topId = `${gradientId}-rare-top`;
-  return (
-    <Svg width={size} height={size} viewBox="0 0 80 80">
-      <Defs>
-        <SvgLinearGradient id={baseId} x1="18" y1="30" x2="62" y2="68">
-          <Stop offset="0" stopColor="#8BB7D8" />
-          <Stop offset="1" stopColor="#4D7BA6" />
-        </SvgLinearGradient>
-        <SvgLinearGradient id={topId} x1="18" y1="18" x2="62" y2="34">
-          <Stop offset="0" stopColor="#A7CCE4" />
-          <Stop offset="1" stopColor="#5C8FB6" />
-        </SvgLinearGradient>
-      </Defs>
-      <Rect
-        x="16"
-        y="30"
-        width="48"
-        height="32"
-        rx="9"
-        fill={`url(#${baseId})`}
-        stroke="#1F3A52"
-        strokeOpacity={0.45}
-        strokeWidth={2}
-      />
-      <Path d="M24 30V62" stroke="#1F3A52" strokeOpacity={0.25} strokeWidth={2} />
-      <Path d="M56 30V62" stroke="#1F3A52" strokeOpacity={0.25} strokeWidth={2} />
-      <Rect
-        x="20"
-        y="20"
-        width="40"
-        height="16"
-        rx="8"
-        fill={`url(#${topId})`}
-        stroke="#1F3A52"
-        strokeOpacity={0.35}
-        strokeWidth={2}
-      />
-      <Rect
-        x="35"
-        y="40"
-        width="10"
-        height="12"
-        rx="3"
-        fill="#E8F1F7"
-        stroke="#1F3A52"
-        strokeOpacity={0.6}
-        strokeWidth={2}
-      />
-      <Rect x="28" y="44" width="24" height="4" rx="2" fill="#1F3A52" fillOpacity={0.38} />
-    </Svg>
-  );
-};
+const CommonChest = createChestArt({
+  baseGradient: ['#D7B48A', '#B28755'],
+  lidGradient: ['#E4C59B', '#C89B69'],
+  outline: 'rgba(78, 54, 33, 0.65)',
+  strapColor: '#8D5A2B',
+  strapHighlight: 'rgba(247, 230, 200, 0.55)',
+  latchColor: '#F7E6C8',
+  baseDividers: [0.32, 0.68],
+});
 
-const EpicChest = ({ size = 56 }) => {
-  const gradientId = useId();
-  const baseId = `${gradientId}-epic-base`;
-  const topId = `${gradientId}-epic-top`;
-  return (
-    <Svg width={size} height={size} viewBox="0 0 80 80">
-      <Defs>
-        <SvgLinearGradient id={baseId} x1="18" y1="30" x2="62" y2="68">
-          <Stop offset="0" stopColor="#C2A5E6" />
-          <Stop offset="1" stopColor="#8A6BBF" />
-        </SvgLinearGradient>
-        <SvgLinearGradient id={topId} x1="18" y1="18" x2="62" y2="34">
-          <Stop offset="0" stopColor="#D7C3F0" />
-          <Stop offset="1" stopColor="#9A7BD0" />
-        </SvgLinearGradient>
-      </Defs>
-      <Rect
-        x="16"
-        y="30"
-        width="48"
-        height="32"
-        rx="10"
-        fill={`url(#${baseId})`}
-        stroke="#3B2C54"
-        strokeOpacity={0.45}
-        strokeWidth={2}
-      />
-      <Path d="M26 30V62" stroke="#3B2C54" strokeOpacity={0.25} strokeWidth={2} />
-      <Path d="M54 30V62" stroke="#3B2C54" strokeOpacity={0.25} strokeWidth={2} />
-      <Rect
-        x="20"
-        y="20"
-        width="40"
-        height="16"
-        rx="9"
-        fill={`url(#${topId})`}
-        stroke="#3B2C54"
-        strokeOpacity={0.35}
-        strokeWidth={2}
-      />
-      <Rect
-        x="34"
-        y="40"
-        width="12"
-        height="12"
-        rx="3"
-        fill="#F4ECFF"
-        stroke="#3B2C54"
-        strokeOpacity={0.6}
-        strokeWidth={2}
-      />
-      <Path d="M38 46H42" stroke="#3B2C54" strokeOpacity={0.55} strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  );
-};
+const RareChest = createChestArt({
+  baseGradient: ['#8BB7D8', '#4D7BA6'],
+  lidGradient: ['#A7CCE4', '#5C8FB6'],
+  outline: 'rgba(31, 58, 82, 0.75)',
+  strapColor: '#1F4D6F',
+  strapHighlight: 'rgba(210, 230, 244, 0.55)',
+  latchColor: '#E8F1F7',
+  latchOutline: 'rgba(31, 58, 82, 0.75)',
+  baseDividers: [0.28, 0.72],
+  accentLine: {
+    color: 'rgba(31, 58, 82, 0.72)',
+    opacity: 0.4,
+    width: 0.6,
+    thickness: 0.045,
+    offset: 0.27,
+  },
+});
 
-const LegendaryChest = ({ size = 56 }) => {
-  const gradientId = useId();
-  const baseId = `${gradientId}-legendary-base`;
-  const topId = `${gradientId}-legendary-top`;
-  return (
-    <Svg width={size} height={size} viewBox="0 0 80 80">
-      <Defs>
-        <SvgLinearGradient id={baseId} x1="18" y1="30" x2="62" y2="68">
-          <Stop offset="0" stopColor="#F5D48D" />
-          <Stop offset="1" stopColor="#D4A440" />
-        </SvgLinearGradient>
-        <SvgLinearGradient id={topId} x1="18" y1="18" x2="62" y2="34">
-          <Stop offset="0" stopColor="#FFE6A8" />
-          <Stop offset="1" stopColor="#E7BE55" />
-        </SvgLinearGradient>
-      </Defs>
-      <Rect
-        x="16"
-        y="30"
-        width="48"
-        height="32"
-        rx="12"
-        fill={`url(#${baseId})`}
-        stroke="#7C5A18"
-        strokeOpacity={0.5}
-        strokeWidth={2}
-      />
-      <Path d="M26 30V62" stroke="#7C5A18" strokeOpacity={0.3} strokeWidth={2} />
-      <Path d="M54 30V62" stroke="#7C5A18" strokeOpacity={0.3} strokeWidth={2} />
-      <Rect
-        x="20"
-        y="20"
-        width="40"
-        height="16"
-        rx="10"
-        fill={`url(#${topId})`}
-        stroke="#7C5A18"
-        strokeOpacity={0.4}
-        strokeWidth={2}
-      />
-      <Rect
-        x="34"
-        y="40"
-        width="12"
-        height="12"
-        rx="3"
-        fill="#FFF6D9"
-        stroke="#7C5A18"
-        strokeOpacity={0.65}
-        strokeWidth={2}
-      />
-      <Path d="M32 52H48" stroke="#7C5A18" strokeOpacity={0.5} strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  );
-};
+const EpicChest = createChestArt({
+  baseGradient: ['#C2A5E6', '#8A6BBF'],
+  lidGradient: ['#D7C3F0', '#9A7BD0'],
+  outline: 'rgba(59, 44, 84, 0.78)',
+  strapColor: '#4E3A75',
+  strapHighlight: 'rgba(238, 225, 255, 0.45)',
+  latchColor: '#F4ECFF',
+  latchOutline: 'rgba(59, 44, 84, 0.78)',
+  baseDividers: [0.26, 0.74],
+  accentLine: {
+    color: 'rgba(59, 44, 84, 0.6)',
+    opacity: 0.55,
+    width: 0.32,
+    thickness: 0.04,
+    offset: 0.29,
+  },
+});
+
+const LegendaryChest = createChestArt({
+  baseGradient: ['#F5D48D', '#D4A440'],
+  lidGradient: ['#FFE6A8', '#E7BE55'],
+  outline: 'rgba(124, 90, 24, 0.78)',
+  strapColor: '#8A611E',
+  strapHighlight: 'rgba(255, 248, 210, 0.65)',
+  latchColor: '#FFF6D9',
+  latchOutline: 'rgba(124, 90, 24, 0.78)',
+  baseDividers: [0.26, 0.74],
+  accentLine: {
+    color: 'rgba(124, 90, 24, 0.6)',
+    opacity: 0.5,
+    width: 0.72,
+    thickness: 0.05,
+    offset: 0.23,
+  },
+});
 
 const CHEST_ART = {
   Common: CommonChest,
