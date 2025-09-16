@@ -1,3 +1,4 @@
+import 'react-native-url-polyfill/auto';
 import { useMemo, useState } from 'react';
 import {
   View,
@@ -7,6 +8,7 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  Platform,
   Modal,
   TextInput,
   Alert,
@@ -462,7 +464,7 @@ export default function App() {
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <View style={styles.progressLabel}>
-                <Ionicons name="brain" size={14} color="rgba(148,163,184,.95)" />
+                <Ionicons name="bulb-outline" size={14} color="rgba(148,163,184,.95)" />
                 <Text style={styles.progressLabelText}>Focus</Text>
               </View>
               <Text style={styles.progressValue}>{focus.toFixed(1)} / {FOCUS_BASELINE}</Text>
@@ -475,7 +477,7 @@ export default function App() {
         <Panel colors={colors}>
           <View style={styles.progressHeader}>
             <View style={styles.progressLabel}>
-              <Ionicons name="target" size={14} color="rgba(148,163,184,.95)" />
+              <Ionicons name="flag-outline" size={14} color="rgba(148,163,184,.95)" />
               <Text style={styles.progressLabelText}>Milestone</Text>
             </View>
             <Text style={styles.progressValue}>{into.toFixed(1)} / {step}</Text>
@@ -659,6 +661,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
   },
   header: {
     flexDirection: 'row',
