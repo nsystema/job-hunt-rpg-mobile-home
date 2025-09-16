@@ -175,42 +175,53 @@ export default function Quests({ c, eff, gainXp, setGold, claimed, setClaimed })
   };
   return (
     <div className="grid gap-4">
-      <div className="flex items-center gap-2">
+      <div
+        className="flex w-full items-center gap-1 p-1 rounded-full"
+        role="tablist"
+        aria-label="Quest categories"
+        style={{
+          background: c.surface,
+          border: `1px solid ${c.surfaceBorder}`
+        }}
+      >
         {TABS.map((t) => {
           const active = tab === t.key;
           const Icon = t.icon;
           const count = countUnclaimedQuestsByTab(t.key, claimed);
-            return (
-              <div key={t.key} className="relative flex-1">
-                <button
-                  onClick={() => setTab(t.key)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-semibold"
+          return (
+            <div key={t.key} className="relative flex-1">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(t.key)}
+                className="flex w-full items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition-colors"
+                style={{
+                  background: active
+                    ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                    : "transparent",
+                  color: active ? "#0f172a" : c.text
+                }}
+              >
+                <Icon className="w-4 h-4" aria-hidden="true" />
+                <span className="truncate">{t.key}</span>
+              </button>
+              {count > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 rounded-[14px] px-1.5 text-[11px] font-semibold shadow"
                   style={{
-                    background: active
-                      ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
-                      : c.chipBg,
-                    border: `1px solid ${c.surfaceBorder}`,
-                    color: active ? "#0f172a" : c.text
+                    background: `linear-gradient(135deg, ${c.rose}, ${c.lilac})`,
+                    color: "#0f172a",
+                    boxShadow: "0 6px 18px rgba(244,63,94,.45)"
                   }}
+                  aria-label={`${count} quests ready`}
                 >
-                  <Icon className="w-4 h-4" /> {t.key}
-                </button>
-                {count > 0 && (
-                  <span
-                    className="absolute -top-1 -right-1 rounded-[14px] px-1.5 text-[11px] font-semibold shadow"
-                    style={{
-                      background: "#f43f5e",
-                      color: "#fff",
-                      boxShadow: "0 6px 18px rgba(244,63,94,.45)"
-                    }}
-                    aria-label={`${count} quests ready`}
-                  >
-                    {count}
-                  </span>
-                )}
-              </div>
-            );
-          })}
+                  {count}
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="grid gap-3">
         {quests.map((q) => (
