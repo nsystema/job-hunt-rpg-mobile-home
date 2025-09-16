@@ -87,7 +87,7 @@ const countUnclaimedQuestsByTab = (tabKey, claimed) =>
 const BOTTOM_TABS = [
   { key: 'Home', label: 'Home', icon: 'home' },
   { key: 'Apps', label: 'Apps', icon: 'briefcase' },
-  { key: 'Quests', label: 'Quests', icon: 'target' },
+  { key: 'Quests', label: 'Quests', icon: 'flag' },
   { key: 'Rewards', label: 'Rewards', icon: 'gift' },
   { key: 'Shop', label: 'Shop', icon: 'cart' },
 ];
@@ -100,7 +100,7 @@ const SHOP_MAIN_TABS = [
 const SHOP_CATALOG_TABS = [
   { key: 'effects', label: 'Boosts', icon: 'flash' },
   { key: 'rewards', label: 'Treats', icon: 'gift' },
-  { key: 'premium', label: 'Premium', icon: 'crown' },
+  { key: 'premium', label: 'Premium', icon: 'trophy' },
 ];
 
 const hexToRgba = (hex, alpha) => {
@@ -787,7 +787,7 @@ const ShopScreen = ({
   }, [savingItem, premiumProgress, gold, saveAmount, setGold, setPremiumProgress]);
 
   const confirmCost = confirmReward ? costFor(confirmReward) : 0;
-  const ConfirmIcon = confirmReward?.premium ? 'crown' : 'gift';
+  const ConfirmIcon = confirmReward?.premium ? 'trophy' : 'gift';
 
   const savingProgress = savingItem ? premiumProgress[savingItem.id] || 0 : 0;
   const savingCap = savingItem ? Math.max(costFor(savingItem) - savingProgress, 0) : 0;
@@ -1233,7 +1233,7 @@ const ShopScreen = ({
                                 end={{ x: 1, y: 1 }}
                                 style={styles.shopIconInner}
                               >
-                                <Ionicons name="crown" size={20} color="#0f172a" />
+                                <Ionicons name="trophy" size={20} color="#0f172a" />
                               </LinearGradient>
                             </View>
                             <View style={styles.shopPremiumTitleArea}>
