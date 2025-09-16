@@ -568,11 +568,28 @@ export default function App() {
       }
     }
   }, []);
+  // Hydrate chests from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = JSON.parse(localStorage.getItem('jh_chests') || 'null');
+      if (Array.isArray(saved)) {
+        setChests(saved);
+      }
+    } catch {}
+  }, []);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const today = new Date().toISOString().slice(0, 10);
     localStorage.setItem('jh_focus', JSON.stringify({ value: focus, date: today }));
   }, [focus]);
+  // Persist chests
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('jh_chests', JSON.stringify(chests));
+    } catch {}
+  }, [chests]);
   useEffect(() => {
     const id = setInterval(() => {
       setActiveEffects((e) => e.filter((fx) => !fx.expiresAt || fx.expiresAt > Date.now()));
@@ -666,7 +683,7 @@ export default function App() {
           />
         )}
         {tab === 'Rewards' && (
-          <Rewards c={c} eff={eff} gold={gold} setGold={setGold} gainXp={gainXp} chests={chests} setChests={setChests} />
+          <Rewards c={c} eff={eff} gold={gold} setGold={setGold} gainXp={gainXp} chests={chests} setChests={setChests} effects={activeEffects} />
         )}
         {tab === 'Home' && (
 
