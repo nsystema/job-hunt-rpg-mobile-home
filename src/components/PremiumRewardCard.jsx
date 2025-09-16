@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Coins, Crown, PiggyBank } from "lucide-react";
+import { Crown, PiggyBank } from "lucide-react";
 import GoldPill from "./GoldPill.jsx";
 import { Grey } from "../data.jsx";
 
@@ -90,15 +90,6 @@ export default function PremiumRewardCard({
         >
           {completed ? "Claim" : "Save"}
         </GoldPill>
-      </div>
-      <div
-        className="flex flex-wrap items-center gap-3 text-sm font-semibold"
-        style={{ color: c.text }}
-      >
-        <span className="inline-flex items-center gap-1">
-          <Coins className="w-3 h-3" aria-hidden="true" />
-          {formatAmount(cost)}
-        </span>
       </div>
       <div className="space-y-2">
         <div
