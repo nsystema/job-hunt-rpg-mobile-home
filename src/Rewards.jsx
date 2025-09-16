@@ -1,12 +1,17 @@
 import React, { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Coins, Zap, Gift, Sparkles } from "lucide-react";
-import { Grey } from "./data.jsx";
+import { AnimatePresence, motion } from "framer-motion";
+import { Coins, Gift, Sparkles } from "lucide-react";
+import commonChest from "./assets/chests/common.svg";
+import rareChest from "./assets/chests/rare.svg";
+import epicChest from "./assets/chests/epic.svg";
+import legendaryChest from "./assets/chests/legendary.svg";
 
 const shadow = (t, l, d) => (t === "light" ? l : d);
 
 const hexToRgba = (hex, alpha) => {
-  if (!hex) return `rgba(148, 163, 184, ${alpha})`;
+  if (!hex || typeof hex !== "string" || !hex.startsWith("#")) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
   const sanitized = hex.replace("#", "");
   const normalized =
     sanitized.length === 3
@@ -23,39 +28,33 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-// Rarity presets
+const CHEST_ART = {
+  Common: commonChest,
+  Rare: rareChest,
+  Epic: epicChest,
+  Legendary: legendaryChest,
+};
+
 const RARITIES = [
   {
     key: "Common",
     weight: 0.52,
-    xp: [8, 16],
     gold: [4, 12],
-    colors: ["#94a3b8", "#64748b"],
-    ring: ["#94a3b8", "#64748b"],
   },
   {
     key: "Rare",
     weight: 0.3,
-    xp: [14, 26],
     gold: [8, 18],
-    colors: ["#60a5fa", "#38bdf8"],
-    ring: ["#60a5fa", "#38bdf8"],
   },
   {
     key: "Epic",
     weight: 0.14,
-    xp: [22, 40],
     gold: [14, 28],
-    colors: ["#a78bfa", "#f472b6"],
-    ring: ["#a78bfa", "#f472b6"],
   },
   {
     key: "Legendary",
     weight: 0.04,
-    xp: [36, 64],
     gold: [24, 48],
-    colors: ["#f59e0b", "#f43f5e"],
-    ring: ["#f59e0b", "#f43f5e"],
   },
 ];
 
@@ -93,9 +92,7 @@ export const PLACEHOLDER_CHESTS = Array.from({ length: 12 }, (_, i) => {
   return {
     id: i,
     rarity: r.key,
-    xp: r.xp,
     gold: r.gold,
-    colors: r.colors,
   };
 });
 
@@ -103,14 +100,6 @@ const rand = ([min, max]) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const computePotential = (list = []) => {
   if (!list.length) return null;
-  const xpMin = list.reduce(
-    (acc, ch) => acc + (Array.isArray(ch.xp) ? ch.xp[0] ?? 0 : 0),
-    0
-  );
-  const xpMax = list.reduce(
-    (acc, ch) => acc + (Array.isArray(ch.xp) ? ch.xp[1] ?? ch.xp[0] ?? 0 : 0),
-    0
-  );
   const goldMin = list.reduce(
     (acc, ch) => acc + (Array.isArray(ch.gold) ? ch.gold[0] ?? 0 : 0),
     0
@@ -119,10 +108,7 @@ const computePotential = (list = []) => {
     (acc, ch) => acc + (Array.isArray(ch.gold) ? ch.gold[1] ?? ch.gold[0] ?? 0 : 0),
     0
   );
-  return {
-    xp: [xpMin, xpMax],
-    gold: [goldMin, goldMax],
-  };
+  return [goldMin, goldMax];
 };
 
 const formatRange = (range) => {
@@ -131,266 +117,131 @@ const formatRange = (range) => {
   return min === max ? `${min}` : `${min} – ${max}`;
 };
 
-function ChestGraphic({ open, colors }) {
-  return (
-    <svg
-      width="60"
-      height="60"
-      viewBox="0 0 80 80"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={colors[0]} />
-          <stop offset="100%" stopColor={colors[1]} />
-        </linearGradient>
-      </defs>
-      <g stroke="#000" strokeOpacity="0.2" strokeWidth="2">
-        <motion.rect
-          x="8"
-          y="28"
-          width="64"
-          height="40"
-          rx="6"
-          fill="url(#base)"
-        />
-        <motion.rect
-          x="8"
-          y="12"
-          width="64"
-          height="20"
-          rx="6"
-          fill="url(#base)"
-          animate={{ rotateX: open ? -120 : 0 }}
-          origin="40px 28px"
-        />
-        <rect x="34" y="42" width="12" height="16" rx="2" fill="#000" fillOpacity="0.2" />
-      </g>
-    </svg>
-  );
-}
-
 function ChestCard({ chest, c, t, onOpen }) {
-  const [open, setOpen] = useState(false);
-  const [reward, setReward] = useState(null);
-
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const rarity = chest.rarity || "Common";
-  const rarityConfig = useMemo(
-    () => RARITIES.find((r) => r.key === rarity) || RARITIES[0],
-    [rarity]
-  );
-  const accentA = chest.colors?.[0] || rarityConfig.colors?.[0] || c.sky;
-  const accentB = chest.colors?.[1] || rarityConfig.colors?.[1] || c.emerald;
-  const rarityDetail = RARITY_DETAILS[rarity] || RARITY_DETAILS.Common;
+  const icon = CHEST_ART[rarity] || CHEST_ART.Common;
+  const detail = RARITY_DETAILS[rarity] || RARITY_DETAILS.Common;
+  const goldRange = chest.gold ? formatRange(chest.gold) : "?";
 
-  const handleOpen = () => {
-    if (open) return;
-    const r = onOpen(chest);
-    if (r) {
-      setReward(r);
-      setOpen(true);
-      setTimeout(() => {
-        setOpen(false);
-        setReward(null);
-      }, 2000);
+  const showDetails = () => setDetailsOpen(true);
+  const hideDetails = (event) => {
+    if (event && event.currentTarget.contains(event.relatedTarget)) {
+      return;
+    }
+    setDetailsOpen(false);
+  };
+
+  const handleCardClick = () => {
+    if (!detailsOpen) {
+      setDetailsOpen(true);
     }
   };
 
-  const xpRange = chest.xp ? `${chest.xp[0]} – ${chest.xp[1]}` : "?";
-  const goldRange = chest.gold ? `${chest.gold[0]} – ${chest.gold[1]}` : "?";
+  const handleOpen = (event) => {
+    event.stopPropagation();
+    const reward = onOpen(chest);
+    if (reward) {
+      setDetailsOpen(false);
+    }
+  };
 
   return (
     <motion.div
-      className="group relative h-full rounded-3xl p-[1px]"
+      className="group relative overflow-hidden rounded-2xl border"
       style={{
-        background: `linear-gradient(135deg, ${accentA}, ${accentB})`,
+        background: t === "light" ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.55)",
+        border: `1px solid ${c.surfaceBorder}`,
+        boxShadow: shadow(
+          t,
+          "0 16px 32px rgba(15,23,42,0.08)",
+          "0 18px 40px rgba(6,8,18,0.48)"
+        ),
+        color: c.text,
       }}
-      whileHover={{ scale: 1.03, rotateX: 0, rotateY: 0 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 280, damping: 24 }}
+      whileHover={{ y: -2 }}
+      onMouseEnter={showDetails}
+      onMouseLeave={() => setDetailsOpen(false)}
+      onFocus={showDetails}
+      onBlur={hideDetails}
+      onClick={handleCardClick}
     >
+      <div className="relative flex flex-col items-center gap-3 px-4 py-5 text-center">
+        <div
+          className="flex h-16 w-16 items-center justify-center rounded-xl border"
+          style={{
+            background: t === "light" ? "rgba(255,255,255,0.7)" : "rgba(15,23,42,0.45)",
+            border: `1px solid ${c.surfaceBorder}`,
+          }}
+        >
+          <img
+            src={icon}
+            alt={`${rarity} chest`}
+            className="h-14 w-14 object-contain drop-shadow-sm"
+            draggable={false}
+          />
+        </div>
+        <div
+          className="text-xs font-semibold uppercase tracking-wide"
+          style={{ color: hexToRgba(c.text, 0.7) }}
+        >
+          {rarity} chest
+        </div>
+        <div
+          className="text-sm font-medium"
+          style={{ color: hexToRgba(c.text, 0.82) }}
+        >
+          {detail.headline}
+        </div>
+      </div>
+
       <div
-        className="absolute inset-[-40%] rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-80"
+        className={`absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center transition duration-200 ${
+          detailsOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
         style={{
-          background: `radial-gradient(circle at 50% 10%, ${hexToRgba(
-            accentA,
-            0.45
-          )}, transparent 65%)`,
-        }}
-      />
-      <div
-        className="relative flex h-full flex-col items-center gap-3 rounded-[26px] px-4 pb-4 pt-5 text-center"
-        style={{
-          background: `linear-gradient(140deg, ${hexToRgba(
-            accentA,
-            0.16
-          )}, ${hexToRgba(accentB, 0.08)})`,
-          border: `1px solid ${hexToRgba(accentB, 0.35)}`,
-          boxShadow: shadow(
-            t,
-            "0 16px 42px rgba(15,23,42,0.15),0 4px 12px rgba(15,23,42,0.06)",
-            "0 18px 52px rgba(8,11,24,0.52),0 6px 18px rgba(8,11,24,0.4)"
-          ),
-          color: c.text,
+          background:
+            t === "light"
+              ? "linear-gradient(140deg, rgba(255,255,255,0.92), rgba(226,232,240,0.78))"
+              : "linear-gradient(140deg, rgba(15,23,42,0.82), rgba(15,23,42,0.74))",
+          color: t === "light" ? "#0f172a" : "#f8fafc",
+          backdropFilter: "blur(10px)",
         }}
       >
-        <div
-          className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide"
-          style={{
-            background: hexToRgba(accentA, 0.18),
-            border: `1px solid ${hexToRgba(accentA, 0.35)}`,
-            color: "#0f172a",
-          }}
-        >
-          <Sparkles className="h-3.5 w-3.5" /> {rarity}
-        </div>
-
-        <div className="mt-6 flex flex-col items-center gap-2">
-          <motion.div
-            className="relative grid h-24 w-24 place-items-center rounded-2xl"
-            style={{
-              background: `linear-gradient(145deg, ${hexToRgba(
-                accentA,
-                0.22
-              )}, ${hexToRgba(accentB, 0.14)})`,
-              border: `1px solid ${hexToRgba(accentB, 0.4)}`,
-              boxShadow: shadow(
-                t,
-                "0 12px 28px rgba(15,23,42,0.18),0 4px 10px rgba(15,23,42,0.08)",
-                "0 16px 36px rgba(8,11,24,0.5),0 6px 14px rgba(8,11,24,0.42)"
-              ),
-            }}
-            animate={{ y: open ? -6 : 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 18 }}
-          >
-            <ChestGraphic open={open} colors={[accentA, accentB]} />
-            <motion.div
-              className="pointer-events-none absolute inset-0 rounded-2xl"
-              style={{
-                background: `radial-gradient(circle at 50% 0%, ${hexToRgba(
-                  accentB,
-                  0.35
-                )}, transparent 70%)`,
-              }}
-              animate={{ opacity: open ? 0.75 : 0.4 }}
-            />
-          </motion.div>
-
-          <div className="space-y-1">
-            <div className="text-sm font-semibold" style={{ color: c.text }}>
-              {rarityDetail.headline}
-            </div>
-            <div
-              className="text-[11px] leading-tight"
-              style={{ color: hexToRgba(c.text, 0.75) }}
-            >
-              {rarityDetail.helper}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-2 grid w-full grid-cols-2 gap-2 text-left">
-          <div
-            className="rounded-2xl px-3 py-2"
-            style={{
-              background: hexToRgba("#0f172a", t === "light" ? 0.06 : 0.28),
-              border: `1px solid ${hexToRgba(accentA, 0.35)}`,
-            }}
-          >
-            <div className="text-[10px] uppercase tracking-wide" style={{ color: hexToRgba(c.text, 0.65) }}>
-              XP Range
-            </div>
-            <div className="mt-1 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: c.text }}>
-              <Zap className="h-4 w-4" />
-              {xpRange}
-            </div>
-          </div>
-          <div
-            className="rounded-2xl px-3 py-2"
-            style={{
-              background: hexToRgba("#0f172a", t === "light" ? 0.06 : 0.28),
-              border: `1px solid ${hexToRgba(accentB, 0.35)}`,
-            }}
-          >
-            <div className="text-[10px] uppercase tracking-wide" style={{ color: hexToRgba(c.text, 0.65) }}>
-              Gold Range
-            </div>
-            <div className="mt-1 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: c.text }}>
-              <Coins className="h-4 w-4" />
-              {goldRange}g
-            </div>
-          </div>
-        </div>
-
+        <div className="text-[11px] uppercase tracking-wide opacity-80">Gold stash</div>
+        <div className="text-lg font-semibold tabular-nums">{goldRange}g</div>
+        <div className="text-xs leading-snug opacity-80">{detail.helper}</div>
         <motion.button
           onClick={handleOpen}
-          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold"
+          className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
           style={{
-            background: `linear-gradient(120deg, ${accentA}, ${accentB})`,
+            background: `linear-gradient(120deg, ${c.sky}, ${c.emerald})`,
             color: "#0f172a",
+            border: `1px solid ${c.surfaceBorder}`,
             boxShadow: shadow(
               t,
-              "0 10px 24px rgba(148, 163, 184, 0.26)",
-              "0 10px 24px rgba(14, 23, 42, 0.5)"
+              "0 10px 24px rgba(148, 163, 184, 0.18)",
+              "0 12px 28px rgba(6, 8, 18, 0.45)"
             ),
           }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.96 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.95 }}
         >
-          <Sparkles className="h-4 w-4" /> Open Chest
+          <Sparkles className="h-4 w-4" />
+          Open chest
         </motion.button>
-
-        <AnimatePresence>
-          {reward && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 px-4"
-              style={{
-                background: `linear-gradient(140deg, ${hexToRgba(
-                  accentA,
-                  0.9
-                )}, ${hexToRgba(accentB, 0.9)})`,
-                color: "#0f172a",
-              }}
-            >
-              <div className="text-xs font-semibold uppercase tracking-wider opacity-80">
-                Loot revealed
-              </div>
-              <div className="grid w-full grid-cols-2 gap-2 text-sm font-semibold">
-                <div className="rounded-2xl bg-white/20 px-3 py-2">
-                  <div className="text-[11px] uppercase tracking-wide opacity-75">
-                    XP
-                  </div>
-                  <div className="mt-1 inline-flex items-center gap-1 text-base">
-                    <Zap className="h-4 w-4" /> {reward.xp}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-white/20 px-3 py-2">
-                  <div className="text-[11px] uppercase tracking-wide opacity-75">
-                    Gold
-                  </div>
-                  <div className="mt-1 inline-flex items-center gap-1 text-base">
-                    <Coins className="h-4 w-4" /> {reward.gold}g
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </motion.div>
   );
 }
 
-export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChests, effects = [] }) {
+export default function Rewards({ c, eff, setGold, chests, setChests, effects = [] }) {
   const [filter, setFilter] = useState("All");
   const [openAllSummary, setOpenAllSummary] = useState(null);
   const [openResult, setOpenResult] = useState(null);
 
-  const rarityKeys = ["All", ...RARITIES.map((r) => r.key)];
+  const rarityKeys = useMemo(() => ["All", ...RARITIES.map((r) => r.key)], []);
+
   const rarityCounts = useMemo(() => {
     const counts = Object.fromEntries(rarityKeys.map((k) => [k, 0]));
     for (const ch of chests) {
@@ -398,7 +249,7 @@ export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChes
       counts["All"] = (counts["All"] || 0) + 1;
     }
     return counts;
-  }, [chests]);
+  }, [chests, rarityKeys]);
 
   const visibleChests = useMemo(
     () => chests.filter((ch) => filter === "All" || (ch.rarity || "Common") === filter),
@@ -406,10 +257,7 @@ export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChes
   );
 
   const overallPotential = useMemo(() => computePotential(chests), [chests]);
-  const filteredPotential = useMemo(
-    () => computePotential(visibleChests),
-    [visibleChests]
-  );
+  const filteredPotential = useMemo(() => computePotential(visibleChests), [visibleChests]);
 
   const goldMultiplier = useMemo(
     () => (effects.some((e) => e.id === 2) ? 2 : 1),
@@ -417,160 +265,166 @@ export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChes
   );
 
   const openChest = (chest) => {
-    const xp = rand(chest.xp);
-    const g = Math.round(rand(chest.gold) * goldMultiplier);
-    setGold((v) => v + g);
-    gainXp?.(xp);
+    const base = rand(chest.gold);
+    const totalGold = Math.round(base * goldMultiplier);
+    setGold((v) => v + totalGold);
     setChests((prev) => prev.filter((cst) => cst.id !== chest.id));
-    setOpenResult({ xp, gold: g });
+    setOpenResult({ gold: totalGold });
     setTimeout(() => setOpenResult(null), 1600);
-    return { xp, gold: g };
+    return { gold: totalGold };
   };
 
   const openAll = () => {
     if (!chests.length) return;
-    let totalXp = 0;
     let totalGold = 0;
     for (const ch of chests) {
-      totalXp += rand(ch.xp);
       totalGold += Math.round(rand(ch.gold) * goldMultiplier);
     }
     setGold((v) => v + totalGold);
-    gainXp?.(totalXp);
     const opened = chests.length;
     setChests([]);
-    setOpenAllSummary({ xp: totalXp, gold: totalGold, opened });
+    setOpenAllSummary({ gold: totalGold, opened });
   };
+
+  const viewRange = filteredPotential ? `${formatRange(filteredPotential)}g` : "0g";
+  const vaultRange = overallPotential ? `${formatRange(overallPotential)}g` : null;
 
   return (
     <div className="space-y-5">
       <motion.section
         className="relative overflow-hidden rounded-3xl px-5 py-6"
         style={{
-          background: `linear-gradient(135deg, ${hexToRgba(c.sky, 0.28)}, ${hexToRgba(
+          background: `linear-gradient(135deg, ${hexToRgba(c.sky, 0.2)}, ${hexToRgba(
             c.emerald,
             0.18
           )})`,
           border: `1px solid ${c.surfaceBorder}`,
           boxShadow: shadow(
             eff,
-            "0 20px 48px rgba(15,23,42,0.18),0 8px 24px rgba(15,23,42,0.08)",
-            "0 24px 60px rgba(6,8,18,0.55),0 12px 32px rgba(6,8,18,0.42)"
+            "0 18px 38px rgba(15,23,42,0.14),0 8px 20px rgba(15,23,42,0.08)",
+            "0 22px 52px rgba(6,8,18,0.55),0 10px 28px rgba(6,8,18,0.42)"
           ),
           color: eff === "light" ? "#0f172a" : c.text,
+          backdropFilter: "blur(12px)",
         }}
       >
-        <div
-          className="pointer-events-none absolute -left-10 -top-12 h-40 w-40 rounded-full opacity-60 blur-3xl"
-          style={{ background: hexToRgba(c.sky, 0.35) }}
-        />
-        <div
-          className="pointer-events-none absolute -right-6 bottom-0 h-32 w-32 rounded-full opacity-40 blur-3xl"
-          style={{ background: hexToRgba(c.emerald, 0.3) }}
-        />
         <div className="relative flex flex-col gap-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div
-                className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[12px] font-semibold"
+                className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide"
                 style={{
-                  background: eff === "light" ? "rgba(255,255,255,0.65)" : "rgba(15,23,42,0.28)",
-                  border: `1px solid ${hexToRgba(c.sky, 0.45)}`,
+                  background:
+                    eff === "light" ? "rgba(255,255,255,0.65)" : "rgba(15,23,42,0.32)",
+                  border: `1px solid ${hexToRgba(c.sky, 0.4)}`,
                   color: eff === "light" ? "#0f172a" : c.text,
                 }}
               >
                 <Gift className="h-4 w-4" />
-                {chests.length} chest{chests.length === 1 ? "" : "s"} in vault
+                Treasure vault
               </div>
-              <div className="space-y-1 text-left">
-                <div className="text-lg font-semibold">Treasure vault</div>
-                <div
-                  className="text-sm leading-snug"
-                  style={{
-                    color: eff === "light" ? "rgba(15,23,42,0.68)" : "rgba(226,232,240,0.78)",
-                  }}
-                >
-                  Curate your next motivation burst by exploring chest rarities and their reward arcs.
-                </div>
+              <div
+                className="text-2xl font-semibold leading-tight"
+                style={{ color: eff === "light" ? "#0f172a" : c.text }}
+              >
+                Streamline your loot stash.
               </div>
+              <p
+                className="text-sm leading-snug"
+                style={{
+                  color:
+                    eff === "light"
+                      ? "rgba(15,23,42,0.66)"
+                      : "rgba(226,232,240,0.76)",
+                }}
+              >
+                Track how much gold is tucked away and open chests when you're ready for a boost.
+              </p>
             </div>
             <motion.button
               onClick={openAll}
               disabled={!chests.length}
-              className="relative inline-flex items-center gap-2 rounded-2xl px-5 py-2 text-sm font-semibold"
+              className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold"
               style={{
                 background: chests.length
                   ? `linear-gradient(120deg, ${c.sky}, ${c.emerald})`
-                  : hexToRgba("#0f172a", eff === "light" ? 0.08 : 0.35),
-                color: chests.length ? "#0f172a" : hexToRgba(c.text, 0.5),
-                border: `1px solid ${
-                  chests.length
-                    ? hexToRgba(c.emerald, 0.5)
-                    : hexToRgba("#0f172a", eff === "light" ? 0.12 : 0.4)
-                }`,
+                  : eff === "light"
+                  ? "rgba(255,255,255,0.45)"
+                  : "rgba(15,23,42,0.45)",
+                color: chests.length ? "#0f172a" : hexToRgba(c.text, 0.6),
+                border: `1px solid ${chests.length ? hexToRgba(c.emerald, 0.45) : c.surfaceBorder}`,
                 cursor: chests.length ? "pointer" : "not-allowed",
                 boxShadow: chests.length
                   ? shadow(
                       eff,
-                      "0 14px 32px rgba(15,23,42,0.22)",
-                      "0 16px 40px rgba(6,8,18,0.6)"
+                      "0 14px 30px rgba(15,23,42,0.18)",
+                      "0 16px 38px rgba(6,8,18,0.58)"
                     )
                   : "none",
               }}
               whileHover={chests.length ? { scale: 1.02 } : undefined}
-              whileTap={chests.length ? { scale: 0.97 } : undefined}
+              whileTap={chests.length ? { scale: 0.96 } : undefined}
             >
-              <Sparkles className="h-4 w-4" /> Open All
+              <Sparkles className="h-4 w-4" />
+              Open all
             </motion.button>
           </div>
 
-          {filteredPotential && (
-            <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div
+              className="rounded-2xl px-4 py-3"
+              style={{
+                background: eff === "light" ? "rgba(255,255,255,0.58)" : "rgba(15,23,42,0.32)",
+                border: `1px solid ${hexToRgba(c.sky, 0.35)}`,
+              }}
+            >
               <div
-                className="rounded-2xl px-3 py-3"
-                style={{
-                  background: eff === "light" ? "rgba(255,255,255,0.5)" : "rgba(15,23,42,0.32)",
-                  border: `1px solid ${hexToRgba(c.sky, 0.35)}`,
-                }}
+                className="text-[11px] uppercase tracking-wide"
+                style={{ color: eff === "light" ? "rgba(15,23,42,0.6)" : "rgba(226,232,240,0.7)" }}
               >
-                <div
-                  className="text-[11px] uppercase tracking-wide"
-                  style={{ color: eff === "light" ? "rgba(15,23,42,0.62)" : "rgba(226,232,240,0.74)" }}
-                >
-                  Potential XP ({filter})
-                </div>
-                <div className="mt-1 inline-flex items-center gap-2 text-base font-semibold">
-                  <Zap className="h-4 w-4" />
-                  {formatRange(filteredPotential.xp)}
-                </div>
+                In view ({filter})
               </div>
-              <div
-                className="rounded-2xl px-3 py-3"
-                style={{
-                  background: eff === "light" ? "rgba(255,255,255,0.42)" : "rgba(15,23,42,0.3)",
-                  border: `1px solid ${hexToRgba(c.emerald, 0.35)}`,
-                }}
-              >
-                <div
-                  className="text-[11px] uppercase tracking-wide"
-                  style={{ color: eff === "light" ? "rgba(15,23,42,0.62)" : "rgba(226,232,240,0.74)" }}
+              <div className="mt-1 flex items-baseline justify-between">
+                <span
+                  className="text-2xl font-semibold tabular-nums"
+                  style={{ color: eff === "light" ? "#0f172a" : c.text }}
                 >
-                  Potential Gold ({filter})
-                </div>
-                <div className="mt-1 inline-flex items-center gap-2 text-base font-semibold">
-                  <Coins className="h-4 w-4" />
-                  {formatRange(filteredPotential.gold)}g
-                </div>
+                  {visibleChests.length}
+                </span>
+                <span
+                  className="text-xs uppercase tracking-wide"
+                  style={{ color: eff === "light" ? "rgba(15,23,42,0.55)" : "rgba(226,232,240,0.65)" }}
+                >
+                  chests
+                </span>
               </div>
             </div>
-          )}
+            <div
+              className="rounded-2xl px-4 py-3"
+              style={{
+                background: eff === "light" ? "rgba(255,255,255,0.5)" : "rgba(15,23,42,0.28)",
+                border: `1px solid ${hexToRgba(c.emerald, 0.35)}`,
+              }}
+            >
+              <div
+                className="text-[11px] uppercase tracking-wide"
+                style={{ color: eff === "light" ? "rgba(15,23,42,0.6)" : "rgba(226,232,240,0.7)" }}
+              >
+                Gold potential
+              </div>
+              <div className="mt-1 inline-flex items-center gap-2 text-base font-semibold">
+                <Coins className="h-4 w-4" /> {viewRange}
+              </div>
+            </div>
+          </div>
 
-          {overallPotential && (
+          {vaultRange && (
             <div
               className="text-[11px]"
               style={{ color: eff === "light" ? "rgba(15,23,42,0.6)" : "rgba(226,232,240,0.7)" }}
             >
-              Entire vault holds {formatRange(overallPotential.xp)} XP and {formatRange(overallPotential.gold)}g across {chests.length} chest{chests.length === 1 ? "" : "s"}.
+              Vault holds {vaultRange} across {chests.length} chest
+              {chests.length === 1 ? "" : "s"}.
             </div>
           )}
         </div>
@@ -652,7 +506,10 @@ export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChes
         {openAllSummary && (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            style={{ background: eff === "light" ? "rgba(0,0,0,.25)" : "rgba(0,0,0,.55)", backdropFilter: "blur(2px)" }}
+            style={{
+              background: eff === "light" ? "rgba(0,0,0,.25)" : "rgba(0,0,0,.55)",
+              backdropFilter: "blur(2px)",
+            }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -661,21 +518,37 @@ export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChes
             aria-modal="true"
           >
             <motion.div
-              className="w-full max-w-[320px] rounded-3xl p-5 space-y-3 text-center"
-              style={{ background: c.surface, border: `1px solid ${c.surfaceBorder}`, boxShadow: shadow(eff, "0 18px 48px rgba(0,0,0,.14),0 6px 18px rgba(0,0,0,.08)", "0 22px 60px rgba(0,0,0,.48),0 10px 24px rgba(0,0,0,.32)") }}
+              className="w-full max-w-[320px] space-y-3 rounded-3xl p-5 text-center"
+              style={{
+                background: c.surface,
+                border: `1px solid ${c.surfaceBorder}`,
+                boxShadow: shadow(
+                  eff,
+                  "0 18px 48px rgba(0,0,0,.14),0 6px 18px rgba(0,0,0,.08)",
+                  "0 22px 60px rgba(0,0,0,.48),0 10px 24px rgba(0,0,0,.32)"
+                ),
+              }}
               initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.92, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-sm font-semibold" style={{ color: c.text }}>Opened {openAllSummary.opened} chests</div>
-              <div className="flex items-center justify-center gap-3 text-sm font-semibold" style={{ color: c.text }}>
-                <span className="inline-flex items-center gap-1"><Zap className="w-4 h-4" /> {openAllSummary.xp}</span>
-                <span className="inline-flex items-center gap-1"><Coins className="w-4 h-4" /> {openAllSummary.gold}g</span>
+              <div className="text-sm font-semibold" style={{ color: c.text }}>
+                Opened {openAllSummary.opened} chest{openAllSummary.opened === 1 ? "" : "s"}
+              </div>
+              <div
+                className="inline-flex items-center justify-center gap-2 text-base font-semibold"
+                style={{ color: c.text }}
+              >
+                <Coins className="h-4 w-4" /> {openAllSummary.gold}g
               </div>
               <button
-                className="px-3 py-2 rounded-lg text-sm font-semibold"
-                style={{ background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`, border: `1px solid ${c.surfaceBorder}`, color: "#0f172a" }}
+                className="rounded-lg px-3 py-2 text-sm font-semibold"
+                style={{
+                  background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`,
+                  border: `1px solid ${c.surfaceBorder}`,
+                  color: "#0f172a",
+                }}
                 onClick={() => setOpenAllSummary(null)}
               >
                 Nice!
@@ -694,7 +567,7 @@ export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChes
             exit={{ y: 40, opacity: 0 }}
           >
             <div
-              className="rounded-3xl px-5 py-4 text-sm font-semibold text-center backdrop-blur"
+              className="rounded-3xl px-5 py-4 text-center text-sm font-semibold backdrop-blur"
               style={{
                 background: `linear-gradient(135deg, ${hexToRgba(c.sky, 0.24)}, ${hexToRgba(c.emerald, 0.2)})`,
                 border: `1px solid ${c.surfaceBorder}`,
@@ -708,17 +581,17 @@ export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChes
             >
               <div
                 className="mb-1 text-[11px] uppercase tracking-wide"
-                style={{ color: eff === "light" ? "rgba(15,23,42,0.68)" : "rgba(226,232,240,0.78)" }}
+                style={{
+                  color:
+                    eff === "light"
+                      ? "rgba(15,23,42,0.68)"
+                      : "rgba(226,232,240,0.78)",
+                }}
               >
                 Fresh loot
               </div>
-              <div className="flex items-center justify-center gap-4">
-                <span className="inline-flex items-center gap-1">
-                  <Zap className="w-4 h-4" /> {openResult.xp}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Coins className="w-4 h-4" /> {openResult.gold}g
-                </span>
+              <div className="inline-flex items-center gap-1">
+                <Coins className="h-4 w-4" /> {openResult.gold}g
               </div>
             </div>
           </motion.div>
@@ -727,4 +600,3 @@ export default function Rewards({ c, eff, gold, setGold, gainXp, chests, setChes
     </div>
   );
 }
-
