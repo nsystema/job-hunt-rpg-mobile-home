@@ -1,5 +1,5 @@
 import 'react-native-url-polyfill/auto';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePalette, cur } from './hooks/usePalette';
 import { useTheme } from './hooks/useTheme';
 import { xpl, lvl, FOCUS_BASELINE, focusCost, computeRewards } from './gameMechanics';
-import { STATUSES } from './data';
+import { STATUSES, PLATFORMS } from './data';
 
 const buildInitialFormValues = () => ({
   company: '',
@@ -36,6 +36,46 @@ const buildInitialFormValues = () => ({
 });
 
 const TYPE_OPTIONS = ['Full', 'Easy'];
+
+const QUEST_TABS = [
+  { key: 'Daily', icon: 'calendar' },
+  { key: 'Weekly', icon: 'time' },
+  { key: 'Growth', icon: 'trending-up' },
+  { key: 'Events', icon: 'sparkles' },
+];
+
+const QUESTS = {
+  Daily: [
+    { id: 'd1', title: 'Log 3 applications', desc: 'Keep the momentum going', progress: 1, goal: 3, xp: 40, gold: 8 },
+    { id: 'd2', title: 'Network with a recruiter', desc: 'Reach out and say hi', progress: 1, goal: 1, xp: 30, gold: 6 },
+  ],
+  Weekly: [
+    { id: 'w1', title: 'Complete 10 applications', desc: 'Consistency is king', progress: 4, goal: 10, xp: 120, gold: 30 },
+    { id: 'w2', title: 'Secure 2 interviews', desc: 'Show them your skills', progress: 0, goal: 2, xp: 150, gold: 50 },
+  ],
+  Growth: [
+    { id: 'g1', title: 'Earn a new certification', desc: 'Invest in your skills', progress: 0, goal: 1, xp: 300, gold: 80 },
+  ],
+  Events: [
+    { id: 'e1', title: 'Halloween hiring spree', desc: 'Spooky season bonus', progress: 0, goal: 1, xp: 200, gold: 60 },
+  ],
+};
+
+const countUnclaimedQuests = (claimed) =>
+  Object.values(QUESTS)
+    .flat()
+    .filter((quest) => quest.progress >= quest.goal && !claimed.has(quest.id)).length;
+
+const countUnclaimedQuestsByTab = (tabKey, claimed) =>
+  (QUESTS[tabKey] || []).filter((quest) => quest.progress >= quest.goal && !claimed.has(quest.id)).length;
+
+const BOTTOM_TABS = [
+  { key: 'Home', label: 'Home', icon: 'home' },
+  { key: 'Apps', label: 'Apps', icon: 'briefcase' },
+  { key: 'Quests', label: 'Quests', icon: 'target' },
+  { key: 'Rewards', label: 'Rewards', icon: 'gift' },
+  { key: 'Shop', label: 'Shop', icon: 'cart' },
+];
 
 const TextField = ({
   label,
@@ -174,27 +214,47 @@ const truncate = (value, limit = 70) => {
 const MIN_FOCUS_FOR_LOG = 0.25;
 
 // Application Form Modal
-const AppFormModal = ({ visible, onClose, onSubmit, colors, effects = [] }) => {
-  const [form, setForm] = useState(() => buildInitialFormValues());
+const AppFormModal = ({
+  visible,
+  onClose,
+  onSubmit,
+  colors,
+  effects = [],
+  defaults,
+  title = 'Log Application',
+  submitLabel = 'Add Application',
+}) => {
+  const initialValues = useMemo(
+    () => ({ ...buildInitialFormValues(), ...defaults }),
+    [defaults],
+  );
+  const [form, setForm] = useState(initialValues);
+
+  useEffect(() => {
+    if (visible) {
+      setForm(initialValues);
+    }
+  }, [visible, initialValues]);
 
   const setField = useCallback(
     (field) => (value) => {
       setForm((prev) => ({ ...prev, [field]: value }));
     },
-    []
+    [],
   );
-
-  const resetForm = useCallback(() => {
-    setForm(buildInitialFormValues());
-  }, []);
 
   const { company, role, type, note, cvTailored, motivation, favorite } = form;
 
   const { xp: xpReward, gold: goldReward } = useMemo(
     () => computeRewards({ type, cvTailored, motivation }, { effects }),
-    [type, cvTailored, motivation, effects]
+    [type, cvTailored, motivation, effects],
   );
   const cost = useMemo(() => focusCost(type), [type]);
+
+  const handleCancel = useCallback(() => {
+    setForm(initialValues);
+    onClose?.();
+  }, [initialValues, onClose]);
 
   const handleSubmit = useCallback(() => {
     if (!company || !role) {
@@ -202,17 +262,23 @@ const AppFormModal = ({ visible, onClose, onSubmit, colors, effects = [] }) => {
       return;
     }
 
-    const now = new Date();
-    onSubmit({ ...form, date: now.toISOString() });
-    resetForm();
-  }, [company, role, form, onSubmit, resetForm]);
+    const payload = { ...form };
+    if (!payload.date) {
+      payload.date = new Date().toISOString();
+    }
+    const result = onSubmit?.(payload);
+    if (result !== false) {
+      setForm(initialValues);
+      onClose?.();
+    }
+  }, [company, role, form, onSubmit, initialValues, onClose]);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.bg }]}>
         <View style={[styles.modalHeader, { borderBottomColor: colors.surfaceBorder }]}>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>Log Application</Text>
-          <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.chipBg }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
+          <TouchableOpacity onPress={handleCancel} style={[styles.closeButton, { backgroundColor: colors.chipBg }]}>
             <Ionicons name="close" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -278,7 +344,7 @@ const AppFormModal = ({ visible, onClose, onSubmit, colors, effects = [] }) => {
         </ScrollView>
 
         <View style={[styles.modalFooter, { borderTopColor: colors.surfaceBorder }]}>
-          <TouchableOpacity onPress={onClose} style={[styles.cancelButton, { backgroundColor: colors.chipBg }]}>
+          <TouchableOpacity onPress={handleCancel} style={[styles.cancelButton, { backgroundColor: colors.chipBg }]}>
             <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleSubmit}>
@@ -288,7 +354,7 @@ const AppFormModal = ({ visible, onClose, onSubmit, colors, effects = [] }) => {
               end={{ x: 1, y: 0 }}
               style={styles.submitButton}
             >
-              <Text style={styles.submitButtonText}>Add Application</Text>
+              <Text style={styles.submitButtonText}>{submitLabel}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -314,6 +380,16 @@ export default function App() {
   const [focus, setFocus] = useState(FOCUS_BASELINE);
   const [applications, setApplications] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [activeTab, setActiveTab] = useState('Home');
+  const [appsQuery, setAppsQuery] = useState('');
+  const [filterStatuses, setFilterStatuses] = useState([]);
+  const [filterPlatforms, setFilterPlatforms] = useState([]);
+  const [sortKey, setSortKey] = useState('Newest');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [sortModalVisible, setSortModalVisible] = useState(false);
+  const [editingApp, setEditingApp] = useState(null);
+  const [questTab, setQuestTab] = useState('Daily');
+  const [claimedQuests, setClaimedQuests] = useState(() => new Set());
 
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25;
@@ -330,15 +406,19 @@ export default function App() {
 
   const addApplication = useCallback(
     (fields) => {
-      const cost = focusCost(fields.type);
+      const payload = { ...fields };
+      const cost = focusCost(payload.type);
       if (focus < cost) {
         Alert.alert('Out of Focus', 'You are out of focus! Recharge to log more applications.');
         return false;
       }
+      if (!payload.date) {
+        payload.date = new Date().toISOString();
+      }
 
       const id = Math.random().toString(36).slice(2, 9);
-      const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(fields, { effects: activeEffects });
-      const app = { id, ...fields, qs };
+      const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(payload, { effects: activeEffects });
+      const app = { id, ...payload, qs, au };
 
       setApplications((list) => [app, ...list]);
       setApps((value) => value + 1);
@@ -426,6 +506,120 @@ export default function App() {
     []
   );
 
+  const filteredApps = useMemo(() => {
+    let list = [...applications];
+    const query = appsQuery.trim().toLowerCase();
+    if (query) {
+      list = list.filter((app) =>
+        `${app.company} ${app.role} ${app.platform}`.toLowerCase().includes(query),
+      );
+    }
+    if (filterStatuses.length) {
+      list = list.filter((app) => filterStatuses.includes(app.status));
+    }
+    if (filterPlatforms.length) {
+      list = list.filter((app) => filterPlatforms.includes(app.platform));
+    }
+    switch (sortKey) {
+      case 'Oldest':
+        list.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+        break;
+      case 'Company A-Z':
+        list.sort((a, b) => {
+          const compare = a.company.localeCompare(b.company);
+          if (compare !== 0) {
+            return compare;
+          }
+          return new Date(b.date || 0) - new Date(a.date || 0);
+        });
+        break;
+      case 'Favorites first':
+        list.sort(
+          (a, b) =>
+            (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) ||
+            new Date(b.date || 0) - new Date(a.date || 0),
+        );
+        break;
+      default:
+        list.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    }
+    return list;
+  }, [applications, appsQuery, filterStatuses, filterPlatforms, sortKey]);
+
+  const toggleFilterStatus = useCallback((value) => {
+    setFilterStatuses((list) =>
+      list.includes(value) ? list.filter((item) => item !== value) : [...list, value],
+    );
+  }, []);
+
+  const toggleFilterPlatform = useCallback((value) => {
+    setFilterPlatforms((list) =>
+      list.includes(value) ? list.filter((item) => item !== value) : [...list, value],
+    );
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setFilterStatuses([]);
+    setFilterPlatforms([]);
+  }, []);
+
+  const handleDeleteApp = useCallback((id) => {
+    setApplications((list) => {
+      const target = list.find((item) => item.id === id);
+      if (!target) {
+        return list;
+      }
+      setApps((value) => Math.max(0, value - 1));
+      setWeighted((value) => Math.max(0, value - (target.au || 0)));
+      return list.filter((item) => item.id !== id);
+    });
+  }, []);
+
+  const handleEditSubmit = useCallback(
+    (fields) => {
+      if (!editingApp) {
+        return false;
+      }
+      setApplications((list) =>
+        list.map((app) => {
+          if (app.id !== editingApp.id) {
+            return app;
+          }
+          const next = { ...app, ...fields };
+          const { qs, au } = computeRewards(next, { effects: activeEffects });
+          setWeighted((value) => value - (app.au || 0) + au);
+          return { ...next, qs, au };
+        }),
+      );
+      setEditingApp(null);
+      return true;
+    },
+    [editingApp, activeEffects],
+  );
+
+  const quests = useMemo(() => QUESTS[questTab] || [], [questTab]);
+
+  const unclaimedQuestsTotal = useMemo(() => countUnclaimedQuests(claimedQuests), [claimedQuests]);
+
+  const handleClaimQuest = useCallback(
+    (quest) => {
+      if (quest.progress < quest.goal) {
+        return;
+      }
+      setClaimedQuests((prev) => {
+        if (prev.has(quest.id)) {
+          return prev;
+        }
+        const next = new Set(prev);
+        next.add(quest.id);
+        gainXp(quest.xp);
+        setGold((value) => value + quest.gold);
+        return next;
+      });
+    },
+    [gainXp, setGold],
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar barStyle={eff === 'light' ? 'dark-content' : 'light-content'} backgroundColor={colors.bg} />
@@ -455,7 +649,12 @@ export default function App() {
         </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {activeTab === 'Home' && (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Level Panel */}
         <Panel colors={colors}>
           <View style={styles.levelHeader}>
@@ -659,19 +858,596 @@ export default function App() {
         <Text style={styles.footerText}>
           Mobile build. Use "Log application" to open the form.
         </Text>
-      </ScrollView>
+        </ScrollView>
+      )}
+
+      {activeTab === 'Apps' && (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.appsToolbar}>
+            <View
+              style={[
+                styles.searchInput,
+                { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+              ]}
+            >
+              <Ionicons name="search" size={16} color="rgba(148,163,184,.95)" />
+              <TextInput
+                value={appsQuery}
+                onChangeText={setAppsQuery}
+                placeholder="Search applications"
+                placeholderTextColor="rgba(148,163,184,.65)"
+                style={[styles.searchInputField, { color: colors.text }]}
+              />
+            </View>
+            <IconButton
+              onPress={() => setFilterModalVisible(true)}
+              icon="filter"
+              colors={colors}
+              accessibilityLabel="Filter applications"
+            />
+            <IconButton
+              onPress={() => setSortModalVisible(true)}
+              icon="swap-vertical"
+              colors={colors}
+              accessibilityLabel="Sort applications"
+            />
+          </View>
+
+          {filteredApps.length ? (
+            filteredApps.map((app) => {
+              const extras = [
+                { key: 'cv', icon: 'document-text-outline', active: app.cvTailored },
+                { key: 'motivation', icon: 'mail-outline', active: app.motivation },
+                { key: 'favorite', icon: 'star-outline', active: app.favorite },
+              ];
+              const statusInfo = statusIcons[app.status] || {};
+              const status = statusLookup[app.status];
+              const dateLabel = formatDateTime(app.date);
+              const notePreview = truncate(app.note);
+              const handleDelete = () => {
+                Alert.alert('Delete application', 'Remove this application?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: () => handleDeleteApp(app.id) },
+                ]);
+              };
+
+              return (
+                <View
+                  key={app.id}
+                  style={[
+                    styles.appCard,
+                    { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, marginBottom: 12 },
+                  ]}
+                >
+                  <View style={styles.appHeader}>
+                    <View style={styles.appTitle}>
+                      <Text style={[styles.appCompany, { color: colors.text }]}>{app.company}</Text>
+                      <Text style={styles.appRole}>{app.role}</Text>
+                      {notePreview ? <Text style={styles.appNote}>{notePreview}</Text> : null}
+                    </View>
+                    <View style={styles.appsCardMeta}>
+                      {dateLabel ? <Text style={styles.appMetaText}>{dateLabel}</Text> : null}
+                      <View style={styles.appsCardActions}>
+                        <TouchableOpacity
+                          onPress={() => setEditingApp(app)}
+                          style={[styles.appsActionButton, { borderColor: colors.surfaceBorder }]}
+                        >
+                          <Ionicons name="create-outline" size={16} color={colors.text} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={handleDelete}
+                          style={[styles.appsActionButton, { borderColor: colors.surfaceBorder }]}
+                        >
+                          <Ionicons name="trash-outline" size={16} color={colors.rose} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.appExtras}>
+                    {extras.map((extra, extraIndex) => {
+                      const marginStyle = { marginRight: extraIndex === extras.length - 1 ? 0 : 8 };
+                      if (extra.active) {
+                        return (
+                          <LinearGradient
+                            key={extra.key}
+                            colors={[colors.sky, colors.emerald]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={[styles.appExtraIcon, marginStyle]}
+                          >
+                            <Ionicons name={extra.icon} size={14} color="#0f172a" />
+                          </LinearGradient>
+                        );
+                      }
+                      return (
+                        <View
+                          key={extra.key}
+                          style={[
+                            styles.appExtraIcon,
+                            marginStyle,
+                            { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder, borderWidth: 1 },
+                          ]}
+                        >
+                          <Ionicons name={extra.icon} size={14} color="rgba(148,163,184,.95)" />
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  <View style={[styles.appFooter, { borderTopColor: colors.surfaceBorder }]}>
+                    <View style={styles.appChips}>
+                      <View
+                        style={[
+                          styles.appChip,
+                          { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder, marginRight: 8 },
+                        ]}
+                      >
+                        {statusInfo.icon ? (
+                          <Ionicons
+                            name={statusInfo.icon}
+                            size={14}
+                            color={statusInfo.tint || colors.text}
+                            style={styles.appChipIcon}
+                          />
+                        ) : null}
+                        <Text style={[styles.appChipText, { color: colors.text }]}>{status?.key || app.status}</Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.appChip,
+                          { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
+                        ]}
+                      >
+                        <Text style={[styles.appChipText, { color: colors.text }]}>{app.platform}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <View
+              style={[
+                styles.appEmpty,
+                { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+              ]}
+            >
+              <Text style={[styles.appEmptyText, { color: colors.text }]}>No applications yet.</Text>
+              <TouchableOpacity
+                onPress={handleLogPress}
+                style={[styles.appEmptyButton, { backgroundColor: colors.sky }]}
+              >
+                <Text style={styles.appEmptyButtonText}>Log application</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {activeTab === 'Quests' && (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View
+            style={[
+              styles.questTabsRow,
+              { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+            ]}
+          >
+            {QUEST_TABS.map((tab) => {
+              const isActive = questTab === tab.key;
+              const badge = countUnclaimedQuestsByTab(tab.key, claimedQuests);
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => setQuestTab(tab.key)}
+                  style={[
+                    styles.questTabButton,
+                    {
+                      backgroundColor: isActive ? colors.sky : colors.chipBg,
+                      borderColor: colors.surfaceBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={tab.icon}
+                    size={16}
+                    color={isActive ? '#0f172a' : colors.text}
+                    style={styles.questTabIcon}
+                  />
+                  <Text style={[styles.questTabText, { color: isActive ? '#0f172a' : colors.text }]}>{tab.key}</Text>
+                  {badge > 0 && (
+                    <View style={[styles.questTabBadge, { backgroundColor: colors.rose }]} >
+                      <Text style={styles.questTabBadgeText}>{badge}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.questList}>
+            {quests.map((quest, index) => {
+              const canClaim = quest.progress >= quest.goal;
+              const claimed = claimedQuests.has(quest.id);
+              const percent = quest.goal ? Math.min(100, (quest.progress / quest.goal) * 100) : 0;
+              return (
+                <View
+                  key={quest.id}
+                  style={[
+                    styles.questCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.surfaceBorder,
+                      marginBottom: index === quests.length - 1 ? 0 : 12,
+                    },
+                  ]}
+                >
+                  <View style={styles.questCardHeader}>
+                    <View style={styles.questTitleGroup}>
+                      <Text style={[styles.questTitle, { color: colors.text }]}>{quest.title}</Text>
+                      <Text style={[styles.questDescription, { color: 'rgba(148,163,184,.95)' }]}>{quest.desc}</Text>
+                    </View>
+                    <View style={styles.questRewardMeta}>
+                      <View style={styles.questRewardPill}>
+                        <Ionicons name="flash" size={14} color={colors.sky} />
+                        <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.xp}</Text>
+                      </View>
+                      <View style={styles.questRewardPill}>
+                        <Ionicons name="cash" size={14} color={colors.emerald} />
+                        <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.gold}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.questProgressSection}>
+                    <View
+                      style={[
+                        styles.questProgressTrack,
+                        { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={[colors.sky, colors.emerald]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.questProgressFill, { width: ${Math.max(6, percent)}% }]}
+                      />
+                    </View>
+                    <Text style={[styles.questProgressLabel, { color: 'rgba(148,163,184,.95)' }]}>{quest.progress} / {quest.goal}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleClaimQuest(quest)}
+                    disabled={!canClaim || claimed}
+                    style={[
+                      styles.questClaimButton,
+                      {
+                        backgroundColor: canClaim && !claimed ? colors.sky : colors.chipBg,
+                        borderColor: colors.surfaceBorder,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.questClaimText,
+                        { color: canClaim && !claimed ? '#0f172a' : colors.text },
+                      ]}
+                    >
+                      {claimed ? 'Claimed' : canClaim ? 'Claim reward' : 'Keep going'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+            {!quests.length && (
+              <View style={[styles.questEmpty, { borderColor: colors.surfaceBorder }]}>
+                <Text style={[styles.questEmptyText, { color: colors.text }]}>
+                  No quests available yet. Check back soon.
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      )}
+
+      {activeTab === 'Quests' && (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View
+            style={[
+              styles.questTabsRow,
+              { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+            ]}
+          >
+            {QUEST_TABS.map((tab) => {
+              const isActive = questTab === tab.key;
+              const badge = countUnclaimedQuestsByTab(tab.key, claimedQuests);
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => setQuestTab(tab.key)}
+                  style={[
+                    styles.questTabButton,
+                    {
+                      backgroundColor: isActive ? colors.sky : colors.chipBg,
+                      borderColor: colors.surfaceBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={tab.icon}
+                    size={16}
+                    color={isActive ? '#0f172a' : colors.text}
+                    style={styles.questTabIcon}
+                  />
+                  <Text style={[styles.questTabText, { color: isActive ? '#0f172a' : colors.text }]}>{tab.key}</Text>
+                  {badge > 0 && (
+                    <View style={[styles.questTabBadge, { backgroundColor: colors.rose }]}>
+                      <Text style={styles.questTabBadgeText}>{badge}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.questList}>
+            {quests.map((quest, index) => {
+              const canClaim = quest.progress >= quest.goal;
+              const claimed = claimedQuests.has(quest.id);
+              const percent = quest.goal ? Math.min(100, (quest.progress / quest.goal) * 100) : 0;
+              return (
+                <View
+                  key={quest.id}
+                  style={[
+                    styles.questCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.surfaceBorder,
+                      marginBottom: index === quests.length - 1 ? 0 : 12,
+                    },
+                  ]}
+                >
+                  <View style={styles.questCardHeader}>
+                    <View style={styles.questTitleGroup}>
+                      <Text style={[styles.questTitle, { color: colors.text }]}>{quest.title}</Text>
+                      <Text style={[styles.questDescription, { color: 'rgba(148,163,184,.95)' }]}>{quest.desc}</Text>
+                    </View>
+                    <View style={styles.questRewardMeta}>
+                      <View style={styles.questRewardPill}>
+                        <Ionicons name="flash" size={14} color={colors.sky} />
+                        <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.xp}</Text>
+                      </View>
+                      <View style={styles.questRewardPill}>
+                        <Ionicons name="cash" size={14} color={colors.emerald} />
+                        <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.gold}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.questProgressSection}>
+                    <View
+                      style={[
+                        styles.questProgressTrack,
+                        { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={[colors.sky, colors.emerald]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.questProgressFill, { width: ${Math.max(6, percent)}% }]}
+                      />
+                    </View>
+                    <Text style={[styles.questProgressLabel, { color: 'rgba(148,163,184,.95)' }]}>{quest.progress} / {quest.goal}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleClaimQuest(quest)}
+                    disabled={!canClaim || claimed}
+                    style={[
+                      styles.questClaimButton,
+                      {
+                        backgroundColor: canClaim && !claimed ? colors.sky : colors.chipBg,
+                        borderColor: colors.surfaceBorder,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.questClaimText,
+                        { color: canClaim && !claimed ? '#0f172a' : colors.text },
+                      ]}
+                    >
+                      {claimed ? 'Claimed' : canClaim ? 'Claim reward' : 'Keep going'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+            {!quests.length && (
+              <View style={[styles.questEmpty, { borderColor: colors.surfaceBorder }]}>
+                <Text style={[styles.questEmptyText, { color: colors.text }]}>
+                  No quests available yet. Check back soon.
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      )}
 
       <AppFormModal
         visible={showForm}
         onClose={() => setShowForm(false)}
-        onSubmit={(fields) => {
-          if (addApplication(fields)) {
-            setShowForm(false);
-          }
-        }}
+        onSubmit={addApplication}
         colors={colors}
         effects={activeEffects}
       />
+      <AppFormModal
+        visible={!!editingApp}
+        onClose={() => setEditingApp(null)}
+        onSubmit={handleEditSubmit}
+        colors={colors}
+        effects={activeEffects}
+        defaults={editingApp || undefined}
+        title="Edit application"
+        submitLabel="Save"
+      />
+
+      <Modal visible={filterModalVisible} transparent animationType="fade">
+        <View style={styles.sheetOverlay}>
+          <View
+            style={[styles.sheetBody, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
+          >
+            <View style={styles.sheetHandle} />
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>Filters</Text>
+            <Text style={[styles.sheetSubtitle, { color: colors.text }]}>Status</Text>
+            <View style={styles.sheetOptionRow}>
+              {STATUSES.map((status) => {
+                const active = filterStatuses.includes(status.key);
+                return (
+                  <TouchableOpacity
+                    key={status.key}
+                    onPress={() => toggleFilterStatus(status.key)}
+                    style={[
+                      styles.sheetOption,
+                      { backgroundColor: active ? colors.sky : colors.chipBg, borderColor: colors.surfaceBorder },
+                    ]}
+                  >
+                    <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>{status.key}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={[styles.sheetSubtitle, { color: colors.text }]}>Platform</Text>
+            <View style={styles.sheetOptionWrap}>
+              {PLATFORMS.map((platform) => {
+                const active = filterPlatforms.includes(platform);
+                return (
+                  <TouchableOpacity
+                    key={platform}
+                    onPress={() => toggleFilterPlatform(platform)}
+                    style={[
+                      styles.sheetOption,
+                      { backgroundColor: active ? colors.emerald : colors.chipBg, borderColor: colors.surfaceBorder },
+                    ]}
+                  >
+                    <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>{platform}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={styles.sheetButtons}>
+              <TouchableOpacity
+                onPress={clearFilters}
+                style={[styles.sheetButton, { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder }]}
+              >
+                <Text style={[styles.sheetButtonText, { color: colors.text }]}>Reset</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setFilterModalVisible(false)}
+                style={[styles.sheetButton, { backgroundColor: colors.sky }]}
+              >
+                <Text style={[styles.sheetButtonText, { color: '#0f172a' }]}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={sortModalVisible} transparent animationType="fade">
+        <View style={styles.sheetOverlay}>
+          <View
+            style={[styles.sheetBody, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
+          >
+            <View style={styles.sheetHandle} />
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>Sort by</Text>
+            {['Newest', 'Oldest', 'Company A-Z', 'Favorites first'].map((option) => {
+              const active = sortKey === option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  onPress={() => {
+                    setSortKey(option);
+                    setSortModalVisible(false);
+                  }}
+                  style={[
+                    styles.sheetOption,
+                    { backgroundColor: active ? colors.sky : colors.chipBg, borderColor: colors.surfaceBorder },
+                  ]}
+                >
+                  <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>{option}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
+
+      <View
+        style={[
+          styles.bottomNav,
+          {
+            backgroundColor: eff === 'light' ? 'rgba(255,255,255,0.72)' : 'rgba(10,14,20,0.72)',
+            borderTopColor: colors.surfaceBorder,
+          },
+        ]}
+      >
+        <View style={styles.bottomNavInner}>
+          {BOTTOM_TABS.map((tab) => {
+            const isActive = activeTab === tab.key;
+            const disabled = !['Home', 'Apps', 'Quests'].includes(tab.key);
+            const badge = tab.key === 'Quests' && unclaimedQuestsTotal ? String(unclaimedQuestsTotal) : undefined;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                onPress={() => {
+                  if (!disabled) {
+                    setActiveTab(tab.key);
+                  }
+                }}
+                style={[styles.bottomNavButton, disabled && styles.bottomNavButtonDisabled]}
+                disabled={disabled}
+              >
+                <Ionicons
+                  name={tab.icon}
+                  size={22}
+                  color={isActive ? colors.text : 'rgba(148,163,184,.65)'}
+                />
+                <Text
+                  style={[
+                    styles.bottomNavLabel,
+                    { color: isActive ? colors.text : 'rgba(148,163,184,.65)' },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+                {isActive && (
+                  <LinearGradient
+                    colors={[colors.sky, colors.emerald]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.bottomNavIndicator}
+                  />
+                )}
+                {badge ? (
+                  <View style={[styles.bottomNavBadge, { backgroundColor: colors.rose }]}>
+                    <Text style={styles.bottomNavBadgeText}>{badge}</Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.bottomSpacer} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -760,6 +1536,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  scrollContent: {
+    paddingBottom: 140,
   },
   panel: {
     borderRadius: 16,
@@ -857,6 +1636,148 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
   },
+  appsToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  searchInput: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  searchInputField: {
+    flex: 1,
+    fontSize: 14,
+  },
+  questTabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  questTabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    position: 'relative',
+  },
+  questTabIcon: {
+    marginRight: 6,
+  },
+  questTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  questTabBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  questTabBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  questList: {
+    marginTop: 20,
+  },
+  questCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 18,
+  },
+  questCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  questTitleGroup: {
+    flex: 1,
+  },
+  questTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  questDescription: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  questRewardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  questRewardPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  questRewardText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  questProgressSection: {
+    marginTop: 14,
+  },
+  questProgressTrack: {
+    height: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  questProgressFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  questProgressLabel: {
+    fontSize: 11,
+    marginTop: 6,
+  },
+  questClaimButton: {
+    marginTop: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  questClaimText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  questEmpty: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  questEmptyText: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
   footerText: {
     fontSize: 11,
     color: 'rgba(148,163,184,.95)',
@@ -897,6 +1818,22 @@ const styles = StyleSheet.create({
   appMetaText: {
     fontSize: 11,
     color: 'rgba(148,163,184,.95)',
+  },
+  appsCardMeta: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  appsCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  appsActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   appExtras: {
     flexDirection: 'row',
@@ -958,6 +1895,106 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#0f172a',
+  },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheetBody: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 44,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(148,163,184,0.4)',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  sheetOptionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  sheetOptionWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  sheetOption: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  sheetOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  sheetButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  sheetButton: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  sheetButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  bottomNav: {
+    borderTopWidth: 1,
+  },
+  bottomNavInner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  bottomNavButton: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+    position: 'relative',
+  },
+  bottomNavButtonDisabled: {
+    opacity: 0.45,
+  },
+  bottomNavLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  bottomNavIndicator: {
+    marginTop: 6,
+    height: 3,
+    borderRadius: 999,
+    alignSelf: 'stretch',
+  },
+  bottomSpacer: {
+    height: Platform.OS === 'ios' ? 28 : 16,
   },
   // Modal styles
   modalContainer: {
