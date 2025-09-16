@@ -163,12 +163,12 @@ const IconButton = ({ onPress, icon, colors, accessibilityLabel }) => (
 const ProgressBar = ({ value, max, fromColor, toColor, colors }) => {
   const percentage = max ? Math.min(100, (value / max) * 100) : 0;
   return (
-    <View style={[styles.progressBarContainer, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.surfaceBorder }]}>
+    <View style={[styles.progressBarContainer, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.surfaceBorder }]}> 
       <LinearGradient
         colors={[fromColor, toColor]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={[styles.progressBarFill, { width: `${Math.max(8, percentage)}%` }]}
+        style={[styles.progressBarFill, { width: `${percentage}%` }]}
       />
     </View>
   );
@@ -1167,7 +1167,7 @@ export default function App() {
                         colors={[colors.sky, colors.emerald]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={[styles.questProgressFill, { width: `${Math.max(6, percent)}%` }]}
+                        style={[styles.questProgressFill, { width: `${percent}%` }]}
                       />
                     </View>
                     <Text style={[styles.questProgressLabel, { color: 'rgba(148,163,184,.95)' }]}>
