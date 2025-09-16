@@ -249,18 +249,6 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               Track your current boosts in real time.
             </div>
           </div>
-          {effects.length > 0 && (
-            <div
-              className="text-[11px] font-semibold px-3 py-1 rounded-full"
-              style={{
-                background: `linear-gradient(135deg, ${c.sky}, ${c.emerald})`,
-                color: "#0f172a",
-                border: "1px solid rgba(15,23,42,.08)"
-              }}
-            >
-              Don&apos;t let them expire!
-            </div>
-          )}
         </div>
         {effects.length === 0 ? (
           <Panel
@@ -294,10 +282,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
             </button>
           </Panel>
         ) : (
-          <div
-            className="flex min-w-0 w-full gap-3 overflow-x-auto pb-2"
-            style={{ WebkitOverflowScrolling: "touch" }}
-          >
+          <div className="grid w-full min-w-0 gap-3 pb-2 sm:grid-cols-2 xl:grid-cols-3">
             {effects.map((e) => {
               const Icon = e.icon || Zap;
               const remaining = e.expiresAt
@@ -310,7 +295,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               return (
                 <motion.div
                   key={e.id}
-                  className="min-w-[220px] flex-shrink-0 rounded-2xl p-4 space-y-3"
+                  className="rounded-2xl p-4 space-y-3 h-full"
                   style={{
                     background: `linear-gradient(135deg, ${c.surface}, ${c.chipBg})`,
                     border: `1px solid ${c.surfaceBorder}`,
