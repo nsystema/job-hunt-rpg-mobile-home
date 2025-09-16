@@ -1,5 +1,5 @@
 import 'react-native-url-polyfill/auto';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Defs, Rect, Path, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { usePalette, cur } from './hooks/usePalette';
 import { useTheme } from './hooks/useTheme';
 import { xpl, lvl, FOCUS_BASELINE, focusCost, computeRewards } from './gameMechanics';
@@ -76,6 +77,330 @@ const BOTTOM_TABS = [
   { key: 'Rewards', label: 'Rewards', icon: 'gift' },
   { key: 'Shop', label: 'Shop', icon: 'cart' },
 ];
+
+const hexToRgba = (hex, alpha) => {
+  if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+  const sanitized = hex.replace('#', '');
+  const normalized =
+    sanitized.length === 3
+      ? sanitized
+          .split('')
+          .map((char) => char + char)
+          .join('')
+      : sanitized.slice(0, 6);
+  const bigint = parseInt(normalized, 16);
+  if (Number.isNaN(bigint)) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const CommonChest = ({ size = 56 }) => {
+  const gradientId = useId();
+  const baseId = `${gradientId}-common-base`;
+  const topId = `${gradientId}-common-top`;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 80 80">
+      <Defs>
+        <SvgLinearGradient id={baseId} x1="16" y1="28" x2="64" y2="68">
+          <Stop offset="0" stopColor="#D7B48A" />
+          <Stop offset="1" stopColor="#B28755" />
+        </SvgLinearGradient>
+        <SvgLinearGradient id={topId} x1="16" y1="16" x2="64" y2="32">
+          <Stop offset="0" stopColor="#E4C59B" />
+          <Stop offset="1" stopColor="#C89B69" />
+        </SvgLinearGradient>
+      </Defs>
+      <Rect
+        x="14"
+        y="30"
+        width="52"
+        height="32"
+        rx="8"
+        fill={`url(#${baseId})`}
+        stroke="#4E3621"
+        strokeOpacity={0.45}
+        strokeWidth={2}
+      />
+      <Path d="M20 30V62" stroke="#4E3621" strokeOpacity={0.25} strokeWidth={2} />
+      <Path d="M60 30V62" stroke="#4E3621" strokeOpacity={0.25} strokeWidth={2} />
+      <Rect
+        x="18"
+        y="20"
+        width="44"
+        height="16"
+        rx="7"
+        fill={`url(#${topId})`}
+        stroke="#4E3621"
+        strokeOpacity={0.35}
+        strokeWidth={2}
+      />
+      <Rect
+        x="36"
+        y="40"
+        width="8"
+        height="12"
+        rx="3"
+        fill="#F7E6C8"
+        stroke="#4E3621"
+        strokeOpacity={0.6}
+        strokeWidth={2}
+      />
+    </Svg>
+  );
+};
+
+const RareChest = ({ size = 56 }) => {
+  const gradientId = useId();
+  const baseId = `${gradientId}-rare-base`;
+  const topId = `${gradientId}-rare-top`;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 80 80">
+      <Defs>
+        <SvgLinearGradient id={baseId} x1="18" y1="30" x2="62" y2="68">
+          <Stop offset="0" stopColor="#8BB7D8" />
+          <Stop offset="1" stopColor="#4D7BA6" />
+        </SvgLinearGradient>
+        <SvgLinearGradient id={topId} x1="18" y1="18" x2="62" y2="34">
+          <Stop offset="0" stopColor="#A7CCE4" />
+          <Stop offset="1" stopColor="#5C8FB6" />
+        </SvgLinearGradient>
+      </Defs>
+      <Rect
+        x="16"
+        y="30"
+        width="48"
+        height="32"
+        rx="9"
+        fill={`url(#${baseId})`}
+        stroke="#1F3A52"
+        strokeOpacity={0.45}
+        strokeWidth={2}
+      />
+      <Path d="M24 30V62" stroke="#1F3A52" strokeOpacity={0.25} strokeWidth={2} />
+      <Path d="M56 30V62" stroke="#1F3A52" strokeOpacity={0.25} strokeWidth={2} />
+      <Rect
+        x="20"
+        y="20"
+        width="40"
+        height="16"
+        rx="8"
+        fill={`url(#${topId})`}
+        stroke="#1F3A52"
+        strokeOpacity={0.35}
+        strokeWidth={2}
+      />
+      <Rect
+        x="35"
+        y="40"
+        width="10"
+        height="12"
+        rx="3"
+        fill="#E8F1F7"
+        stroke="#1F3A52"
+        strokeOpacity={0.6}
+        strokeWidth={2}
+      />
+      <Rect x="28" y="44" width="24" height="4" rx="2" fill="#1F3A52" fillOpacity={0.38} />
+    </Svg>
+  );
+};
+
+const EpicChest = ({ size = 56 }) => {
+  const gradientId = useId();
+  const baseId = `${gradientId}-epic-base`;
+  const topId = `${gradientId}-epic-top`;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 80 80">
+      <Defs>
+        <SvgLinearGradient id={baseId} x1="18" y1="30" x2="62" y2="68">
+          <Stop offset="0" stopColor="#C2A5E6" />
+          <Stop offset="1" stopColor="#8A6BBF" />
+        </SvgLinearGradient>
+        <SvgLinearGradient id={topId} x1="18" y1="18" x2="62" y2="34">
+          <Stop offset="0" stopColor="#D7C3F0" />
+          <Stop offset="1" stopColor="#9A7BD0" />
+        </SvgLinearGradient>
+      </Defs>
+      <Rect
+        x="16"
+        y="30"
+        width="48"
+        height="32"
+        rx="10"
+        fill={`url(#${baseId})`}
+        stroke="#3B2C54"
+        strokeOpacity={0.45}
+        strokeWidth={2}
+      />
+      <Path d="M26 30V62" stroke="#3B2C54" strokeOpacity={0.25} strokeWidth={2} />
+      <Path d="M54 30V62" stroke="#3B2C54" strokeOpacity={0.25} strokeWidth={2} />
+      <Rect
+        x="20"
+        y="20"
+        width="40"
+        height="16"
+        rx="9"
+        fill={`url(#${topId})`}
+        stroke="#3B2C54"
+        strokeOpacity={0.35}
+        strokeWidth={2}
+      />
+      <Rect
+        x="34"
+        y="40"
+        width="12"
+        height="12"
+        rx="3"
+        fill="#F4ECFF"
+        stroke="#3B2C54"
+        strokeOpacity={0.6}
+        strokeWidth={2}
+      />
+      <Path d="M38 46H42" stroke="#3B2C54" strokeOpacity={0.55} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+};
+
+const LegendaryChest = ({ size = 56 }) => {
+  const gradientId = useId();
+  const baseId = `${gradientId}-legendary-base`;
+  const topId = `${gradientId}-legendary-top`;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 80 80">
+      <Defs>
+        <SvgLinearGradient id={baseId} x1="18" y1="30" x2="62" y2="68">
+          <Stop offset="0" stopColor="#F5D48D" />
+          <Stop offset="1" stopColor="#D4A440" />
+        </SvgLinearGradient>
+        <SvgLinearGradient id={topId} x1="18" y1="18" x2="62" y2="34">
+          <Stop offset="0" stopColor="#FFE6A8" />
+          <Stop offset="1" stopColor="#E7BE55" />
+        </SvgLinearGradient>
+      </Defs>
+      <Rect
+        x="16"
+        y="30"
+        width="48"
+        height="32"
+        rx="12"
+        fill={`url(#${baseId})`}
+        stroke="#7C5A18"
+        strokeOpacity={0.5}
+        strokeWidth={2}
+      />
+      <Path d="M26 30V62" stroke="#7C5A18" strokeOpacity={0.3} strokeWidth={2} />
+      <Path d="M54 30V62" stroke="#7C5A18" strokeOpacity={0.3} strokeWidth={2} />
+      <Rect
+        x="20"
+        y="20"
+        width="40"
+        height="16"
+        rx="10"
+        fill={`url(#${topId})`}
+        stroke="#7C5A18"
+        strokeOpacity={0.4}
+        strokeWidth={2}
+      />
+      <Rect
+        x="34"
+        y="40"
+        width="12"
+        height="12"
+        rx="3"
+        fill="#FFF6D9"
+        stroke="#7C5A18"
+        strokeOpacity={0.65}
+        strokeWidth={2}
+      />
+      <Path d="M32 52H48" stroke="#7C5A18" strokeOpacity={0.5} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+};
+
+const CHEST_ART = {
+  Common: CommonChest,
+  Rare: RareChest,
+  Epic: EpicChest,
+  Legendary: LegendaryChest,
+};
+
+const RARITIES = [
+  { key: 'Common', weight: 0.52, gold: [4, 12] },
+  { key: 'Rare', weight: 0.3, gold: [8, 18] },
+  { key: 'Epic', weight: 0.14, gold: [14, 28] },
+  { key: 'Legendary', weight: 0.04, gold: [24, 48] },
+];
+
+const RARITY_DETAILS = {
+  Common: {
+    headline: 'Reliable stash',
+    helper: 'Solid boosts to keep momentum steady.',
+  },
+  Rare: {
+    headline: 'Shiny find',
+    helper: 'Elevated rewards with a spark of luck.',
+  },
+  Epic: {
+    headline: 'Elite haul',
+    helper: 'High-tier loot for big progress leaps.',
+  },
+  Legendary: {
+    headline: 'Mythic treasure',
+    helper: 'Top-shelf rewards reserved for heroes.',
+  },
+};
+
+function pickRarity() {
+  const r = Math.random();
+  let acc = 0;
+  for (const entry of RARITIES) {
+    acc += entry.weight;
+    if (r <= acc) {
+      return entry;
+    }
+  }
+  return RARITIES[0];
+}
+
+const PLACEHOLDER_CHESTS = Array.from({ length: 12 }, (_, index) => {
+  const rarity = pickRarity();
+  return {
+    id: index,
+    rarity: rarity.key,
+    gold: rarity.gold,
+  };
+});
+
+const rand = ([min, max]) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+const computePotential = (list = []) => {
+  if (!list.length) {
+    return null;
+  }
+  const goldMin = list.reduce(
+    (acc, chest) => acc + (Array.isArray(chest.gold) ? chest.gold[0] ?? 0 : 0),
+    0,
+  );
+  const goldMax = list.reduce(
+    (acc, chest) => acc + (Array.isArray(chest.gold) ? chest.gold[1] ?? chest.gold[0] ?? 0 : 0),
+    0,
+  );
+  return [goldMin, goldMax];
+};
+
+const formatRange = (range) => {
+  if (!range) {
+    return '0';
+  }
+  const [min, max] = range;
+  return min === max ? `${min}` : `${min} – ${max}`;
+};
 
 const TextField = ({
   label,
@@ -191,6 +516,92 @@ const Panel = ({ children, colors, style = {} }) => (
     {children}
   </View>
 );
+
+const ChestCard = ({ chest, colors, theme, isFocused, onFocus, onOpen }) => {
+  const rarity = chest.rarity || 'Common';
+  const ChestArt = CHEST_ART[rarity] || CHEST_ART.Common;
+  const detail = RARITY_DETAILS[rarity] || RARITY_DETAILS.Common;
+  const goldRange = chest.gold ? formatRange(chest.gold) : '?';
+
+  const overlayColors =
+    theme === 'light'
+      ? ['rgba(255,255,255,0.96)', 'rgba(226,232,240,0.86)']
+      : ['rgba(15,23,42,0.9)', 'rgba(15,23,42,0.78)'];
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => onFocus(isFocused ? null : chest.id)}
+      style={[
+        styles.chestCard,
+        {
+          backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.72)' : 'rgba(15,23,42,0.55)',
+          borderColor: colors.surfaceBorder,
+        },
+        theme === 'light' ? styles.chestCardShadowLight : styles.chestCardShadowDark,
+      ]}
+    >
+      <View style={styles.chestCardInner}>
+        <View
+          style={[
+            styles.chestIconWrapper,
+            {
+              backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(15,23,42,0.45)',
+              borderColor: colors.surfaceBorder,
+            },
+          ]}
+        >
+          <ChestArt size={54} />
+        </View>
+        <Text style={[styles.chestRarity, { color: hexToRgba(colors.text, 0.7) }]}>{rarity} chest</Text>
+        <Text style={[styles.chestHeadline, { color: hexToRgba(colors.text, 0.82) }]}>{detail.headline}</Text>
+      </View>
+      {isFocused ? (
+        <LinearGradient colors={overlayColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.chestOverlay}>
+          <Text
+            style={[
+              styles.chestOverlayTitle,
+              { color: theme === 'light' ? 'rgba(15,23,42,0.68)' : 'rgba(226,232,240,0.78)' },
+            ]}
+          >
+            Gold stash
+          </Text>
+          <Text style={[styles.chestOverlayRange, { color: theme === 'light' ? '#0f172a' : colors.text }]}>
+            {goldRange}g
+          </Text>
+          <Text
+            style={[
+              styles.chestOverlayHelper,
+              { color: theme === 'light' ? 'rgba(15,23,42,0.65)' : 'rgba(226,232,240,0.78)' },
+            ]}
+          >
+            {detail.helper}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              const reward = onOpen?.(chest);
+              if (reward) {
+                onFocus(null);
+              }
+            }}
+            activeOpacity={0.9}
+            style={[styles.chestOpenButton, { borderColor: colors.surfaceBorder }]}
+          >
+            <LinearGradient
+              colors={[colors.sky, colors.emerald]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.chestOpenButtonBg}
+            >
+              <Ionicons name="sparkles" size={16} color="#0f172a" />
+              <Text style={styles.chestOpenButtonText}>Open chest</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </LinearGradient>
+      ) : null}
+    </TouchableOpacity>
+  );
+};
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -390,6 +801,13 @@ export default function App() {
   const [editingApp, setEditingApp] = useState(null);
   const [questTab, setQuestTab] = useState('Daily');
   const [claimedQuests, setClaimedQuests] = useState(() => new Set());
+  const [chests, setChests] = useState(PLACEHOLDER_CHESTS);
+  const [chestFilter, setChestFilter] = useState('All');
+  const [focusedChestId, setFocusedChestId] = useState(null);
+  const [openAllSummary, setOpenAllSummary] = useState(null);
+  const [openResult, setOpenResult] = useState(null);
+
+  const openResultTimer = useRef(null);
 
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25;
@@ -473,6 +891,42 @@ export default function App() {
 
   const handlePrestige = useCallback(() => {}, []);
 
+  const openChest = useCallback(
+    (chest) => {
+      if (!chest) {
+        return null;
+      }
+      const base = rand(chest.gold);
+      const totalGold = Math.round(base * goldMultiplier);
+      setGold((value) => value + totalGold);
+      setChests((prev) => prev.filter((item) => item.id !== chest.id));
+      setFocusedChestId(null);
+      setOpenResult({ gold: totalGold });
+      if (openResultTimer.current) {
+        clearTimeout(openResultTimer.current);
+      }
+      openResultTimer.current = setTimeout(() => {
+        setOpenResult(null);
+      }, 1600);
+      return { gold: totalGold };
+    },
+    [goldMultiplier],
+  );
+
+  const openAll = useCallback(() => {
+    if (!chests.length) {
+      return;
+    }
+    let totalGold = 0;
+    chests.forEach((item) => {
+      totalGold += Math.round(rand(item.gold) * goldMultiplier);
+    });
+    setGold((value) => value + totalGold);
+    setChests([]);
+    setFocusedChestId(null);
+    setOpenAllSummary({ gold: totalGold, opened: chests.length });
+  }, [chests, goldMultiplier]);
+
   const quickActions = useMemo(
     () => [
       { key: 'Log application', icon: 'flash', onPress: handleLogPress, hint: 'Open log form' },
@@ -490,6 +944,14 @@ export default function App() {
     ],
     [handleLogPress, handleEasyApply, handleNetworking, handleSkill, handleInterview, handlePrestige, l]
   );
+
+  const viewRange = filteredPotential ? `${formatRange(filteredPotential)}g` : '0g';
+  const hasChests = chests.length > 0;
+  const summaryMuted = eff === 'light' ? 'rgba(15,23,42,0.66)' : 'rgba(226,232,240,0.76)';
+  const summaryStrong = eff === 'light' ? '#0f172a' : colors.text;
+  const pillBg = eff === 'light' ? 'rgba(255,255,255,0.55)' : 'rgba(15,23,42,0.38)';
+  const filterHintColor = eff === 'light' ? 'rgba(15,23,42,0.5)' : 'rgba(226,232,240,0.6)';
+  const headlineColor = hexToRgba(colors.text, 0.85);
 
   const statusIcons = useMemo(
     () => ({
@@ -641,6 +1103,33 @@ export default function App() {
     [eff],
   );
 
+  const rarityKeys = useMemo(() => ['All', ...RARITIES.map((r) => r.key)], []);
+
+  const rarityCounts = useMemo(() => {
+    const counts = Object.fromEntries(rarityKeys.map((key) => [key, 0]));
+    chests.forEach((item) => {
+      const key = item.rarity || 'Common';
+      counts[key] = (counts[key] || 0) + 1;
+      counts.All = (counts.All || 0) + 1;
+    });
+    return counts;
+  }, [chests, rarityKeys]);
+
+  const visibleChests = useMemo(
+    () =>
+      chests.filter(
+        (item) => chestFilter === 'All' || (item.rarity || 'Common') === chestFilter,
+      ),
+    [chests, chestFilter],
+  );
+
+  const filteredPotential = useMemo(() => computePotential(visibleChests), [visibleChests]);
+
+  const goldMultiplier = useMemo(
+    () => (activeEffects.some((effect) => effect.id === 2) ? 2 : 1),
+    [activeEffects],
+  );
+
   const handleClaimQuest = useCallback(
     (quest) => {
       if (quest.progress < quest.goal) {
@@ -659,6 +1148,20 @@ export default function App() {
     },
     [gainXp, setGold],
   );
+
+  useEffect(() => {
+    return () => {
+      if (openResultTimer.current) {
+        clearTimeout(openResultTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (focusedChestId != null && !chests.some((item) => item.id === focusedChestId)) {
+      setFocusedChestId(null);
+    }
+  }, [chests, focusedChestId]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -1212,8 +1715,253 @@ export default function App() {
                 <Text style={styles.questEmptyText}>No quests available.</Text>
               </View>
             )}
-          </View>
+      </View>
         </ScrollView>
+      )}
+
+      {activeTab === 'Rewards' && (
+        <>
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <LinearGradient
+              colors={[hexToRgba(colors.sky, 0.28), hexToRgba(colors.emerald, 0.22)]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.rewardsSummary, { borderColor: colors.surfaceBorder }]}
+            >
+              <View style={styles.rewardsSummaryHeader}>
+                <View style={styles.rewardsSummaryTitle}>
+                  <Ionicons name="gift" size={16} color={headlineColor} />
+                  <Text style={[styles.rewardsSummaryTitleText, { color: headlineColor }]}>Treasure vault</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={openAll}
+                  disabled={!hasChests}
+                  activeOpacity={hasChests ? 0.9 : 1}
+                  style={[
+                    styles.rewardsSummaryButton,
+                    {
+                      borderColor: hasChests ? hexToRgba(colors.emerald, 0.45) : colors.surfaceBorder,
+                      backgroundColor: hasChests
+                        ? 'transparent'
+                        : hexToRgba(colors.text, eff === 'light' ? 0.08 : 0.18),
+                    },
+                  ]}
+                >
+                  {hasChests ? (
+                    <LinearGradient
+                      colors={[colors.sky, colors.emerald]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.rewardsSummaryButtonBackground}
+                    />
+                  ) : null}
+                  <View style={styles.rewardsSummaryButtonContent}>
+                    <Ionicons
+                      name="sparkles"
+                      size={14}
+                      color={hasChests ? '#0f172a' : hexToRgba(colors.text, 0.55)}
+                    />
+                    <Text
+                      style={[
+                        styles.rewardsSummaryButtonText,
+                        { color: hasChests ? '#0f172a' : hexToRgba(colors.text, 0.55) },
+                      ]}
+                    >
+                      Open all
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.rewardsSummaryRow}>
+                <View style={styles.rewardsSummaryStat}>
+                  <Text style={[styles.rewardsSummaryStatText, { color: summaryMuted }]}>In view</Text>
+                  <View style={[styles.rewardsSummaryChip, { backgroundColor: pillBg }]}>
+                    <Text style={[styles.rewardsSummaryChipText, { color: summaryStrong }]}>
+                      {visibleChests.length}
+                    </Text>
+                  </View>
+                  {chestFilter !== 'All' ? (
+                    <Text style={[styles.rewardsSummaryHint, { color: filterHintColor }]}>({chestFilter.toLowerCase()})</Text>
+                  ) : null}
+                </View>
+                <View style={styles.rewardsSummaryStat}>
+                  <Ionicons name="cash" size={14} color={summaryMuted} />
+                  <Text style={[styles.rewardsSummaryStatText, { color: summaryMuted }]}>Potential</Text>
+                  <Text style={[styles.rewardsSummaryRange, { color: summaryStrong }]}>{viewRange}</Text>
+                </View>
+              </View>
+            </LinearGradient>
+
+            <Text style={[styles.rewardsFilterLabel, { color: hexToRgba(colors.text, 0.6) }]}>Choose rarity</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.rewardsFilterRow}
+            >
+              {rarityKeys.map((key) => {
+                const active = chestFilter === key;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    onPress={() => {
+                      setChestFilter(key);
+                      setFocusedChestId(null);
+                    }}
+                    activeOpacity={0.9}
+                    style={[
+                      styles.rarityButton,
+                      {
+                        borderColor: active
+                          ? hexToRgba(colors.emerald, 0.45)
+                          : hexToRgba('#0f172a', eff === 'light' ? 0.08 : 0.24),
+                        backgroundColor: active
+                          ? 'transparent'
+                          : hexToRgba('#0f172a', eff === 'light' ? 0.04 : 0.32),
+                      },
+                    ]}
+                  >
+                    {active ? (
+                      <LinearGradient
+                        colors={[colors.sky, colors.emerald]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.rarityButtonBackground}
+                      />
+                    ) : null}
+                    <View style={styles.rarityButtonContent}>
+                      <Text style={[styles.rarityButtonText, { color: active ? '#0f172a' : colors.text }]}>
+                        {key}
+                      </Text>
+                      <View
+                        style={[
+                          styles.rarityBadge,
+                          {
+                            backgroundColor: active
+                              ? 'rgba(255,255,255,0.6)'
+                              : hexToRgba('#0f172a', eff === 'light' ? 0.08 : 0.28),
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.rarityBadgeText,
+                            { color: active ? '#0f172a' : hexToRgba(colors.text, 0.7) },
+                          ]}
+                        >
+                          {rarityCounts[key] || 0}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.chestGrid}>
+              {visibleChests.map((chest) => (
+                <ChestCard
+                  key={chest.id}
+                  chest={chest}
+                  colors={colors}
+                  theme={eff}
+                  isFocused={focusedChestId === chest.id}
+                  onFocus={setFocusedChestId}
+                  onOpen={openChest}
+                />
+              ))}
+              {!visibleChests.length && (
+                <LinearGradient
+                  colors={[hexToRgba(colors.sky, 0.18), hexToRgba(colors.emerald, 0.12)]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.chestEmpty, { borderColor: colors.surfaceBorder }]}
+                >
+                  <Text style={[styles.chestEmptyText, { color: hexToRgba(colors.text, 0.7) }]}>
+                    No chests match this view.
+                  </Text>
+                </LinearGradient>
+              )}
+            </View>
+          </ScrollView>
+
+          <Modal
+            visible={!!openAllSummary}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setOpenAllSummary(null)}
+          >
+            <View style={styles.rewardsModalOverlay}>
+              <View
+                style={[
+                  styles.rewardsModalCard,
+                  { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                  eff === 'light' ? styles.chestCardShadowLight : styles.chestCardShadowDark,
+                ]}
+              >
+                <Text style={[styles.rewardsModalTitle, { color: colors.text }]}> 
+                  Opened {openAllSummary?.opened} chest{openAllSummary?.opened === 1 ? '' : 's'}
+                </Text>
+                <View style={styles.rewardsModalGold}>
+                  <Ionicons name="cash" size={18} color={colors.emerald} />
+                  <Text style={[styles.rewardsModalGoldText, { color: colors.text }]}> 
+                    {openAllSummary?.gold}g
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setOpenAllSummary(null)}
+                  activeOpacity={0.9}
+                  style={[styles.rewardsModalButton, { borderColor: colors.surfaceBorder }]}
+                >
+                  <LinearGradient
+                    colors={[colors.sky, colors.emerald]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.rewardsModalButtonBackground}
+                  >
+                    <Text style={styles.rewardsModalButtonText}>Nice!</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          {openResult ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.rewardsToastWrapper,
+                eff === 'light' ? styles.rewardsToastShadowLight : styles.rewardsToastShadowDark,
+              ]}
+            >
+              <LinearGradient
+                colors={[hexToRgba(colors.sky, 0.24), hexToRgba(colors.emerald, 0.2)]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.rewardsToastContainer, { borderColor: colors.surfaceBorder }]}
+              >
+                <Text
+                  style={[
+                    styles.rewardsToastTitle,
+                    { color: eff === 'light' ? 'rgba(15,23,42,0.68)' : 'rgba(226,232,240,0.78)' },
+                  ]}
+                >
+                  Fresh loot
+                </Text>
+                <View style={styles.rewardsToastValue}>
+                  <Ionicons name="cash" size={18} color={eff === 'light' ? '#0f172a' : colors.emerald} />
+                  <Text style={[styles.rewardsToastText, { color: eff === 'light' ? '#0f172a' : colors.text }]}>
+                    {openResult.gold}g
+                  </Text>
+                </View>
+              </LinearGradient>
+            </View>
+          ) : null}
+        </>
       )}
 
       <AppFormModal
@@ -1336,7 +2084,7 @@ export default function App() {
         <View style={styles.bottomNavInner}>
           {BOTTOM_TABS.map((tab) => {
             const isActive = activeTab === tab.key;
-            const disabled = !['Home', 'Apps', 'Quests'].includes(tab.key);
+            const disabled = tab.key === 'Shop';
             const badge = tab.key === 'Quests' && unclaimedQuestsTotal ? String(unclaimedQuestsTotal) : undefined;
             return (
               <TouchableOpacity
@@ -2078,5 +2826,337 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#0f172a',
+  },
+  rewardsSummary: {
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+  },
+  rewardsSummaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  rewardsSummaryTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rewardsSummaryTitleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  rewardsSummaryButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    overflow: 'hidden',
+  },
+  rewardsSummaryButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 999,
+  },
+  rewardsSummaryButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  rewardsSummaryButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  rewardsSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  rewardsSummaryStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rewardsSummaryStatText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  rewardsSummaryChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  rewardsSummaryChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  rewardsSummaryHint: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  rewardsSummaryRange: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  rewardsFilterLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    marginBottom: 10,
+  },
+  rewardsFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingBottom: 6,
+  },
+  rarityButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    overflow: 'hidden',
+  },
+  rarityButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 999,
+  },
+  rarityButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rarityButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  rarityBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  rarityBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  chestGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 16,
+  },
+  chestCard: {
+    width: '48%',
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  chestCardInner: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  chestIconWrapper: {
+    width: 68,
+    height: 68,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  chestRarity: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  chestHeadline: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  chestOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    gap: 8,
+  },
+  chestOverlayTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  chestOverlayRange: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  chestOverlayHelper: {
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  chestOpenButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  chestOpenButtonBg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  chestOpenButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  chestEmpty: {
+    width: '100%',
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  chestEmptyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  rewardsModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 24,
+  },
+  rewardsModalCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+  },
+  rewardsModalTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  rewardsModalGold: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  rewardsModalGoldText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  rewardsModalButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  rewardsModalButtonBackground: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rewardsModalButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  rewardsToastWrapper: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 120,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  rewardsToastContainer: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  rewardsToastTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    marginBottom: 6,
+  },
+  rewardsToastValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rewardsToastText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  chestCardShadowLight: {
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
+  },
+  chestCardShadowDark: {
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+  rewardsToastShadowLight: {
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+  },
+  rewardsToastShadowDark: {
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
 });
