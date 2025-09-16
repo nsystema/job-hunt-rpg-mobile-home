@@ -218,7 +218,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
 
   return (
     <div
-      className="grid gap-6 p-4 rounded-3xl relative overflow-hidden"
+      className="grid w-full gap-6 p-4 rounded-3xl relative overflow-hidden"
       style={{
         background:
           `radial-gradient(circle at 0% 0%, ${c.rose}40, transparent 65%),` +
@@ -233,7 +233,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
         )
       }}
     >
-      <section className="space-y-4">
+      <section className="space-y-4 min-w-0 w-full">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div
@@ -295,7 +295,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
           </Panel>
         ) : (
           <div
-            className="flex gap-3 overflow-x-auto pb-2"
+            className="flex min-w-0 w-full gap-3 overflow-x-auto pb-2"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {effects.map((e) => {
@@ -409,7 +409,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
           </div>
         </div>
         <div
-          className="flex items-center gap-1 p-1 rounded-full"
+          className="flex w-full items-center gap-1 p-1 rounded-full"
           role="tablist"
           aria-label="Shop categories"
           style={{
@@ -448,8 +448,9 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25 }}
+              className="min-w-0 w-full"
             >
-              <div className="grid gap-3">
+              <div className="grid w-full gap-3 min-w-0">
                 {GAME_EFFECTS.slice()
                   .sort((a, b) => a.cost - b.cost)
                   .map((item) => {
@@ -541,8 +542,9 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25 }}
+              className="min-w-0 w-full"
             >
-              <div className="grid gap-3">
+              <div className="grid w-full gap-3 min-w-0">
                 {sortedRewards.map((item) => {
                   const cost = costFor(item);
                   return (
@@ -624,8 +626,9 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25 }}
+              className="min-w-0 w-full"
             >
-              <div className="grid gap-3">
+              <div className="grid w-full gap-3 min-w-0">
                 {PREMIUM_REWARDS.map((item) => {
                   const cost = costFor(item);
                   const progress = premiumProgress[item.id] || 0;
