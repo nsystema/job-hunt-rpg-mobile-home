@@ -103,6 +103,13 @@ const SHOP_CATALOG_TABS = [
   { key: 'premium', label: 'Premium', icon: 'trophy' },
 ];
 
+const STATUS_META = {
+  Applied: { icon: 'document-text-outline', tint: 'sky' },
+  Interview: { icon: 'chatbubble-ellipses-outline', tint: 'emerald' },
+  Ghosted: { icon: 'skull-outline', tint: 'rose' },
+  Rejected: { icon: 'close-circle-outline', tint: 'rose' },
+};
+
 const hexToRgba = (hex, alpha) => {
   if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
     return `rgba(148, 163, 184, ${alpha})`;
@@ -449,8 +456,10 @@ const TextField = ({
   colors,
   multiline = false,
   numberOfLines = 1,
+  containerStyle,
+  ...inputProps
 }) => (
-  <View style={styles.formGroup}>
+  <View style={[styles.formGroup, containerStyle]}>
     <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
     <TextInput
       value={value}
@@ -467,20 +476,36 @@ const TextField = ({
           color: colors.text,
         },
       ]}
+      {...inputProps}
     />
   </View>
 );
 
 const ToggleControl = ({ label, value, onValueChange, colors }) => (
-  <View style={styles.toggleItem}>
+  <TouchableOpacity
+    onPress={() => onValueChange(!value)}
+    activeOpacity={0.85}
+    style={[
+      styles.toggleItem,
+      {
+        backgroundColor: colors.surface,
+        borderColor: colors.surfaceBorder,
+      },
+      value && {
+        backgroundColor: hexToRgba(colors.sky, 0.22),
+        borderColor: colors.sky,
+      },
+    ]}
+  >
     <Text style={[styles.toggleLabel, { color: colors.text }]}>{label}</Text>
     <Switch
       value={value}
       onValueChange={onValueChange}
-      trackColor={{ false: colors.chipBg, true: colors.sky }}
-      thumbColor={value ? '#0f172a' : colors.text}
+      trackColor={{ false: hexToRgba(colors.text, 0.18), true: colors.sky }}
+      thumbColor={Platform.OS === 'android' ? (value ? '#0f172a' : '#f8fafc') : undefined}
+      ios_backgroundColor={hexToRgba(colors.text, 0.18)}
     />
-  </View>
+  </TouchableOpacity>
 );
 
 const TypeSelector = ({ value, onChange, colors }) => (
@@ -498,6 +523,93 @@ const TypeSelector = ({ value, onChange, colors }) => (
           ]}
         >
           <Text style={[styles.segmentText, { color: isActive ? '#0f172a' : colors.text }]}>{option}</Text>
+        </TouchableOpacity>
+      );
+    })}
+  </View>
+);
+
+const StatusSelector = ({ value, onChange, colors }) => (
+  <View>
+    {STATUSES.map((status) => {
+      const isActive = value === status.key;
+      const meta = STATUS_META[status.key] || {};
+      const tintColor = meta.tint ? colors[meta.tint] : colors.sky;
+      return (
+        <TouchableOpacity
+          key={status.key}
+          onPress={() => onChange(status.key)}
+          activeOpacity={0.85}
+          style={[
+            styles.statusOption,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.surfaceBorder,
+            },
+            isActive && {
+              backgroundColor: hexToRgba(tintColor, 0.18),
+              borderColor: tintColor,
+            },
+          ]}
+        >
+          <View style={styles.statusOptionContent}>
+            {meta.icon ? (
+              <View
+                style={[
+                  styles.statusOptionIcon,
+                  {
+                    backgroundColor: isActive ? tintColor : colors.chipBg,
+                    borderColor: isActive ? tintColor : colors.surfaceBorder,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={meta.icon}
+                  size={14}
+                  color={isActive ? '#0f172a' : 'rgba(148,163,184,.95)'}
+                />
+              </View>
+            ) : null}
+            <View style={styles.statusOptionTextGroup}>
+              <Text style={[styles.statusOptionTitle, { color: colors.text }]}>{status.key}</Text>
+              {status.hint ? (
+                <Text style={[styles.statusOptionHint, { color: hexToRgba(colors.text, 0.55) }]}>
+                  {status.hint}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          {isActive ? <Ionicons name="checkmark-circle" size={18} color={tintColor} /> : null}
+        </TouchableOpacity>
+      );
+    })}
+  </View>
+);
+
+const PlatformSelector = ({ value, onChange, colors }) => (
+  <View style={styles.platformOptions}>
+    {PLATFORMS.map((platform) => {
+      const isActive = value === platform;
+      return (
+        <TouchableOpacity
+          key={platform}
+          onPress={() => onChange(platform)}
+          activeOpacity={0.85}
+          style={[
+            styles.platformChip,
+            {
+              backgroundColor: colors.chipBg,
+              borderColor: colors.surfaceBorder,
+            },
+            isActive && {
+              backgroundColor: colors.emerald,
+              borderColor: colors.emerald,
+            },
+          ]}
+        >
+          <Text style={[styles.platformChipText, { color: isActive ? '#0f172a' : colors.text }]}>
+            {platform}
+          </Text>
         </TouchableOpacity>
       );
     })}
@@ -1639,7 +1751,7 @@ const AppFormModal = ({
     [],
   );
 
-  const { company, role, type, note, cvTailored, motivation, favorite } = form;
+  const { company, role, type, note, cvTailored, motivation, favorite, status, platform, country, city } = form;
 
   const { xp: xpReward, gold: goldReward } = useMemo(
     () => computeRewards({ type, cvTailored, motivation }, { effects }),
@@ -1698,6 +1810,37 @@ const AppFormModal = ({
 
           <TypeSelector value={type} onChange={setField('type')} colors={colors} />
 
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Status</Text>
+            <StatusSelector value={status} onChange={setField('status')} colors={colors} />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Platform</Text>
+            <PlatformSelector value={platform} onChange={setField('platform')} colors={colors} />
+          </View>
+
+          <View style={styles.inlineFieldRow}>
+            <TextField
+              label="Country"
+              value={country}
+              onChangeText={setField('country')}
+              placeholder="Switzerland"
+              colors={colors}
+              containerStyle={styles.inlineField}
+              autoCapitalize="words"
+            />
+            <TextField
+              label="City"
+              value={city}
+              onChangeText={setField('city')}
+              placeholder="Zurich"
+              colors={colors}
+              containerStyle={styles.inlineField}
+              autoCapitalize="words"
+            />
+          </View>
+
           <TextField
             label="Notes (optional)"
             value={note}
@@ -1708,7 +1851,7 @@ const AppFormModal = ({
             numberOfLines={3}
           />
 
-          <View style={styles.toggleRow}>
+          <View style={styles.toggleGrid}>
             <ToggleControl
               label="CV Tailored"
               value={cvTailored}
@@ -1721,9 +1864,6 @@ const AppFormModal = ({
               onValueChange={setField('motivation')}
               colors={colors}
             />
-          </View>
-
-          <View style={styles.toggleRow}>
             <ToggleControl
               label="Favorite"
               value={favorite}
@@ -1733,7 +1873,7 @@ const AppFormModal = ({
           </View>
 
           <View style={styles.rewardInfo}>
-            <Text style={[styles.rewardText, { color: colors.text }]}>
+            <Text style={[styles.rewardText, { color: colors.text }]}> 
               Rewards: +{xpReward} XP, +{goldReward} Gold, -{cost} Focus
             </Text>
           </View>
@@ -1951,15 +2091,19 @@ export default function App() {
   const filterHintColor = eff === 'light' ? 'rgba(15,23,42,0.5)' : 'rgba(226,232,240,0.6)';
   const headlineColor = hexToRgba(colors.text, 0.85);
 
-  const statusIcons = useMemo(
-    () => ({
-      Applied: { icon: 'document-text-outline', tint: colors.sky },
-      Interview: { icon: 'chatbubble-ellipses-outline', tint: colors.emerald },
-      Ghosted: { icon: 'skull-outline', tint: colors.rose },
-      Rejected: { icon: 'close-circle-outline', tint: colors.rose },
-    }),
-    [colors]
-  );
+  const statusIcons = useMemo(() => {
+    const entries = {};
+    Object.entries(STATUS_META).forEach(([key, meta]) => {
+      if (!meta) {
+        return;
+      }
+      entries[key] = {
+        icon: meta.icon,
+        tint: meta.tint ? colors[meta.tint] : colors.text,
+      };
+    });
+    return entries;
+  }, [colors]);
 
   const statusLookup = useMemo(
     () => Object.fromEntries(STATUSES.map((status) => [status.key, status])),
@@ -2259,142 +2403,6 @@ export default function App() {
             </TouchableOpacity>
           ))}
         </View>
-
-        <Panel colors={colors}>
-          <View style={styles.panelHeader}>
-            <Text style={[styles.panelTitle, { color: colors.text }]}>Applications</Text>
-            {applications.length > 0 && (
-              <Text style={styles.panelSubtitle}>{applications.length} logged</Text>
-            )}
-          </View>
-
-          {applications.length ? (
-            applications.map((app, index) => {
-              const extras = [
-                { key: 'cv', icon: 'document-text-outline', active: app.cvTailored },
-                { key: 'motivation', icon: 'mail-outline', active: app.motivation },
-                { key: 'favorite', icon: 'star-outline', active: app.favorite }
-              ];
-              const statusInfo = statusIcons[app.status] || {};
-              const status = statusLookup[app.status];
-              const dateLabel = formatDateTime(app.date);
-              const notePreview = truncate(app.note);
-
-              return (
-                <View
-                  key={app.id}
-                  style={[
-                    styles.appCard,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.surfaceBorder,
-                      marginBottom: index === applications.length - 1 ? 0 : 12
-                    }
-                  ]}
-                >
-                  <View style={styles.appHeader}>
-                    <View style={styles.appTitle}>
-                      <Text style={[styles.appCompany, { color: colors.text }]}>{app.company}</Text>
-                      <Text style={styles.appRole}>{app.role}</Text>
-                      {notePreview ? <Text style={styles.appNote}>{notePreview}</Text> : null}
-                    </View>
-                    <View style={styles.appMeta}>
-                      {dateLabel ? <Text style={styles.appMetaText}>{dateLabel}</Text> : null}
-                    </View>
-                  </View>
-
-                  <View style={styles.appExtras}>
-                    {extras.map((extra, extraIndex) => {
-                      const marginStyle = { marginRight: extraIndex === extras.length - 1 ? 0 : 8 };
-                      if (extra.active) {
-                        return (
-                          <LinearGradient
-                            key={extra.key}
-                            colors={[colors.sky, colors.emerald]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={[styles.appExtraIcon, marginStyle]}
-                          >
-                            <Ionicons name={extra.icon} size={14} color="#0f172a" />
-                          </LinearGradient>
-                        );
-                      }
-                      return (
-                        <View
-                          key={extra.key}
-                          style={[
-                            styles.appExtraIcon,
-                            marginStyle,
-                            {
-                              backgroundColor: colors.chipBg,
-                              borderColor: colors.surfaceBorder,
-                              borderWidth: 1
-                            }
-                          ]}
-                        >
-                          <Ionicons name={extra.icon} size={14} color="rgba(148,163,184,.95)" />
-                        </View>
-                      );
-                    })}
-                  </View>
-
-                  <View style={[styles.appFooter, { borderTopColor: colors.surfaceBorder }]}>
-                    <View style={styles.appChips}>
-                      <View
-                        style={[
-                          styles.appChip,
-                          {
-                            backgroundColor: colors.chipBg,
-                            borderColor: colors.surfaceBorder,
-                            marginRight: 8
-                          }
-                        ]}
-                      >
-                        {statusInfo.icon ? (
-                          <Ionicons
-                            name={statusInfo.icon}
-                            size={14}
-                            color={statusInfo.tint || colors.text}
-                            style={styles.appChipIcon}
-                          />
-                        ) : null}
-                        <Text style={[styles.appChipText, { color: colors.text }]}>
-                          {status?.key || app.status}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.appChip,
-                          {
-                            backgroundColor: colors.chipBg,
-                            borderColor: colors.surfaceBorder
-                          }
-                        ]}
-                      >
-                        <Text style={[styles.appChipText, { color: colors.text }]}>{app.platform}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              );
-            })
-          ) : (
-            <View
-              style={[
-                styles.appEmpty,
-                { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder }
-              ]}
-            >
-              <Text style={[styles.appEmptyText, { color: colors.text }]}>No applications logged yet.</Text>
-              <TouchableOpacity
-                onPress={() => setShowForm(true)}
-                style={[styles.appEmptyButton, { backgroundColor: colors.sky }]}
-              >
-                <Text style={styles.appEmptyButtonText}>Log application</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </Panel>
 
         <Text style={styles.footerText}>
           Mobile build. Use "Log application" to open the form.
@@ -3797,19 +3805,88 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  toggleRow: {
+  toggleGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
     marginBottom: 16,
   },
   toggleItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginHorizontal: 6,
+    marginBottom: 12,
+    flexGrow: 1,
   },
   toggleLabel: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  inlineFieldRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  inlineField: {
+    flex: 1,
+    marginHorizontal: 6,
+  },
+  statusOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  statusOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  statusOptionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  statusOptionTextGroup: {
+    flexShrink: 1,
+  },
+  statusOptionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  statusOptionHint: {
+    fontSize: 11,
+  },
+  platformOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  platformChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginHorizontal: 6,
+    marginBottom: 12,
+  },
+  platformChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   rewardInfo: {
     marginBottom: 20,
