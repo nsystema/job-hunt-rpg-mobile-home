@@ -13,14 +13,15 @@ import {
   Modal,
   TextInput,
   Alert,
-  Switch,
   PanResponder,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Defs, Rect, Path, Circle, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { usePalette, cur } from './hooks/usePalette';
 import { useTheme } from './hooks/useTheme';
+import { LOCATION_DATA, COUNTRY_LIST } from './locations';
 import {
   xpl,
   lvl,
@@ -34,7 +35,7 @@ import {
   buyEffect,
   redeemReward,
 } from './gameMechanics';
-import { STATUSES, PLATFORMS } from './data';
+import { STATUSES, PLATFORMS, COUNTRIES, CITIES_BY_COUNTRY } from './data';
 
 const buildInitialFormValues = () => ({
   company: '',
@@ -92,6 +93,13 @@ const BOTTOM_TABS = [
   { key: 'Shop', label: 'Shop', icon: 'cart' },
 ];
 
+const CITY_LOOKUP = LOCATION_DATA.reduce((acc, entry) => {
+  acc[entry.country] = entry.cities;
+  return acc;
+}, {});
+
+const COUNTRY_SET = new Set(COUNTRY_LIST);
+
 const SHOP_MAIN_TABS = [
   { key: 'active', label: 'Active', icon: 'sparkles' },
   { key: 'catalogue', label: 'Catalogue', icon: 'wallet' },
@@ -131,6 +139,10 @@ const hexToRgba = (hex, alpha) => {
   const b = bigint & 255;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
+
+const getGlassGradient = (colors) => [hexToRgba(colors.sky, 0.55), hexToRgba(colors.emerald, 0.45)];
+
+const getGlassBorder = (colors) => hexToRgba(colors.sky, 0.4);
 
 const costFor = (item) => Math.round(item.minutes * (item.pleasure ?? 1));
 
@@ -481,32 +493,160 @@ const TextField = ({
   </View>
 );
 
-const ToggleControl = ({ label, value, onValueChange, colors }) => (
-  <TouchableOpacity
-    onPress={() => onValueChange(!value)}
-    activeOpacity={0.85}
-    style={[
-      styles.toggleItem,
-      {
-        backgroundColor: colors.surface,
-        borderColor: colors.surfaceBorder,
-      },
-      value && {
-        backgroundColor: hexToRgba(colors.sky, 0.22),
-        borderColor: colors.sky,
-      },
-    ]}
-  >
-    <Text style={[styles.toggleLabel, { color: colors.text }]}>{label}</Text>
-    <Switch
-      value={value}
-      onValueChange={onValueChange}
-      trackColor={{ false: hexToRgba(colors.text, 0.18), true: colors.sky }}
-      thumbColor={Platform.OS === 'android' ? (value ? '#0f172a' : '#f8fafc') : undefined}
-      ios_backgroundColor={hexToRgba(colors.text, 0.18)}
-    />
-  </TouchableOpacity>
-);
+const AutocompleteField = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  colors,
+  options = [],
+  onSelectOption,
+  suggestionLimit = 12,
+  containerStyle,
+  textInputProps = {},
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+
+  const normalized = value.trim().toLowerCase();
+
+  const suggestions = useMemo(() => {
+    if (!options.length) {
+      return [];
+    }
+    const base = normalized
+      ? options.filter((option) => option.toLowerCase().includes(normalized))
+      : options;
+    return base.slice(0, suggestionLimit);
+  }, [normalized, options, suggestionLimit]);
+
+  const handleSelect = useCallback(
+    (option) => {
+      onChangeText(option);
+      onSelectOption?.(option);
+      setIsFocused(false);
+    },
+    [onChangeText, onSelectOption],
+  );
+
+  const handleBlur = useCallback(() => {
+    setTimeout(() => setIsFocused(false), 120);
+  }, []);
+
+  return (
+    <View style={[styles.formGroup, containerStyle]}>
+      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+      <View style={styles.autocompleteWrapper}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={`${colors.text}80`}
+          style={[
+            styles.textInput,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.surfaceBorder,
+              color: colors.text,
+            },
+          ]}
+          onFocus={() => setIsFocused(true)}
+          onBlur={handleBlur}
+          autoCorrect={false}
+          {...textInputProps}
+        />
+        {isFocused && suggestions.length ? (
+          <View
+            style={[
+              styles.autocompleteList,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.surfaceBorder,
+              },
+            ]}
+          >
+            <ScrollView
+              nestedScrollEnabled
+              style={styles.autocompleteScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              {suggestions.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  onPress={() => handleSelect(option)}
+                  style={styles.autocompleteItem}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.autocompleteText, { color: colors.text }]}>{option}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+};
+
+const ToggleControl = ({ label, value, onValueChange, colors, icon, activeIcon }) => {
+  const handlePress = useCallback(() => {
+    onValueChange(!value);
+  }, [onValueChange, value]);
+
+  const gradientColors = getGlassGradient(colors);
+  const accentColor = '#0f172a';
+  const iconColor = value ? accentColor : hexToRgba(colors.text, 0.6);
+  const borderColor = value ? getGlassBorder(colors) : colors.surfaceBorder;
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      activeOpacity={0.9}
+      style={[
+        styles.toggleItem,
+        {
+          backgroundColor: colors.surface,
+          borderColor,
+        },
+      ]}
+    >
+      {value ? (
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.toggleItemBackground}
+        />
+      ) : null}
+      <View style={styles.toggleContent}>
+        <View
+          style={[
+            styles.toggleIconBox,
+            {
+              borderColor,
+              backgroundColor: colors.surface,
+            },
+          ]}
+        >
+          {value ? (
+            <LinearGradient
+              colors={gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+          ) : null}
+          <Ionicons name={value && activeIcon ? activeIcon : icon} size={18} color={iconColor} />
+        </View>
+        <Text style={[styles.toggleLabel, { color: colors.text }]}>{label}</Text>
+      </View>
+      <Ionicons
+        name={value ? 'checkmark-circle' : 'ellipse-outline'}
+        size={20}
+        color={value ? accentColor : hexToRgba(colors.text, 0.45)}
+      />
+    </TouchableOpacity>
+  );
+};
 
 const TypeSelector = ({ value, onChange, colors }) => (
   <View style={styles.segmentedControl}>
@@ -516,12 +656,23 @@ const TypeSelector = ({ value, onChange, colors }) => (
         <TouchableOpacity
           key={option}
           onPress={() => onChange(option)}
+          activeOpacity={0.9}
           style={[
             styles.segmentButton,
-            { borderColor: colors.surfaceBorder },
-            isActive && { backgroundColor: colors.sky },
+            {
+              borderColor: isActive ? getGlassBorder(colors) : colors.surfaceBorder,
+              backgroundColor: colors.surface,
+            },
           ]}
         >
+          {isActive ? (
+            <LinearGradient
+              colors={getGlassGradient(colors)}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.segmentButtonBackground}
+            />
+          ) : null}
           <Text style={[styles.segmentText, { color: isActive ? '#0f172a' : colors.text }]}>{option}</Text>
         </TouchableOpacity>
       );
@@ -594,22 +745,24 @@ const PlatformSelector = ({ value, onChange, colors }) => (
         <TouchableOpacity
           key={platform}
           onPress={() => onChange(platform)}
-          activeOpacity={0.85}
+          activeOpacity={0.9}
           style={[
             styles.platformChip,
             {
               backgroundColor: colors.chipBg,
-              borderColor: colors.surfaceBorder,
-            },
-            isActive && {
-              backgroundColor: colors.emerald,
-              borderColor: colors.emerald,
+              borderColor: isActive ? getGlassBorder(colors) : colors.surfaceBorder,
             },
           ]}
         >
-          <Text style={[styles.platformChipText, { color: isActive ? '#0f172a' : colors.text }]}>
-            {platform}
-          </Text>
+          {isActive ? (
+            <LinearGradient
+              colors={getGlassGradient(colors)}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.platformChipBackground}
+            />
+          ) : null}
+          <Text style={[styles.platformChipText, { color: isActive ? '#0f172a' : colors.text }]}>{platform}</Text>
         </TouchableOpacity>
       );
     })}
@@ -1759,6 +1912,34 @@ const AppFormModal = ({
   );
   const cost = useMemo(() => focusCost(type), [type]);
 
+  const availableCities = useMemo(() => CITY_LOOKUP[country] || [], [country]);
+  const isCountryValid = COUNTRY_SET.has(country);
+
+  const handleCountryChange = useCallback((value) => {
+    setForm((prev) => ({ ...prev, country: value }));
+  }, []);
+
+  const handleCountrySelect = useCallback((value) => {
+    setForm((prev) => ({ ...prev, country: value, city: '' }));
+  }, []);
+
+  const handleCityChange = useCallback((value) => {
+    setForm((prev) => ({ ...prev, city: value }));
+  }, []);
+
+  const handleCitySelect = useCallback((value) => {
+    setForm((prev) => ({ ...prev, city: value }));
+  }, []);
+
+  const rewardChips = useMemo(
+    () => [
+      { key: 'xp', label: 'XP', value: `+${xpReward}`, icon: 'flash' },
+      { key: 'gold', label: 'Gold', value: `+${goldReward}`, icon: 'cash' },
+      { key: 'focus', label: 'Focus', value: `-${cost}`, icon: 'pulse' },
+    ],
+    [cost, goldReward, xpReward],
+  );
+
   const handleCancel = useCallback(() => {
     setForm(initialValues);
     onClose?.();
@@ -1767,6 +1948,17 @@ const AppFormModal = ({
   const handleSubmit = useCallback(() => {
     if (!company || !role) {
       Alert.alert('Error', 'Please fill in company and role');
+      return;
+    }
+
+    if (!country || !COUNTRY_SET.has(country)) {
+      Alert.alert('Error', 'Please choose a country from the list.');
+      return;
+    }
+
+    const allowedCities = CITY_LOOKUP[country] || [];
+    if (!city || !allowedCities.includes(city)) {
+      Alert.alert('Error', 'Please choose a city from the list.');
       return;
     }
 
@@ -1779,19 +1971,26 @@ const AppFormModal = ({
       setForm(initialValues);
       onClose?.();
     }
-  }, [company, role, form, onSubmit, initialValues, onClose]);
+  }, [city, company, country, form, onClose, onSubmit, initialValues, role]);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.bg }]}>
         <View style={[styles.modalHeader, { borderBottomColor: colors.surfaceBorder }]}>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
+          <View style={styles.modalTitleRow}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
+            <RewardPreview xp={xpReward} gold={goldReward} focus={cost} colors={colors} />
+          </View>
           <TouchableOpacity onPress={handleCancel} style={[styles.closeButton, { backgroundColor: colors.chipBg }]}>
             <Ionicons name="close" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.modalContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <TextField
             label="Company"
             value={company}
@@ -1821,23 +2020,28 @@ const AppFormModal = ({
           </View>
 
           <View style={styles.inlineFieldRow}>
-            <TextField
+            <AutocompleteField
               label="Country"
               value={country}
-              onChangeText={setField('country')}
+              onChangeText={handleCountryChange}
+              onSelectOption={handleCountrySelect}
               placeholder="Switzerland"
               colors={colors}
+              options={COUNTRY_LIST}
               containerStyle={styles.inlineField}
-              autoCapitalize="words"
+              textInputProps={{ autoCapitalize: 'words' }}
             />
-            <TextField
+            <AutocompleteField
               label="City"
               value={city}
-              onChangeText={setField('city')}
-              placeholder="Zurich"
+              onChangeText={handleCityChange}
+              onSelectOption={handleCitySelect}
+              placeholder={isCountryValid ? 'Start typing a city' : 'Select a country first'}
               colors={colors}
+              options={isCountryValid ? availableCities : []}
               containerStyle={styles.inlineField}
-              autoCapitalize="words"
+              suggestionLimit={16}
+              textInputProps={{ autoCapitalize: 'words', editable: isCountryValid }}
             />
           </View>
 
@@ -1851,31 +2055,57 @@ const AppFormModal = ({
             numberOfLines={3}
           />
 
-          <View style={styles.toggleGrid}>
-            <ToggleControl
-              label="CV Tailored"
+          <View style={styles.iconToggleRow}>
+            <IconToggle
+              label="CV"
+              icon="document-text-outline"
+              activeIcon="document-text"
               value={cvTailored}
-              onValueChange={setField('cvTailored')}
+              onToggle={setField('cvTailored')}
               colors={colors}
+              icon="document-text-outline"
+              activeIcon="document-text"
             />
-            <ToggleControl
-              label="Motivation Letter"
+            <IconToggle
+              label="Motivation"
+              icon="flame-outline"
+              activeIcon="flame"
               value={motivation}
-              onValueChange={setField('motivation')}
+              onToggle={setField('motivation')}
               colors={colors}
+              icon="mail-outline"
+              activeIcon="mail"
             />
-            <ToggleControl
-              label="Favorite"
+            <IconToggle
+              label="Fav"
+              icon="heart-outline"
+              activeIcon="heart"
               value={favorite}
-              onValueChange={setField('favorite')}
+              onToggle={setField('favorite')}
               colors={colors}
+              icon="star-outline"
+              activeIcon="star"
             />
           </View>
 
           <View style={styles.rewardInfo}>
-            <Text style={[styles.rewardText, { color: colors.text }]}> 
-              Rewards: +{xpReward} XP, +{goldReward} Gold, -{cost} Focus
-            </Text>
+            {rewardChips.map((chip) => (
+              <LinearGradient
+                key={chip.key}
+                colors={getGlassGradient(colors)}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.rewardCard, { borderColor: getGlassBorder(colors) }]}
+              >
+                <View style={styles.rewardIconBox}>
+                  <Ionicons name={chip.icon} size={18} color="#0f172a" />
+                </View>
+                <View style={styles.rewardTextGroup}>
+                  <Text style={styles.rewardLabel}>{chip.label}</Text>
+                  <Text style={styles.rewardValue}>{chip.value}</Text>
+                </View>
+              </LinearGradient>
+            ))}
           </View>
         </ScrollView>
 
@@ -2449,9 +2679,24 @@ export default function App() {
           {filteredApps.length ? (
             filteredApps.map((app) => {
               const extras = [
-                { key: 'cv', icon: 'document-text-outline', active: app.cvTailored },
-                { key: 'motivation', icon: 'mail-outline', active: app.motivation },
-                { key: 'favorite', icon: 'star-outline', active: app.favorite },
+                {
+                  key: 'cv',
+                  icon: 'document-text-outline',
+                  activeIcon: 'document-text',
+                  active: app.cvTailored,
+                },
+                {
+                  key: 'motivation',
+                  icon: 'mail-outline',
+                  activeIcon: 'mail',
+                  active: app.motivation,
+                },
+                {
+                  key: 'favorite',
+                  icon: 'star-outline',
+                  activeIcon: 'star',
+                  active: app.favorite,
+                },
               ];
               const statusInfo = statusIcons[app.status] || {};
               const status = statusLookup[app.status];
@@ -2500,16 +2745,22 @@ export default function App() {
                   <View style={styles.appExtras}>
                     {extras.map((extra, extraIndex) => {
                       const marginStyle = { marginRight: extraIndex === extras.length - 1 ? 0 : 8 };
+                      const iconName = extra.active ? extra.activeIcon || extra.icon : extra.icon;
+
                       if (extra.active) {
                         return (
                           <LinearGradient
                             key={extra.key}
-                            colors={[colors.sky, colors.emerald]}
+                            colors={getGlassGradient(colors)}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
-                            style={[styles.appExtraIcon, marginStyle]}
+                            style={[
+                              styles.appExtraIcon,
+                              marginStyle,
+                              { borderColor: getGlassBorder(colors) },
+                            ]}
                           >
-                            <Ionicons name={extra.icon} size={14} color="#0f172a" />
+                            <Ionicons name={iconName} size={14} color="#0f172a" />
                           </LinearGradient>
                         );
                       }
@@ -2522,7 +2773,7 @@ export default function App() {
                             { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder, borderWidth: 1 },
                           ]}
                         >
-                          <Ionicons name={extra.icon} size={14} color="rgba(148,163,184,.95)" />
+                          <Ionicons name={iconName} size={14} color="rgba(148,163,184,.95)" />
                         </View>
                       );
                     })}
@@ -3566,11 +3817,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   appExtraIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   appFooter: {
     flexDirection: 'row',
@@ -3752,6 +4005,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
+  modalTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  rewardPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
+  },
+  rewardChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  rewardChipText: {
+    marginLeft: 4,
+    fontSize: 11,
+    fontWeight: '600',
+  },
   closeButton: {
     width: 32,
     height: 32,
@@ -3779,6 +4057,49 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
   },
+  autoCompleteInputWrapper: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    position: 'relative',
+  },
+  autoCompleteInput: {
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  autoCompleteClear: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+  },
+  autoCompleteSuggestions: {
+    marginTop: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    maxHeight: 160,
+    overflow: 'hidden',
+  },
+  autoCompleteOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  autoCompleteOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  autoCompleteEmpty: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  autoCompleteEmptyText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  disabledInput: {
+    opacity: 0.55,
+  },
   textArea: {
     borderWidth: 1,
     borderRadius: 12,
@@ -3800,31 +4121,59 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  segmentButtonBackground: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+    pointerEvents: 'none',
   },
   segmentText: {
     fontSize: 12,
     fontWeight: '600',
   },
-  toggleGrid: {
+  iconToggleRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
-    marginBottom: 16,
-  },
-  toggleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: 12,
+    marginBottom: 20,
+  },
+  iconToggle: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
     borderWidth: 1,
     marginHorizontal: 6,
     marginBottom: 12,
     flexGrow: 1,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  toggleLabel: {
-    fontSize: 12,
+  toggleItemBackground: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+    pointerEvents: 'none',
+  },
+  toggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  toggleIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  iconToggleLabel: {
+    fontSize: 11,
     fontWeight: '600',
   },
   inlineFieldRow: {
@@ -3835,6 +4184,32 @@ const styles = StyleSheet.create({
   inlineField: {
     flex: 1,
     marginHorizontal: 6,
+  },
+  autocompleteWrapper: {
+    position: 'relative',
+  },
+  autocompleteList: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    zIndex: 30,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  autocompleteScroll: {
+    maxHeight: 220,
+  },
+  autocompleteItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  autocompleteText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   statusOption: {
     flexDirection: 'row',
@@ -3883,17 +4258,56 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginHorizontal: 6,
     marginBottom: 12,
+    position: 'relative',
+    overflow: 'hidden',
   },
   platformChipText: {
     fontSize: 12,
     fontWeight: '600',
   },
-  rewardInfo: {
-    marginBottom: 20,
+  platformChipBackground: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
+    pointerEvents: 'none',
   },
-  rewardText: {
+  rewardInfo: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  rewardCard: {
+    flex: 1,
+    minWidth: 110,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rewardIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rewardTextGroup: {
+    flexGrow: 1,
+  },
+  rewardLabel: {
     fontSize: 11,
-    textAlign: 'center',
+    fontWeight: '600',
+    color: 'rgba(15,23,42,0.72)',
+    textTransform: 'uppercase',
+  },
+  rewardValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
   },
   modalFooter: {
     flexDirection: 'row',
