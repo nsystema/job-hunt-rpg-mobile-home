@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
-  Dimensions,
   Modal,
   TextInput,
   Alert,
@@ -18,9 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePalette, cur } from './hooks/usePalette';
 import { useTheme } from './hooks/useTheme';
 import { xpl, lvl, FOCUS_BASELINE, focusCost, computeRewards } from './gameMechanics';
-import { STATUSES, PLATFORMS } from './data';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+import { STATUSES } from './data';
 
 // Helper components
 const StatBadge = ({ icon, count, colors, theme }) => (
@@ -73,6 +70,25 @@ const Panel = ({ children, colors, style = {} }) => (
     {children}
   </View>
 );
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const formatDateTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const month = MONTHS[date.getMonth()];
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${month} ${day} • ${hours}:${minutes}`;
+};
+
+const truncate = (value, limit = 70) => {
+  if (!value) return '';
+  if (value.length <= limit) return value;
+  return `${value.slice(0, limit - 1)}…`;
+};
 
 // Application Form Modal
 const AppFormModal = ({ visible, onClose, onSubmit, colors, theme, effects = [] }) => {
@@ -370,6 +386,24 @@ export default function App() {
     }
   ];
 
+  const statusIcons = useMemo(
+    () => ({
+      Applied: { icon: 'document-text-outline', tint: colors.sky },
+      Interview: { icon: 'chatbubble-ellipses-outline', tint: colors.emerald },
+      Ghosted: { icon: 'skull-outline', tint: colors.rose },
+      Rejected: { icon: 'close-circle-outline', tint: colors.rose }
+    }),
+    [colors]
+  );
+
+  const statusLookup = useMemo(() => {
+    const map = {};
+    STATUSES.forEach((status) => {
+      map[status.key] = status;
+    });
+    return map;
+  }, []);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar barStyle={eff === 'light' ? 'dark-content' : 'light-content'} backgroundColor={colors.bg} />
@@ -464,6 +498,142 @@ export default function App() {
             </TouchableOpacity>
           ))}
         </View>
+
+        <Panel colors={colors}>
+          <View style={styles.panelHeader}>
+            <Text style={[styles.panelTitle, { color: colors.text }]}>Applications</Text>
+            {applications.length > 0 && (
+              <Text style={styles.panelSubtitle}>{applications.length} logged</Text>
+            )}
+          </View>
+
+          {applications.length ? (
+            applications.map((app, index) => {
+              const extras = [
+                { key: 'cv', icon: 'document-text-outline', active: app.cvTailored },
+                { key: 'motivation', icon: 'mail-outline', active: app.motivation },
+                { key: 'favorite', icon: 'star-outline', active: app.favorite }
+              ];
+              const statusInfo = statusIcons[app.status] || {};
+              const status = statusLookup[app.status];
+              const dateLabel = formatDateTime(app.date);
+              const notePreview = truncate(app.note);
+
+              return (
+                <View
+                  key={app.id}
+                  style={[
+                    styles.appCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.surfaceBorder,
+                      marginBottom: index === applications.length - 1 ? 0 : 12
+                    }
+                  ]}
+                >
+                  <View style={styles.appHeader}>
+                    <View style={styles.appTitle}>
+                      <Text style={[styles.appCompany, { color: colors.text }]}>{app.company}</Text>
+                      <Text style={styles.appRole}>{app.role}</Text>
+                      {notePreview ? <Text style={styles.appNote}>{notePreview}</Text> : null}
+                    </View>
+                    <View style={styles.appMeta}>
+                      {dateLabel ? <Text style={styles.appMetaText}>{dateLabel}</Text> : null}
+                    </View>
+                  </View>
+
+                  <View style={styles.appExtras}>
+                    {extras.map((extra, extraIndex) => {
+                      const marginStyle = { marginRight: extraIndex === extras.length - 1 ? 0 : 8 };
+                      if (extra.active) {
+                        return (
+                          <LinearGradient
+                            key={extra.key}
+                            colors={[colors.sky, colors.emerald]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={[styles.appExtraIcon, marginStyle]}
+                          >
+                            <Ionicons name={extra.icon} size={14} color="#0f172a" />
+                          </LinearGradient>
+                        );
+                      }
+                      return (
+                        <View
+                          key={extra.key}
+                          style={[
+                            styles.appExtraIcon,
+                            marginStyle,
+                            {
+                              backgroundColor: colors.chipBg,
+                              borderColor: colors.surfaceBorder,
+                              borderWidth: 1
+                            }
+                          ]}
+                        >
+                          <Ionicons name={extra.icon} size={14} color="rgba(148,163,184,.95)" />
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  <View style={[styles.appFooter, { borderTopColor: colors.surfaceBorder }]}>
+                    <View style={styles.appChips}>
+                      <View
+                        style={[
+                          styles.appChip,
+                          {
+                            backgroundColor: colors.chipBg,
+                            borderColor: colors.surfaceBorder,
+                            marginRight: 8
+                          }
+                        ]}
+                      >
+                        {statusInfo.icon ? (
+                          <Ionicons
+                            name={statusInfo.icon}
+                            size={14}
+                            color={statusInfo.tint || colors.text}
+                            style={styles.appChipIcon}
+                          />
+                        ) : null}
+                        <Text style={[styles.appChipText, { color: colors.text }]}>
+                          {status?.key || app.status}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.appChip,
+                          {
+                            backgroundColor: colors.chipBg,
+                            borderColor: colors.surfaceBorder
+                          }
+                        ]}
+                      >
+                        <Text style={[styles.appChipText, { color: colors.text }]}>{app.platform}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <View
+              style={[
+                styles.appEmpty,
+                { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder }
+              ]}
+            >
+              <Text style={[styles.appEmptyText, { color: colors.text }]}>No applications logged yet.</Text>
+              <TouchableOpacity
+                onPress={() => setShowForm(true)}
+                style={[styles.appEmptyButton, { backgroundColor: colors.sky }]}
+              >
+                <Text style={styles.appEmptyButtonText}>Log application</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Panel>
 
         <Text style={styles.footerText}>
           Mobile build. Use "Log application" to open the form.
@@ -576,6 +746,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
   },
+  panelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  panelTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  panelSubtitle: {
+    fontSize: 12,
+    color: 'rgba(148,163,184,.95)',
+  },
   levelHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -657,6 +841,102 @@ const styles = StyleSheet.create({
     color: 'rgba(148,163,184,.95)',
     textAlign: 'center',
     marginBottom: 20,
+  },
+  appCard: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  appHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  appTitle: {
+    flex: 1,
+    marginRight: 12,
+  },
+  appCompany: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  appRole: {
+    fontSize: 12,
+    color: 'rgba(148,163,184,.95)',
+    marginTop: 2,
+  },
+  appNote: {
+    fontSize: 11,
+    color: 'rgba(148,163,184,.95)',
+    marginTop: 6,
+  },
+  appMeta: {
+    alignItems: 'flex-end',
+  },
+  appMetaText: {
+    fontSize: 11,
+    color: 'rgba(148,163,184,.95)',
+  },
+  appExtras: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  appExtraIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  appChips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  appChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  appChipIcon: {
+    marginRight: 6,
+  },
+  appChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  appEmpty: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  appEmptyText: {
+    fontSize: 12,
+    opacity: 0.75,
+    textAlign: 'center',
+  },
+  appEmptyButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  appEmptyButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0f172a',
   },
   // Modal styles
   modalContainer: {

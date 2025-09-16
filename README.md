@@ -1,4 +1,4 @@
-# Job Hunt RPG - React Native Mobile App
+# Job Hunt RPG - React Native Mobile App (Expo SDK 53)
 
 A gamified job hunting experience built with React Native and Expo. Track your job applications, earn XP and gold, and level up your career journey!
 
@@ -15,9 +15,9 @@ A gamified job hunting experience built with React Native and Expo. Track your j
 
 ### Prerequisites
 
-- Node.js (v16 or later)
-- Expo CLI (`npm install -g @expo/cli`)
-- Expo Go app on your mobile device
+- Node.js (v18 or later)
+- NPM 9+
+- Expo Go app on your mobile device with SDK 53 support
 
 ### Installation
 
@@ -32,7 +32,7 @@ A gamified job hunting experience built with React Native and Expo. Track your j
    npx expo start
    ```
 
-4. Scan the QR code with Expo Go (Android) or Camera app (iOS)
+4. When the QR code appears, scan it with Expo Go (Android) or the Camera app (iOS). Ensure your Expo Go client is on SDK 53 to open the project.
 
 ### Running on Simulators
 
