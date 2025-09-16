@@ -5,10 +5,10 @@ import GoldPill from "./GoldPill.jsx";
 import { Grey } from "../data.jsx";
 
 const shadow = (t, l, d) => (t === "light" ? l : d);
-const formatGold = (value) =>
-  `${Math.max(0, value).toLocaleString(undefined, {
+const formatAmount = (value) =>
+  Math.max(0, value).toLocaleString(undefined, {
     maximumFractionDigits: 0
-  })}g`;
+  });
 
 export default function PremiumRewardCard({
   c,
@@ -24,6 +24,8 @@ export default function PremiumRewardCard({
   const remainingGold = Math.max(cost - savedGold, 0);
   const progressPercent =
     cost > 0 ? Math.min((savedGold / cost) * 100, 100) : 100;
+
+  const displayName = (item.name || "").replace(/premium reward/gi, "").trim();
 
   return (
     <motion.div
@@ -55,7 +57,7 @@ export default function PremiumRewardCard({
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap text-[11px] uppercase tracking-wide font-semibold">
-              <span style={{ color: Grey }}>Premium goal</span>
+              <span style={{ color: Grey }}>Premium Reward</span>
               {completed && (
                 <span
                   className="px-2 py-0.5 rounded-full"
@@ -68,12 +70,14 @@ export default function PremiumRewardCard({
                 </span>
               )}
             </div>
-            <div
-              className="text-sm font-semibold leading-tight"
-              style={{ color: c.text }}
-            >
-              {item.name}
-            </div>
+            {displayName && (
+              <div
+                className="text-sm font-semibold leading-tight"
+                style={{ color: c.text }}
+              >
+                {displayName}
+              </div>
+            )}
             <p className="text-xs leading-snug" style={{ color: Grey }}>
               Set aside gold to unlock this premium reward.
             </p>
@@ -93,7 +97,7 @@ export default function PremiumRewardCard({
       >
         <span className="inline-flex items-center gap-1">
           <Coins className="w-3 h-3" aria-hidden="true" />
-          Goal {formatGold(cost)}
+          {formatAmount(cost)}
         </span>
       </div>
       <div className="space-y-2">
@@ -115,12 +119,12 @@ export default function PremiumRewardCard({
         >
           <span className="inline-flex items-center gap-1 font-semibold">
             <PiggyBank className="w-3 h-3" aria-hidden="true" />
-            {formatGold(savedGold)}
+            {formatAmount(savedGold)}
           </span>
           <span className="opacity-70">
             {remainingGold === 0
               ? "Goal reached"
-              : `${formatGold(remainingGold)} to go`}
+              : `${formatAmount(remainingGold)} to go`}
           </span>
         </div>
       </div>

@@ -23,10 +23,11 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const shadow = (t, l, d) => (t === "light" ? l : d);
 const costFor = (item) => Math.round(item.minutes * (item.pleasure ?? 1));
-const formatGold = (value) =>
-  `${Math.max(0, value).toLocaleString(undefined, {
+const formatGoldValue = (value) =>
+  Math.max(0, value).toLocaleString(undefined, {
     maximumFractionDigits: 0
-  })}g`;
+  });
+const formatGold = (value) => `${formatGoldValue(value)}g`;
 
 const Panel = ({
   c,
@@ -761,14 +762,14 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                   style={{ color: c.text }}
                 >
                   <span className="font-semibold">
-                    {formatGold(effectiveSaveAmount)}
+                    {formatGoldValue(effectiveSaveAmount)}
                   </span>
                   <span className="opacity-70">
-                    {formatGold(Math.min(gold, savingCap))} available now
+                    {formatGoldValue(Math.min(gold, savingCap))} available now
                   </span>
                 </div>
                 <div className="text-[11px]" style={{ color: Grey }}>
-                  Already saved {formatGold(savingProgress)} / {formatGold(costFor(savingItem))}
+                  Already saved {formatGoldValue(savingProgress)} / {formatGoldValue(costFor(savingItem))}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
