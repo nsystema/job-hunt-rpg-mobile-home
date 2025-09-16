@@ -208,10 +208,10 @@ export default function Quests({ c, eff, gainXp, setGold, claimed, setClaimed })
               </button>
               {count > 0 && (
                 <span
-                  className="absolute -top-1 -right-1 rounded-[14px] px-1.5 text-[11px] font-semibold shadow"
+                  className="absolute -top-1.5 -right-1.5 rounded-[14px] px-1.5 text-[11px] font-semibold shadow"
                   style={{
-                    background: `linear-gradient(135deg, ${c.rose}, ${c.lilac})`,
-                    color: "#0f172a",
+                    background: "#f43f5e",
+                    color: "#fff",
                     boxShadow: "0 6px 18px rgba(244,63,94,.45)"
                   }}
                   aria-label={`${count} quests ready`}
