@@ -118,7 +118,12 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
     { key: "rewards", label: "Treats", icon: Gift },
     { key: "premium", label: "Premium", icon: Crown }
   ];
+  const mainTabs = [
+    { key: "active", label: "Active", icon: Sparkles },
+    { key: "catalogue", label: "Catalogue", icon: PiggyBank }
+  ];
   const [activeTab, setActiveTab] = React.useState("effects");
+  const [mainTab, setMainTab] = React.useState("catalogue");
 
   React.useEffect(() => {
     const id = setInterval(() => {
@@ -233,398 +238,455 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
         )
       }}
     >
-      <section className="space-y-4 min-w-0 w-full">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <div
-              className="text-[11px] uppercase tracking-wide font-semibold"
-              style={{ color: Grey }}
-            >
-              Active effects
-            </div>
-            <div
-              className="text-sm font-semibold leading-tight"
-              style={{ color: c.text }}
-            >
-              Track your current boosts in real time.
-            </div>
-          </div>
-        </div>
-        {effects.length === 0 ? (
-          <Panel
-            c={c}
-            t={eff}
-            className="p-5 flex flex-col gap-3"
-            hover={{ scale: 1.01 }}
-            tap={{ scale: 0.99 }}
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5" />
-              <span className="text-sm font-semibold" style={{ color: c.text }}>
-                No active boosts yet
-              </span>
-            </div>
-            <p className="text-sm leading-snug" style={{ color: Grey }}>
-              Activate a boost to double down on XP or gold. Your effects will
-              appear here with live timers once purchased.
-            </p>
+      <div
+        className="flex w-full items-center gap-1 p-1 rounded-full"
+        role="tablist"
+        aria-label="Shop sections"
+        style={{
+          background: c.surface,
+          border: `1px solid ${c.surfaceBorder}`
+        }}
+      >
+        {mainTabs.map((tab) => {
+          const Icon = tab.icon;
+          const active = mainTab === tab.key;
+          return (
             <button
-              onClick={() => setActiveTab("effects")}
-              className="self-start px-3 py-2 rounded-lg text-sm font-semibold"
+              key={tab.key}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setMainTab(tab.key)}
+              className="flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition-colors"
               style={{
-                background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`,
-                border: `1px solid ${c.surfaceBorder}`,
-                color: "#0f172a",
-                boxShadow: "0 12px 24px rgba(15,23,42,.18)"
+                background: active
+                  ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                  : "transparent",
+                color: active ? "#0f172a" : c.text
               }}
             >
-              Browse boosts
+              <Icon className="w-4 h-4" aria-hidden="true" />
+              {tab.label}
             </button>
-          </Panel>
-        ) : (
-          <div className="flex w-full flex-wrap gap-3 pb-2">
-            {effects.map((e) => {
-              const Icon = e.icon || Zap;
-              const remaining = e.expiresAt
-                ? Math.max(0, (e.expiresAt - now) / 1000)
-                : null;
-              const progress =
-                e.duration && remaining !== null
-                  ? Math.max(0, Math.min(1, remaining / e.duration))
-                  : null;
-              const angle = progress !== null ? progress * 360 : 360;
-              const ringBackground =
-                progress !== null
-                  ? `conic-gradient(from -90deg, ${c.sky} 0deg, ${c.emerald} ${angle}deg, ${c.surfaceBorder} ${angle}deg 360deg)`
-                  : `linear-gradient(135deg, ${c.sky}, ${c.emerald})`;
-              const tooltip = [e.description, remaining !== null ? `${formatTime(Math.ceil(remaining))} left` : null]
-                .filter(Boolean)
-                .join(" • ");
-              return (
-                <motion.div
-                  key={e.id}
-                  className="flex flex-col items-center gap-2 rounded-2xl p-3"
-                  style={{
-                    background: `linear-gradient(135deg, ${c.surface}, ${c.chipBg})`,
-                    border: `1px solid ${c.surfaceBorder}`,
-                    boxShadow: shadow(
-                      eff,
-                      "0 12px 32px rgba(0,0,0,.12),0 4px 10px rgba(0,0,0,.06)",
-                      "0 16px 40px rgba(0,0,0,.46),0 5px 14px rgba(0,0,0,.32)"
-                    ),
-                    color: c.text,
-                    minWidth: 112
-                  }}
-                  whileHover={{ translateY: -4 }}
-                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                  title={tooltip ? `${e.name} • ${tooltip}` : e.name}
+          );
+        })}
+      </div>
+      <AnimatePresence mode="wait">
+        {mainTab === "active" && (
+          <motion.section
+            key="active"
+            className="space-y-4 min-w-0 w-full"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div
+                  className="text-[11px] uppercase tracking-wide font-semibold"
+                  style={{ color: Grey }}
                 >
-                  <div
-                    className="rounded-full p-[3px]"
-                    style={{
-                      background: ringBackground,
-                      transition: "background 0.35s ease"
-                    }}
-                  >
-                    <div
-                      className="grid h-12 w-12 place-items-center rounded-full"
+                  Active effects
+                </div>
+                <div
+                  className="text-sm font-semibold leading-tight"
+                  style={{ color: c.text }}
+                >
+                  Track your current boosts in real time.
+                </div>
+              </div>
+            </div>
+            {effects.length === 0 ? (
+              <Panel
+                c={c}
+                t={eff}
+                className="p-5 flex flex-col gap-3"
+                hover={{ scale: 1.01 }}
+                tap={{ scale: 0.99 }}
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  <span className="text-sm font-semibold" style={{ color: c.text }}>
+                    No active boosts yet
+                  </span>
+                </div>
+                <p className="text-sm leading-snug" style={{ color: Grey }}>
+                  Activate a boost to double down on XP or gold. Your effects will
+                  appear here with live timers once purchased.
+                </p>
+                <button
+                  onClick={() => {
+                    setMainTab("catalogue");
+                    setActiveTab("effects");
+                  }}
+                  className="self-start px-3 py-2 rounded-lg text-sm font-semibold"
+                  style={{
+                    background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`,
+                    border: `1px solid ${c.surfaceBorder}`,
+                    color: "#0f172a",
+                    boxShadow: "0 12px 24px rgba(15,23,42,.18)"
+                  }}
+                >
+                  Browse boosts
+                </button>
+              </Panel>
+            ) : (
+              <div className="flex w-full flex-wrap gap-3 pb-2">
+                {effects.map((e) => {
+                  const Icon = e.icon || Zap;
+                  const remaining = e.expiresAt
+                    ? Math.max(0, (e.expiresAt - now) / 1000)
+                    : null;
+                  const progress =
+                    e.duration && remaining !== null
+                      ? Math.max(0, Math.min(1, remaining / e.duration))
+                      : null;
+                  const angle = progress !== null ? progress * 360 : 360;
+                  const ringBackground =
+                    progress !== null
+                      ? `conic-gradient(from -90deg, ${c.sky} 0deg, ${c.emerald} ${angle}deg, ${c.surfaceBorder} ${angle}deg 360deg)`
+                      : `linear-gradient(135deg, ${c.sky}, ${c.emerald})`;
+                  const tooltip = [
+                    e.description,
+                    remaining !== null ? `${formatTime(Math.ceil(remaining))} left` : null
+                  ]
+                    .filter(Boolean)
+                    .join(" • ");
+                  return (
+                    <motion.div
+                      key={e.id}
+                      className="flex flex-col items-center gap-2 rounded-2xl p-3"
                       style={{
                         background: `linear-gradient(135deg, ${c.surface}, ${c.chipBg})`,
                         border: `1px solid ${c.surfaceBorder}`,
-                        color: "#0f172a"
+                        boxShadow: shadow(
+                          eff,
+                          "0 12px 32px rgba(0,0,0,.12),0 4px 10px rgba(0,0,0,.06)",
+                          "0 16px 40px rgba(0,0,0,.46),0 5px 14px rgba(0,0,0,.32)"
+                        ),
+                        color: c.text,
+                        minWidth: 112
                       }}
+                      whileHover={{ translateY: -4 }}
+                      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                      title={tooltip ? `${e.name} • ${tooltip}` : e.name}
                     >
-                      <Icon className="w-5 h-5" aria-hidden="true" />
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center gap-1 text-center">
-                    <span
-                      className="text-xs font-semibold leading-tight"
-                      style={{ color: c.text }}
-                    >
-                      {e.name}
-                    </span>
-                    {remaining !== null && e.duration ? (
-                      <span
-                        className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide"
-                        style={{ color: Grey }}
+                      <div
+                        className="rounded-full p-[3px]"
+                        style={{
+                          background: ringBackground,
+                          transition: "background 0.35s ease"
+                        }}
                       >
-                        <Clock className="w-3 h-3" aria-hidden="true" />
-                        {formatTime(Math.ceil(remaining))}
-                      </span>
-                    ) : (
-                      <span
-                        className="text-[10px] uppercase tracking-wide"
-                        style={{ color: Grey }}
-                      >
-                        Passive boost
-                      </span>
-                    )}
+                        <div
+                          className="grid h-12 w-12 place-items-center rounded-full"
+                          style={{
+                            background: `linear-gradient(135deg, ${c.surface}, ${c.chipBg})`,
+                            border: `1px solid ${c.surfaceBorder}`,
+                            color: "#0f172a"
+                          }}
+                        >
+                          <Icon className="w-5 h-5" aria-hidden="true" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 text-center">
+                        <span
+                          className="text-xs font-semibold leading-tight"
+                          style={{ color: c.text }}
+                        >
+                          {e.name}
+                        </span>
+                        {remaining !== null && e.duration ? (
+                          <span
+                            className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide"
+                            style={{ color: Grey }}
+                          >
+                            <Clock className="w-3 h-3" aria-hidden="true" />
+                            {formatTime(Math.ceil(remaining))}
+                          </span>
+                        ) : (
+                          <span
+                            className="text-[10px] uppercase tracking-wide"
+                            style={{ color: Grey }}
+                          >
+                            Passive boost
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.section>
+        )}
+        {mainTab === "catalogue" && (
+          <motion.section
+            key="catalogue"
+            className="space-y-4 min-w-0 w-full"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div>
+              <div
+                className="text-[11px] uppercase tracking-wide font-semibold"
+                style={{ color: Grey }}
+              >
+                Catalogue
+              </div>
+              <div
+                className="text-sm font-semibold leading-tight"
+                style={{ color: c.text }}
+              >
+                Choose how you want to level the journey today.
+              </div>
+            </div>
+            <div
+              className="flex w-full items-center gap-1 p-1 rounded-full"
+              role="tablist"
+              aria-label="Shop categories"
+              style={{
+                background: c.surface,
+                border: `1px solid ${c.surfaceBorder}`
+              }}
+            >
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveTab(tab.key)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition-colors"
+                    style={{
+                      background: active
+                        ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
+                        : "transparent",
+                      color: active ? "#0f172a" : c.text
+                    }}
+                  >
+                    <Icon className="w-4 h-4" aria-hidden="true" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+            <AnimatePresence mode="wait">
+              {activeTab === "effects" && (
+                <motion.div
+                  key="effects"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="min-w-0 w-full"
+                >
+                  <div className="grid w-full gap-3 min-w-0">
+                    {GAME_EFFECTS.slice()
+                      .sort((a, b) => a.cost - b.cost)
+                      .map((item) => {
+                        const Icon = item.icon || Zap;
+                        const active = effects.some((e) => e.id === item.id);
+                        const durationLabel = item.duration
+                          ? item.duration >= 3600
+                            ? `${Math.round(item.duration / 3600)} hr`
+                            : `${Math.round(item.duration / 60)} min`
+                          : "Instant";
+                        return (
+                          <Panel
+                            key={item.id}
+                            c={c}
+                            t={eff}
+                            className="p-4 space-y-3"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className="grid h-11 w-11 place-items-center rounded-xl"
+                                style={{
+                                  background: `linear-gradient(135deg, ${c.sky}, ${c.emerald})`,
+                                  color: "#0f172a"
+                                }}
+                              >
+                                <Icon className="w-5 h-5" aria-hidden="true" />
+                              </div>
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div
+                                    className="text-sm font-semibold leading-tight"
+                                    style={{ color: c.text }}
+                                  >
+                                    {item.name}
+                                  </div>
+                                  {active && (
+                                    <span
+                                      className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full"
+                                      style={{
+                                        background: c.surface,
+                                        border: `1px solid ${c.surfaceBorder}`,
+                                        color: c.text
+                                      }}
+                                    >
+                                      In progress
+                                    </span>
+                                  )}
+                                </div>
+                                <p
+                                  className="text-xs leading-snug"
+                                  style={{ color: Grey }}
+                                >
+                                  {item.description}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-end justify-between">
+                              <div
+                                className="flex flex-wrap items-center gap-3 text-xs"
+                                style={{ color: c.text }}
+                              >
+                                <span className="inline-flex items-center gap-1 opacity-80">
+                                  <Clock className="w-3 h-3" aria-hidden="true" />
+                                  {durationLabel}
+                                </span>
+                                <span className="inline-flex items-center gap-1 opacity-80">
+                                  <Coins className="w-3 h-3" aria-hidden="true" />
+                                  {formatGold(item.cost)}
+                                </span>
+                              </div>
+                              <GoldPill
+                                c={c}
+                                onClick={() => handleBuyEffect(item)}
+                                dim={gold < item.cost || active}
+                              >
+                                {active ? "Owned" : `${item.cost}g`}
+                              </GoldPill>
+                            </div>
+                          </Panel>
+                        );
+                      })}
                   </div>
                 </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-4">
-        <div>
-          <div
-            className="text-[11px] uppercase tracking-wide font-semibold"
-            style={{ color: Grey }}
-          >
-            Catalogue
-          </div>
-          <div
-            className="text-sm font-semibold leading-tight"
-            style={{ color: c.text }}
-          >
-            Choose how you want to level the journey today.
-          </div>
-        </div>
-        <div
-          className="flex w-full items-center gap-1 p-1 rounded-full"
-          role="tablist"
-          aria-label="Shop categories"
-          style={{
-            background: c.surface,
-            border: `1px solid ${c.surfaceBorder}`
-          }}
-        >
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                role="tab"
-                aria-selected={active}
-                onClick={() => setActiveTab(tab.key)}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition-colors"
-                style={{
-                  background: active
-                    ? `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
-                    : "transparent",
-                  color: active ? "#0f172a" : c.text
-                }}
-              >
-                <Icon className="w-4 h-4" aria-hidden="true" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-        <AnimatePresence mode="wait">
-          {activeTab === "effects" && (
-            <motion.div
-              key="effects"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25 }}
-              className="min-w-0 w-full"
-            >
-              <div className="grid w-full gap-3 min-w-0">
-                {GAME_EFFECTS.slice()
-                  .sort((a, b) => a.cost - b.cost)
-                  .map((item) => {
-                    const Icon = item.icon || Zap;
-                    const active = effects.some((e) => e.id === item.id);
-                    const durationLabel = item.duration
-                      ? item.duration >= 3600
-                        ? `${Math.round(item.duration / 3600)} hr`
-                        : `${Math.round(item.duration / 60)} min`
-                      : "Instant";
-                    return (
-                      <Panel
-                        key={item.id}
-                        c={c}
-                        t={eff}
-                        className="p-4 space-y-3"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div
-                            className="grid h-11 w-11 place-items-center rounded-xl"
-                            style={{
-                              background: `linear-gradient(135deg, ${c.sky}, ${c.emerald})`,
-                              color: "#0f172a"
-                            }}
-                          >
-                            <Icon className="w-5 h-5" aria-hidden="true" />
-                          </div>
-                          <div className="min-w-0 space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
+              )}
+              {activeTab === "rewards" && (
+                <motion.div
+                  key="rewards"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="min-w-0 w-full"
+                >
+                  <div className="grid w-full gap-3 min-w-0">
+                    {sortedRewards.map((item) => {
+                      const cost = costFor(item);
+                      return (
+                        <Panel
+                          key={item.id}
+                          c={c}
+                          t={eff}
+                          className="p-4 space-y-3"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className="grid h-11 w-11 place-items-center rounded-xl"
+                              style={{
+                                background: `linear-gradient(135deg, ${c.rose}, ${c.lilac})`,
+                                color: "#0f172a"
+                              }}
+                            >
+                              <Gift className="w-5 h-5" aria-hidden="true" />
+                            </div>
+                            <div className="min-w-0 space-y-1">
                               <div
                                 className="text-sm font-semibold leading-tight"
                                 style={{ color: c.text }}
                               >
                                 {item.name}
                               </div>
-                              {active && (
+                              <p
+                                className="text-xs leading-snug"
+                                style={{ color: Grey }}
+                              >
+                                Reward yourself with {item.minutes} minutes of joy.
+                              </p>
+                              {item.pleasure > 1 && (
                                 <span
-                                  className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full"
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
                                   style={{
                                     background: c.surface,
                                     border: `1px solid ${c.surfaceBorder}`,
                                     color: c.text
                                   }}
                                 >
-                                  In progress
+                                  Pleasure x{item.pleasure}
                                 </span>
                               )}
                             </div>
-                            <p
-                              className="text-xs leading-snug"
-                              style={{ color: Grey }}
+                          </div>
+                          <div className="flex items-end justify-between">
+                            <div
+                              className="flex flex-wrap items-center gap-3 text-xs"
+                              style={{ color: c.text }}
                             >
-                              {item.description}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-end justify-between">
-                          <div
-                            className="flex flex-wrap items-center gap-3 text-xs"
-                            style={{ color: c.text }}
-                          >
-                            <span className="inline-flex items-center gap-1 opacity-80">
-                              <Clock className="w-3 h-3" aria-hidden="true" />
-                              {durationLabel}
-                            </span>
-                            <span className="inline-flex items-center gap-1 opacity-80">
-                              <Coins className="w-3 h-3" aria-hidden="true" />
-                              {formatGold(item.cost)}
-                            </span>
-                          </div>
-                          <GoldPill
-                            c={c}
-                            onClick={() => handleBuyEffect(item)}
-                            dim={gold < item.cost || active}
-                          >
-                            {active ? "Owned" : `${item.cost}g`}
-                          </GoldPill>
-                        </div>
-                      </Panel>
-                    );
-                  })}
-              </div>
-            </motion.div>
-          )}
-          {activeTab === "rewards" && (
-            <motion.div
-              key="rewards"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25 }}
-              className="min-w-0 w-full"
-            >
-              <div className="grid w-full gap-3 min-w-0">
-                {sortedRewards.map((item) => {
-                  const cost = costFor(item);
-                  return (
-                    <Panel
-                      key={item.id}
-                      c={c}
-                      t={eff}
-                      className="p-4 space-y-3"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className="grid h-11 w-11 place-items-center rounded-xl"
-                          style={{
-                            background: `linear-gradient(135deg, ${c.rose}, ${c.lilac})`,
-                            color: "#0f172a"
-                          }}
-                        >
-                          <Gift className="w-5 h-5" aria-hidden="true" />
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                          <div
-                            className="text-sm font-semibold leading-tight"
-                            style={{ color: c.text }}
-                          >
-                            {item.name}
-                          </div>
-                          <p
-                            className="text-xs leading-snug"
-                            style={{ color: Grey }}
-                          >
-                            Reward yourself with {item.minutes} minutes of joy.
-                          </p>
-                          {item.pleasure > 1 && (
-                            <span
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                              style={{
-                                background: c.surface,
-                                border: `1px solid ${c.surfaceBorder}`,
-                                color: c.text
-                              }}
+                              <span className="inline-flex items-center gap-1 opacity-80">
+                                <Clock className="w-3 h-3" aria-hidden="true" />
+                                {item.minutes} min
+                              </span>
+                              <span className="inline-flex items-center gap-1 opacity-80">
+                                <Coins className="w-3 h-3" aria-hidden="true" />
+                                {formatGold(cost)}
+                              </span>
+                            </div>
+                            <GoldPill
+                              c={c}
+                              onClick={() => setConfirmReward(item)}
+                              dim={gold < cost}
                             >
-                              Pleasure x{item.pleasure}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-end justify-between">
-                        <div
-                          className="flex flex-wrap items-center gap-3 text-xs"
-                          style={{ color: c.text }}
-                        >
-                          <span className="inline-flex items-center gap-1 opacity-80">
-                            <Clock className="w-3 h-3" aria-hidden="true" />
-                            {item.minutes} min
-                          </span>
-                          <span className="inline-flex items-center gap-1 opacity-80">
-                            <Coins className="w-3 h-3" aria-hidden="true" />
-                            {formatGold(cost)}
-                          </span>
-                        </div>
-                        <GoldPill
+                              {`${cost}g`}
+                            </GoldPill>
+                          </div>
+                        </Panel>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+              {activeTab === "premium" && (
+                <motion.div
+                  key="premium"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="min-w-0 w-full"
+                >
+                  <div className="grid w-full gap-3 min-w-0">
+                    {PREMIUM_REWARDS.map((item) => {
+                      const cost = costFor(item);
+                      const progress = premiumProgress[item.id] || 0;
+                      return (
+                        <PremiumRewardCard
+                          key={item.id}
                           c={c}
-                          onClick={() => setConfirmReward(item)}
-                          dim={gold < cost}
-                        >
-                          {`${cost}g`}
-                        </GoldPill>
-                      </div>
-                    </Panel>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-          {activeTab === "premium" && (
-            <motion.div
-              key="premium"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25 }}
-              className="min-w-0 w-full"
-            >
-              <div className="grid w-full gap-3 min-w-0">
-                {PREMIUM_REWARDS.map((item) => {
-                  const cost = costFor(item);
-                  const progress = premiumProgress[item.id] || 0;
-                  return (
-                    <PremiumRewardCard
-                      key={item.id}
-                      c={c}
-                      eff={eff}
-                      item={item}
-                      cost={cost}
-                      progress={progress}
-                      gold={gold}
-                      onAction={handlePremiumAction}
-                    />
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </section>
+                          eff={eff}
+                          item={item}
+                          cost={cost}
+                          progress={progress}
+                          gold={gold}
+                          onAction={handlePremiumAction}
+                        />
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {savingItem && (
