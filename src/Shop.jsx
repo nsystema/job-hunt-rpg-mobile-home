@@ -6,7 +6,6 @@ import {
   Zap,
   Crown,
   Sparkles,
-  ShoppingBag,
   PiggyBank
 } from "lucide-react";
 import { Grey } from "./data.jsx";
@@ -234,52 +233,31 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
         )
       }}
     >
-      <motion.div
-        className="relative overflow-hidden rounded-3xl p-5 space-y-5"
-        style={{
-          background: `linear-gradient(135deg, ${c.surface}, ${c.chipBg})`,
-          border: `1px solid ${c.surfaceBorder}`,
-          boxShadow: shadow(
-            eff,
-            "0 18px 48px rgba(0,0,0,.14),0 6px 18px rgba(0,0,0,.08)",
-            "0 22px 60px rgba(0,0,0,.48),0 10px 24px rgba(0,0,0,.32)"
-          )
-        }}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
+      <Panel
+        c={c}
+        t={eff}
+        className="p-5 space-y-5"
+        hover={false}
+        tap={false}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1 max-w-xl">
             <div
-              className="grid h-12 w-12 place-items-center rounded-2xl"
-              style={{
-                background: `linear-gradient(135deg, ${c.sky}, ${c.emerald})`,
-                color: "#0f172a",
-                boxShadow: "0 12px 32px rgba(15,23,42,.18)"
-              }}
+              className="text-[11px] uppercase tracking-wide font-semibold"
+              style={{ color: Grey }}
             >
-              <ShoppingBag className="w-6 h-6" aria-hidden="true" />
+              Daily lineup
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap text-[11px] uppercase tracking-wide font-semibold">
-                <span style={{ color: Grey }}>Adventure Emporium</span>
-                <span className="inline-flex items-center gap-1" style={{ color: Grey }}>
-                  <Sparkles className="w-3 h-3" aria-hidden="true" />
-                  Curated daily
-                </span>
-              </div>
-              <div
-                className="text-[20px] font-semibold leading-tight"
-                style={{ color: c.text }}
-              >
-                Upgrade your run
-              </div>
-              <p className="text-sm leading-snug" style={{ color: Grey }}>
-                Stack time-limited boosts, cash in well-earned treats, and keep a
-                steady plan for premium rituals.
-              </p>
+            <div
+              className="text-[20px] font-semibold leading-tight"
+              style={{ color: c.text }}
+            >
+              Upgrade your run
             </div>
+            <p className="text-sm leading-snug" style={{ color: Grey }}>
+              Stack time-limited boosts, cash in well-earned treats, and keep a
+              steady plan for premium rituals.
+            </p>
           </div>
           <div className="flex flex-col items-end gap-1">
             <GoldPill c={c}>{formatGold(gold)}</GoldPill>
@@ -288,7 +266,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
             </span>
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             c={c}
             t={eff}
@@ -334,7 +312,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
             }
           />
         </div>
-      </motion.div>
+      </Panel>
 
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
