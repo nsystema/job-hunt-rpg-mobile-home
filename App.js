@@ -5,6 +5,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   SafeAreaView,
   StatusBar,
@@ -13,13 +14,26 @@ import {
   TextInput,
   Alert,
   Switch,
+  PanResponder,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Defs, Rect, Path, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Defs, Rect, Path, Circle, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { usePalette, cur } from './hooks/usePalette';
 import { useTheme } from './hooks/useTheme';
-import { xpl, lvl, FOCUS_BASELINE, focusCost, computeRewards } from './gameMechanics';
+import {
+  xpl,
+  lvl,
+  FOCUS_BASELINE,
+  focusCost,
+  computeRewards,
+  GAME_EFFECTS,
+  REAL_REWARDS,
+  PREMIUM_REWARDS,
+  formatTime,
+  buyEffect,
+  redeemReward,
+} from './gameMechanics';
 import { STATUSES, PLATFORMS } from './data';
 
 const buildInitialFormValues = () => ({
@@ -78,6 +92,17 @@ const BOTTOM_TABS = [
   { key: 'Shop', label: 'Shop', icon: 'cart' },
 ];
 
+const SHOP_MAIN_TABS = [
+  { key: 'active', label: 'Active', icon: 'sparkles' },
+  { key: 'catalogue', label: 'Catalogue', icon: 'wallet' },
+];
+
+const SHOP_CATALOG_TABS = [
+  { key: 'effects', label: 'Boosts', icon: 'flash' },
+  { key: 'rewards', label: 'Treats', icon: 'gift' },
+  { key: 'premium', label: 'Premium', icon: 'crown' },
+];
+
 const hexToRgba = (hex, alpha) => {
   if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
     return `rgba(148, 163, 184, ${alpha})`;
@@ -99,6 +124,15 @@ const hexToRgba = (hex, alpha) => {
   const b = bigint & 255;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
+
+const costFor = (item) => Math.round(item.minutes * (item.pleasure ?? 1));
+
+const formatGoldValue = (value) =>
+  Math.max(0, value).toLocaleString(undefined, {
+    maximumFractionDigits: 0,
+  });
+
+const formatGold = (value) => `${formatGoldValue(value)}g`;
 
 const createChestArt = ({
   baseGradient,
@@ -504,23 +538,969 @@ const ProgressBar = ({ value, max, fromColor, toColor, colors }) => {
   );
 };
 
-const GoldPill = ({ children, colors }) => (
-  <LinearGradient
-    colors={['#fde68a', '#f59e0b']}
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 1 }}
-    style={styles.goldPill}
-  >
-    <Ionicons name="diamond" size={16} color="#1f2937" />
-    <Text style={styles.goldPillText}>{children}</Text>
-  </LinearGradient>
-);
+const GoldPill = ({ children, colors, onPress, dim = false, style = {}, icon = 'diamond' }) => {
+  const gradientColors = dim
+    ? [hexToRgba('#94a3b8', 0.18), hexToRgba('#94a3b8', 0.12)]
+    : ['#fde68a', '#f59e0b'];
+
+  const content = (
+    <LinearGradient
+      colors={gradientColors}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.goldPill, dim && styles.goldPillDim]}
+    >
+      <Ionicons name={icon} size={16} color={dim ? hexToRgba('#0f172a', 0.55) : '#1f2937'} />
+      <Text style={[styles.goldPillText, dim && styles.goldPillTextDim]}>{children}</Text>
+    </LinearGradient>
+  );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={dim ? 1 : 0.85}
+        disabled={dim}
+        style={[styles.goldPillWrapper, style]}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={style}>{content}</View>;
+};
 
 const Panel = ({ children, colors, style = {} }) => (
   <View style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }, style]}>
     {children}
   </View>
 );
+
+const EffectTimerRing = ({ progress, colors, eff, size = 64, children }) => {
+  const strokeWidth = Math.max(4, size * 0.14);
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const gradientId = useMemo(() => `effect-ring-${Math.random().toString(36).slice(2, 9)}`, []);
+  const normalized = progress == null ? 1 : Math.max(0, Math.min(1, progress));
+  const offset = circumference * (1 - normalized);
+  const innerSize = size - strokeWidth * 1.6;
+  const trackColor = hexToRgba(colors.text, eff === 'light' ? 0.16 : 0.4);
+
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size}>
+        <Defs>
+          <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor={colors.sky} stopOpacity="1" />
+            <Stop offset="100%" stopColor={colors.emerald} stopOpacity="1" />
+          </SvgLinearGradient>
+        </Defs>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={trackColor}
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={`url(#${gradientId})`}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${circumference},${circumference}`}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          fill="none"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <View
+        style={{
+          position: 'absolute',
+          top: (size - innerSize) / 2,
+          left: (size - innerSize) / 2,
+          width: innerSize,
+          height: innerSize,
+          borderRadius: innerSize / 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: eff === 'light' ? hexToRgba(colors.surface, 0.98) : hexToRgba(colors.surface, 0.78),
+          borderWidth: 1,
+          borderColor: colors.surfaceBorder,
+        }}
+      >
+        {children}
+      </View>
+    </View>
+  );
+};
+
+const GoldSlider = ({ value, max, colors, eff, onChange }) => {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const clampedMax = Math.max(0, max);
+  const clampedValue = Math.max(0, Math.min(value, clampedMax));
+  const percentage = clampedMax > 0 ? Math.min(100, (clampedValue / clampedMax) * 100) : 0;
+
+  const handleGesture = useCallback(
+    (evt) => {
+      if (!trackWidth || clampedMax <= 0) {
+        return;
+      }
+      const x = evt.nativeEvent.locationX;
+      const ratio = Math.max(0, Math.min(1, x / trackWidth));
+      const next = Math.round(clampedMax * ratio);
+      onChange(next);
+    },
+    [trackWidth, clampedMax, onChange],
+  );
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: handleGesture,
+        onPanResponderMove: handleGesture,
+        onPanResponderRelease: handleGesture,
+      }),
+    [handleGesture],
+  );
+
+  const thumbSize = 22;
+  const thumbLeft = trackWidth ? (percentage / 100) * trackWidth : 0;
+
+  return (
+    <View
+      style={[
+        styles.shopSliderTrack,
+        {
+          borderColor: colors.surfaceBorder,
+          backgroundColor: hexToRgba(colors.text, eff === 'light' ? 0.12 : 0.28),
+        },
+      ]}
+      onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
+      {...panResponder.panHandlers}
+    >
+      <LinearGradient
+        colors={[colors.sky, colors.emerald]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[styles.shopSliderFill, { width: `${percentage}%` }]}
+      />
+      <View
+        style={[
+          styles.shopSliderThumb,
+          {
+            left: Math.max(0, Math.min(trackWidth - thumbSize, thumbLeft - thumbSize / 2)),
+            width: thumbSize,
+            height: thumbSize,
+            borderRadius: thumbSize / 2,
+            backgroundColor: colors.surface,
+            borderColor: colors.surfaceBorder,
+          },
+        ]}
+      />
+    </View>
+  );
+};
+
+const ShopScreen = ({
+  colors,
+  eff,
+  gold,
+  setGold,
+  effects,
+  setEffects,
+  now,
+  premiumProgress,
+  setPremiumProgress,
+  mainTab,
+  setMainTab,
+  categoryTab,
+  setCategoryTab,
+}) => {
+  const [savingItem, setSavingItem] = useState(null);
+  const [saveAmount, setSaveAmount] = useState(0);
+  const [confirmReward, setConfirmReward] = useState(null);
+  const [redeemed, setRedeemed] = useState(null);
+
+  const sortedRewards = useMemo(
+    () => REAL_REWARDS.slice().sort((a, b) => costFor(a) - costFor(b)),
+    [],
+  );
+
+  const cardShadow = eff === 'light' ? styles.shopCardShadowLight : styles.shopCardShadowDark;
+
+  const handleBuyEffect = useCallback(
+    (item) => {
+      buyEffect(item, gold, setGold, effects, setEffects);
+    },
+    [gold, setGold, effects, setEffects],
+  );
+
+  const handleRedeemReward = useCallback(
+    (item) => {
+      redeemReward(item, gold, setGold, setRedeemed);
+    },
+    [gold, setGold],
+  );
+
+  const handlePremiumAction = useCallback(
+    (item) => {
+      const cost = costFor(item);
+      const progress = premiumProgress[item.id] || 0;
+      if (progress >= cost) {
+        setConfirmReward({ ...item, premium: true });
+      } else {
+        setSavingItem(item);
+        setSaveAmount(Math.min(gold, cost - progress));
+      }
+    },
+    [premiumProgress, gold],
+  );
+
+  const closeSavingModal = useCallback(() => {
+    setSavingItem(null);
+    setSaveAmount(0);
+  }, []);
+
+  const confirmSave = useCallback(() => {
+    if (!savingItem) {
+      return;
+    }
+    const cost = costFor(savingItem);
+    const progress = premiumProgress[savingItem.id] || 0;
+    const maxSavable = Math.max(0, Math.min(gold, cost - progress));
+    const amount = Math.max(0, Math.min(saveAmount, maxSavable));
+    if (amount > 0) {
+      setGold((g) => g - amount);
+      setPremiumProgress((prev) => ({
+        ...prev,
+        [savingItem.id]: Math.min(cost, progress + amount),
+      }));
+    }
+    setSavingItem(null);
+    setSaveAmount(0);
+  }, [savingItem, premiumProgress, gold, saveAmount, setGold, setPremiumProgress]);
+
+  const confirmCost = confirmReward ? costFor(confirmReward) : 0;
+  const ConfirmIcon = confirmReward?.premium ? 'crown' : 'gift';
+
+  const savingProgress = savingItem ? premiumProgress[savingItem.id] || 0 : 0;
+  const savingCap = savingItem ? Math.max(costFor(savingItem) - savingProgress, 0) : 0;
+  const maxSavableNow = savingItem ? Math.max(0, Math.min(gold, savingCap)) : 0;
+  const clampedSaveAmount = Math.max(0, Math.min(saveAmount, maxSavableNow));
+
+  const handleConfirmAction = useCallback(() => {
+    if (!confirmReward) {
+      return;
+    }
+    if (confirmReward.premium) {
+      setRedeemed(confirmReward);
+      setPremiumProgress((prev) => ({
+        ...prev,
+        [confirmReward.id]: 0,
+      }));
+    } else {
+      handleRedeemReward(confirmReward);
+    }
+    setConfirmReward(null);
+  }, [confirmReward, handleRedeemReward, setPremiumProgress]);
+
+  const formatDuration = useCallback((duration) => {
+    if (!duration) {
+      return 'Instant';
+    }
+    if (duration >= 3600) {
+      return `${Math.round(duration / 3600)} hr`;
+    }
+    return `${Math.round(duration / 60)} min`;
+  }, []);
+
+  const overlayBackground = eff === 'light' ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.55)';
+
+  return (
+    <>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+          style={[styles.shopContainer, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}
+        >
+          <LinearGradient
+            colors={[hexToRgba(colors.rose, 0.28), 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.shopGlowTopLeft}
+            pointerEvents="none"
+          />
+          <LinearGradient
+            colors={[hexToRgba(colors.sky, 0.28), 'transparent']}
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.shopGlowTopRight}
+            pointerEvents="none"
+          />
+          <LinearGradient
+            colors={[hexToRgba(colors.emerald, 0.24), 'transparent']}
+            start={{ x: 1, y: 1 }}
+            end={{ x: 0, y: 0 }}
+            style={styles.shopGlowBottomRight}
+            pointerEvents="none"
+          />
+          <LinearGradient
+            colors={[hexToRgba(colors.lilac, 0.26), 'transparent']}
+            start={{ x: 0, y: 1 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.shopGlowBottomLeft}
+            pointerEvents="none"
+          />
+          <View style={styles.shopContent}>
+            <View
+              style={[
+                styles.shopMainTabs,
+                { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+              ]}
+            >
+              {SHOP_MAIN_TABS.map((tab) => {
+                const active = mainTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    onPress={() => setMainTab(tab.key)}
+                    activeOpacity={0.9}
+                    style={[styles.shopMainTabButton, { borderColor: colors.surfaceBorder }]}
+                  >
+                    {active ? (
+                      <LinearGradient
+                        colors={[colors.sky, colors.emerald]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={StyleSheet.absoluteFillObject}
+                      />
+                    ) : null}
+                    <View style={styles.shopMainTabContent}>
+                      <Ionicons
+                        name={tab.icon}
+                        size={16}
+                        color={active ? '#0f172a' : colors.text}
+                        style={styles.shopMainTabIcon}
+                      />
+                      <Text
+                        style={[
+                          styles.shopMainTabLabel,
+                          { color: active ? '#0f172a' : colors.text },
+                        ]}
+                      >
+                        {tab.label}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {mainTab === 'active' ? (
+              <View style={styles.shopSection}>
+                <View style={styles.shopSectionHeader}>
+                  <Text style={[styles.shopSectionEyebrow, { color: hexToRgba(colors.text, 0.55) }]}>Active effects</Text>
+                  <Text style={[styles.shopSectionTitle, { color: colors.text }]}>Track your current boosts in real time.</Text>
+                </View>
+                {effects.length === 0 ? (
+                  <View
+                    style={[
+                      styles.shopEmptyCard,
+                      { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                      cardShadow,
+                    ]}
+                  >
+                    <View style={styles.shopEmptyHeader}>
+                      <Ionicons name="sparkles" size={18} color={colors.sky} />
+                      <Text style={[styles.shopEmptyTitle, { color: colors.text }]}>No active boosts yet</Text>
+                    </View>
+                    <Text style={[styles.shopEmptyDescription, { color: hexToRgba(colors.text, 0.65) }]}>Activate a boost to double down on XP or gold. Your effects will appear here with live timers once purchased.</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setMainTab('catalogue');
+                        setCategoryTab('effects');
+                      }}
+                      activeOpacity={0.9}
+                      style={[styles.shopBrowseButton, { borderColor: colors.surfaceBorder }]}
+                    >
+                      <LinearGradient
+                        colors={[colors.sky, colors.emerald]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={StyleSheet.absoluteFillObject}
+                      />
+                      <Text style={styles.shopBrowseButtonText}>Browse boosts</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.shopActiveList}>
+                    {effects.map((effect) => {
+                      const remaining = effect.expiresAt
+                        ? Math.max(0, Math.floor((effect.expiresAt - now) / 1000))
+                        : null;
+                      const progress = effect.duration && remaining != null
+                        ? Math.max(0, Math.min(1, remaining / effect.duration))
+                        : null;
+                      return (
+                        <View
+                          key={effect.id}
+                          style={[
+                            styles.shopActiveCard,
+                            { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                            cardShadow,
+                          ]}
+                        >
+                          <EffectTimerRing progress={progress} colors={colors} eff={eff}>
+                            <View
+                              style={[
+                                styles.shopActiveIconShell,
+                                { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+                              ]}
+                            >
+                              <LinearGradient
+                                colors={[hexToRgba(colors.surface, 0.98), hexToRgba(colors.chipBg, 0.85)]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.shopActiveIconInner}
+                              >
+                                <Ionicons name={effect.icon || 'flash'} size={22} color="#0f172a" />
+                              </LinearGradient>
+                            </View>
+                          </EffectTimerRing>
+                          <View style={styles.shopActiveInfo}>
+                            <Text style={[styles.shopActiveName, { color: colors.text }]}>{effect.name}</Text>
+                            {remaining != null && effect.duration ? (
+                              <View style={styles.shopActiveTimerRow}>
+                                <Ionicons name="time" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                <Text style={[styles.shopActiveTimerText, { color: hexToRgba(colors.text, 0.6) }]}>
+                                  {formatTime(remaining)}
+                                </Text>
+                              </View>
+                            ) : (
+                              <Text style={[styles.shopActivePassive, { color: hexToRgba(colors.text, 0.6) }]}>Passive boost</Text>
+                            )}
+                            <Text
+                              style={[styles.shopActiveDescription, { color: hexToRgba(colors.text, 0.65) }]}
+                              numberOfLines={2}
+                            >
+                              {effect.description}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.shopSection}>
+                <View style={styles.shopSectionHeader}>
+                  <Text style={[styles.shopSectionEyebrow, { color: hexToRgba(colors.text, 0.55) }]}>Catalogue</Text>
+                  <Text style={[styles.shopSectionTitle, { color: colors.text }]}>Choose how you want to level the journey today.</Text>
+                </View>
+                <View
+                  style={[
+                    styles.shopSecondaryTabs,
+                    { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                  ]}
+                >
+                  {SHOP_CATALOG_TABS.map((tab) => {
+                    const active = categoryTab === tab.key;
+                    return (
+                      <TouchableOpacity
+                        key={tab.key}
+                        onPress={() => setCategoryTab(tab.key)}
+                        activeOpacity={0.9}
+                        style={[styles.shopSecondaryTabButton, { borderColor: colors.surfaceBorder }]}
+                      >
+                        {active ? (
+                          <LinearGradient
+                            colors={[colors.sky, colors.emerald]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={StyleSheet.absoluteFillObject}
+                          />
+                        ) : null}
+                        <View style={styles.shopSecondaryTabContent}>
+                          <Ionicons
+                            name={tab.icon}
+                            size={15}
+                            color={active ? '#0f172a' : colors.text}
+                            style={styles.shopSecondaryTabIcon}
+                          />
+                          <Text
+                            style={[
+                              styles.shopSecondaryTabLabel,
+                              { color: active ? '#0f172a' : colors.text },
+                            ]}
+                          >
+                            {tab.label}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {categoryTab === 'effects' && (
+                  <View style={styles.shopCardList}>
+                    {GAME_EFFECTS.slice()
+                      .sort((a, b) => a.cost - b.cost)
+                      .map((item) => {
+                        const active = effects.some((fx) => fx.id === item.id);
+                        const durationLabel = formatDuration(item.duration);
+                        return (
+                          <View
+                            key={item.id}
+                            style={[
+                              styles.shopCard,
+                              { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                              cardShadow,
+                            ]}
+                          >
+                            <View style={styles.shopCardHeader}>
+                              <View
+                                style={[
+                                  styles.shopIconShell,
+                                  { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+                                ]}
+                              >
+                                <LinearGradient
+                                  colors={[colors.sky, colors.emerald]}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 1 }}
+                                  style={styles.shopIconInner}
+                                >
+                                  <Ionicons name={item.icon || 'flash'} size={20} color="#0f172a" />
+                                </LinearGradient>
+                              </View>
+                              <View style={styles.shopCardTitleArea}>
+                                <View style={styles.shopCardTitleRow}>
+                                  <Text style={[styles.shopCardTitle, { color: colors.text }]}>{item.name}</Text>
+                                  {active ? (
+                                    <View
+                                      style={[
+                                        styles.shopCardBadge,
+                                        {
+                                          borderColor: colors.surfaceBorder,
+                                          backgroundColor: hexToRgba(colors.text, eff === 'light' ? 0.05 : 0.22),
+                                        },
+                                      ]}
+                                    >
+                                      <Text style={[styles.shopCardBadgeText, { color: colors.text }]}>In progress</Text>
+                                    </View>
+                                  ) : null}
+                                </View>
+                                <Text style={[styles.shopCardDescription, { color: hexToRgba(colors.text, 0.65) }]}>
+                                  {item.description}
+                                </Text>
+                              </View>
+                            </View>
+                            <View style={styles.shopCardFooter}>
+                              <View style={styles.shopMetaRow}>
+                                <View style={styles.shopMetaItem}>
+                                  <Ionicons name="time" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                  <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
+                                    {durationLabel}
+                                  </Text>
+                                </View>
+                                <View style={styles.shopMetaItem}>
+                                  <Ionicons name="cash" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                  <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
+                                    {formatGold(item.cost)}
+                                  </Text>
+                                </View>
+                              </View>
+                              <GoldPill
+                                colors={colors}
+                                icon="cash"
+                                onPress={() => handleBuyEffect(item)}
+                                dim={gold < item.cost || active}
+                              >
+                                {active ? 'Owned' : `${item.cost}g`}
+                              </GoldPill>
+                            </View>
+                          </View>
+                        );
+                      })}
+                  </View>
+                )}
+
+                {categoryTab === 'rewards' && (
+                  <View style={styles.shopCardList}>
+                    {sortedRewards.map((item) => {
+                      const cost = costFor(item);
+                      return (
+                        <View
+                          key={item.id}
+                          style={[
+                            styles.shopCard,
+                            { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                            cardShadow,
+                          ]}
+                        >
+                          <View style={styles.shopCardHeader}>
+                            <View
+                              style={[
+                                styles.shopIconShell,
+                                { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+                              ]}
+                            >
+                              <LinearGradient
+                                colors={[colors.rose, colors.lilac]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.shopIconInner}
+                              >
+                                <Ionicons name="gift" size={20} color="#0f172a" />
+                              </LinearGradient>
+                            </View>
+                            <View style={styles.shopCardTitleArea}>
+                              <Text style={[styles.shopCardTitle, { color: colors.text }]}>{item.name}</Text>
+                              <Text style={[styles.shopCardDescription, { color: hexToRgba(colors.text, 0.65) }]}>
+                                Reward yourself with {item.minutes} minutes of joy.
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={styles.shopCardFooter}>
+                            <View style={styles.shopMetaRow}>
+                              <View style={styles.shopMetaItem}>
+                                <Ionicons name="time" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
+                                  {item.minutes} min
+                                </Text>
+                              </View>
+                              <View style={styles.shopMetaItem}>
+                                <Ionicons name="cash" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
+                                  {formatGold(cost)}
+                                </Text>
+                              </View>
+                            </View>
+                            <GoldPill
+                              colors={colors}
+                              icon="cash"
+                              onPress={() => setConfirmReward(item)}
+                              dim={gold < cost}
+                            >
+                              {`${cost}g`}
+                            </GoldPill>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {categoryTab === 'premium' && (
+                  <View style={styles.shopCardList}>
+                    {PREMIUM_REWARDS.map((item) => {
+                      const cost = costFor(item);
+                      const progress = premiumProgress[item.id] || 0;
+                      const completed = progress >= cost;
+                      const savedGold = Math.min(progress, cost);
+                      const remainingGold = Math.max(cost - savedGold, 0);
+                      const progressPercent = cost > 0 ? Math.min(100, (savedGold / cost) * 100) : 100;
+                      const displayName = (item.name || '').replace(/premium reward/gi, '').trim();
+                      return (
+                        <View
+                          key={item.id}
+                          style={[
+                            styles.shopPremiumCard,
+                            { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                            cardShadow,
+                          ]}
+                        >
+                          <View style={styles.shopPremiumHeader}>
+                            <View
+                              style={[
+                                styles.shopIconShell,
+                                { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+                              ]}
+                            >
+                              <LinearGradient
+                                colors={[colors.sky, colors.emerald]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.shopIconInner}
+                              >
+                                <Ionicons name="crown" size={20} color="#0f172a" />
+                              </LinearGradient>
+                            </View>
+                            <View style={styles.shopPremiumTitleArea}>
+                              <View style={styles.shopPremiumTitleRow}>
+                                <Text style={[styles.shopCardTitle, { color: colors.text }]}>
+                                  {displayName || 'Premium reward'}
+                                </Text>
+                                {completed ? (
+                                  <View style={[styles.shopPremiumBadge, { backgroundColor: hexToRgba(colors.emerald, 0.2) }]}>
+                                    <Text style={[styles.shopPremiumBadgeText, { color: colors.emerald }]}>Ready to claim</Text>
+                                  </View>
+                                ) : null}
+                              </View>
+                              <Text style={[styles.shopCardDescription, { color: hexToRgba(colors.text, 0.65) }]}>
+                                Set aside gold to unlock this premium reward.
+                              </Text>
+                            </View>
+                            <GoldPill
+                              colors={colors}
+                              icon="cash"
+                              onPress={() => handlePremiumAction(item)}
+                              dim={!completed && gold <= 0}
+                              style={styles.shopPremiumButton}
+                            >
+                              {completed ? 'Claim' : 'Save'}
+                            </GoldPill>
+                          </View>
+                          <View
+                            style={[styles.shopPremiumProgressBar, { borderColor: colors.surfaceBorder }]}
+                          >
+                            <LinearGradient
+                              colors={[colors.sky, colors.emerald]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={[styles.shopPremiumProgressFill, { width: `${progressPercent}%` }]}
+                            />
+                          </View>
+                          <View style={styles.shopPremiumAmounts}>
+                            <View style={styles.shopMetaItem}>
+                              <Ionicons name="wallet" size={14} color={hexToRgba(colors.text, 0.6)} />
+                              <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
+                                {formatGoldValue(savedGold)}
+                              </Text>
+                            </View>
+                            <Text style={[styles.shopPremiumRemaining, { color: hexToRgba(colors.text, 0.6) }]}>
+                              {remainingGold === 0
+                                ? 'Goal reached'
+                                : `${formatGoldValue(remainingGold)} to go`}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+
+      <Modal
+        visible={!!savingItem}
+        transparent
+        animationType="fade"
+        onRequestClose={closeSavingModal}
+      >
+        <TouchableWithoutFeedback onPress={closeSavingModal}>
+          <View style={[styles.shopModalOverlay, { backgroundColor: overlayBackground }]}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View
+                style={[
+                  styles.shopModalCard,
+                  { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                  cardShadow,
+                ]}
+              >
+                <View style={styles.shopModalHeader}>
+                  <View
+                    style={[
+                      styles.shopModalIconShell,
+                      { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={[colors.sky, colors.emerald]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.shopModalIconInner}
+                    >
+                      <Ionicons name="wallet" size={20} color="#0f172a" />
+                    </LinearGradient>
+                  </View>
+                  <View style={styles.shopModalHeaderText}>
+                    <Text style={[styles.shopModalTitle, { color: colors.text }]}>
+                      Save gold for {savingItem?.name}
+                    </Text>
+                    <Text style={[styles.shopModalDescription, { color: hexToRgba(colors.text, 0.65) }]}>Decide how much to stash away right now. You can come back later to add more.</Text>
+                  </View>
+                </View>
+                <GoldSlider
+                  value={clampedSaveAmount}
+                  max={maxSavableNow}
+                  colors={colors}
+                  eff={eff}
+                  onChange={(next) => setSaveAmount(next)}
+                />
+                <View style={styles.shopModalLabelRow}>
+                  <Text style={[styles.shopModalLabel, { color: colors.text }]}>
+                    {formatGoldValue(clampedSaveAmount)}
+                  </Text>
+                  <Text style={[styles.shopModalLabelValue, { color: hexToRgba(colors.text, 0.6) }]}>
+                    {formatGoldValue(maxSavableNow)} available now
+                  </Text>
+                </View>
+                <Text style={[styles.shopModalHint, { color: hexToRgba(colors.text, 0.6) }]}>
+                  Already saved {formatGoldValue(savingProgress)} / {formatGoldValue(savingItem ? costFor(savingItem) : 0)}
+                </Text>
+                <View style={styles.shopModalActions}>
+                  <TouchableOpacity
+                    onPress={closeSavingModal}
+                    activeOpacity={0.85}
+                    style={[styles.shopModalButton, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}
+                  >
+                    <Text style={[styles.shopModalButtonText, { color: colors.text }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={confirmSave}
+                    activeOpacity={clampedSaveAmount > 0 ? 0.85 : 1}
+                    disabled={clampedSaveAmount <= 0}
+                    style={[
+                      styles.shopModalButton,
+                      styles.shopModalPrimary,
+                      {
+                        borderColor: colors.surfaceBorder,
+                        opacity: clampedSaveAmount > 0 ? 1 : 0.5,
+                      },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={[colors.sky, colors.emerald]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    <Text style={styles.shopModalPrimaryText}>Save amount</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal
+        visible={!!confirmReward}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmReward(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setConfirmReward(null)}>
+          <View style={[styles.shopModalOverlay, { backgroundColor: overlayBackground }]}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View
+                style={[
+                  styles.shopConfirmCard,
+                  { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                  cardShadow,
+                ]}
+              >
+                <View style={styles.shopConfirmIconRow}>
+                  <View
+                    style={[
+                      styles.shopModalIconShell,
+                      { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={[colors.sky, colors.emerald]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.shopModalIconInner}
+                    >
+                      <Ionicons name={ConfirmIcon} size={22} color="#0f172a" />
+                    </LinearGradient>
+                  </View>
+                </View>
+                <Text style={[styles.shopConfirmTitle, { color: colors.text }]}>
+                  {confirmReward?.premium
+                    ? `Redeem ${confirmReward?.name}?`
+                    : `Spend ${formatGold(confirmCost)} for ${confirmReward?.name}?`}
+                </Text>
+                {!confirmReward?.premium && (
+                  <Text style={[styles.shopModalDescription, { color: hexToRgba(colors.text, 0.6), textAlign: 'center' }]}>
+                    {confirmReward?.minutes} minutes of joy await.
+                  </Text>
+                )}
+                <View style={styles.shopModalActions}>
+                  <TouchableOpacity
+                    onPress={() => setConfirmReward(null)}
+                    activeOpacity={0.85}
+                    style={[styles.shopModalButton, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}
+                  >
+                    <Text style={[styles.shopModalButtonText, { color: colors.text }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleConfirmAction}
+                    activeOpacity={0.9}
+                    style={[styles.shopModalButton, styles.shopModalPrimary, { borderColor: colors.surfaceBorder }]}
+                  >
+                    <LinearGradient
+                      colors={[colors.sky, colors.emerald]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    <Text style={styles.shopModalPrimaryText}>Yes, do it</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal
+        visible={!!redeemed}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRedeemed(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setRedeemed(null)}>
+          <View style={[styles.shopModalOverlay, { backgroundColor: overlayBackground }]}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View
+                style={[
+                  styles.shopConfirmCard,
+                  { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                  cardShadow,
+                ]}
+              >
+                <Text style={[styles.shopConfirmTitle, { color: colors.text }]}>Enjoy {redeemed?.name}!</Text>
+                <Text style={[styles.shopModalDescription, { color: hexToRgba(colors.text, 0.6), textAlign: 'center' }]}>
+                  You earned it. Log it in your journal once you're back.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setRedeemed(null)}
+                  activeOpacity={0.9}
+                  style={[styles.shopModalButton, styles.shopModalPrimary, { borderColor: colors.surfaceBorder }]}
+                >
+                  <LinearGradient
+                    colors={[colors.sky, colors.emerald]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                  <Text style={styles.shopModalPrimaryText}>Back to shopping</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </>
+  );
+};
+
 
 const ChestCard = ({ chest, colors, theme, isFocused, onFocus, onOpen }) => {
   const rarity = chest.rarity || 'Common';
@@ -792,7 +1772,8 @@ export default function App() {
   const [gold, setGold] = useState(260);
   const [skillPoints, setSkillPoints] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [activeEffects] = useState([]);
+  const [activeEffects, setActiveEffects] = useState([]);
+  const [effectTimestamp, setEffectTimestamp] = useState(Date.now());
   const [focus, setFocus] = useState(FOCUS_BASELINE);
   const [applications, setApplications] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -811,8 +1792,20 @@ export default function App() {
   const [focusedChestId, setFocusedChestId] = useState(null);
   const [openAllSummary, setOpenAllSummary] = useState(null);
   const [openResult, setOpenResult] = useState(null);
+  const [premiumProgress, setPremiumProgress] = useState({});
+  const [shopMainTab, setShopMainTab] = useState('catalogue');
+  const [shopCategoryTab, setShopCategoryTab] = useState('effects');
 
   const openResultTimer = useRef(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const current = Date.now();
+      setEffectTimestamp(current);
+      setActiveEffects((list) => list.filter((fx) => !fx.expiresAt || fx.expiresAt > current));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25;
@@ -1969,6 +2962,24 @@ export default function App() {
         </>
       )}
 
+      {activeTab === 'Shop' && (
+        <ShopScreen
+          colors={colors}
+          eff={eff}
+          gold={gold}
+          setGold={setGold}
+          effects={activeEffects}
+          setEffects={setActiveEffects}
+          now={effectTimestamp}
+          premiumProgress={premiumProgress}
+          setPremiumProgress={setPremiumProgress}
+          mainTab={shopMainTab}
+          setMainTab={setShopMainTab}
+          categoryTab={shopCategoryTab}
+          setCategoryTab={setShopCategoryTab}
+        />
+      )}
+
       <AppFormModal
         visible={showForm}
         onClose={() => setShowForm(false)}
@@ -2089,18 +3100,13 @@ export default function App() {
         <View style={styles.bottomNavInner}>
           {BOTTOM_TABS.map((tab) => {
             const isActive = activeTab === tab.key;
-            const disabled = tab.key === 'Shop';
             const badge = tab.key === 'Quests' && unclaimedQuestsTotal ? String(unclaimedQuestsTotal) : undefined;
             return (
               <TouchableOpacity
                 key={tab.key}
-                onPress={() => {
-                  if (!disabled) {
-                    setActiveTab(tab.key);
-                  }
-                }}
-                style={[styles.bottomNavButton, disabled && styles.bottomNavButtonDisabled]}
-                disabled={disabled}
+                onPress={() => setActiveTab(tab.key)}
+                activeOpacity={0.9}
+                style={styles.bottomNavButton}
               >
                 <Ionicons
                   name={tab.icon}
@@ -2206,6 +3212,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  goldPillWrapper: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
   goldPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2213,11 +3223,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.1)',
+  },
+  goldPillDim: {
+    borderColor: 'rgba(15,23,42,0.12)',
   },
   goldPillText: {
     fontSize: 12,
     fontWeight: '800',
     color: '#1f2937',
+  },
+  goldPillTextDim: {
+    color: 'rgba(15,23,42,0.6)',
   },
   content: {
     flex: 1,
@@ -2680,9 +3698,6 @@ const styles = StyleSheet.create({
     gap: 6,
     position: 'relative',
   },
-  bottomNavButtonDisabled: {
-    opacity: 0.45,
-  },
   bottomNavBadge: {
     position: 'absolute',
     top: 2,
@@ -3058,6 +4073,483 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  shopContainer: {
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  shopGlowTopLeft: {
+    position: 'absolute',
+    top: -120,
+    left: -120,
+    width: 240,
+    height: 240,
+    borderRadius: 240,
+  },
+  shopGlowTopRight: {
+    position: 'absolute',
+    top: -120,
+    right: -120,
+    width: 240,
+    height: 240,
+    borderRadius: 240,
+  },
+  shopGlowBottomRight: {
+    position: 'absolute',
+    bottom: -140,
+    right: -120,
+    width: 260,
+    height: 260,
+    borderRadius: 260,
+  },
+  shopGlowBottomLeft: {
+    position: 'absolute',
+    bottom: -140,
+    left: -120,
+    width: 260,
+    height: 260,
+    borderRadius: 260,
+  },
+  shopContent: {
+    gap: 20,
+  },
+  shopMainTabs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 999,
+    padding: 4,
+    gap: 6,
+  },
+  shopMainTabButton: {
+    flex: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  shopMainTabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  shopMainTabIcon: {
+    marginRight: 0,
+  },
+  shopMainTabLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  shopSection: {
+    marginTop: 16,
+    gap: 18,
+  },
+  shopSectionHeader: {
+    gap: 4,
+  },
+  shopSectionEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  shopSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  shopEmptyCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 20,
+    gap: 12,
+  },
+  shopEmptyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shopEmptyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  shopEmptyDescription: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  shopBrowseButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  shopBrowseButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0f172a',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  shopActiveList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  shopActiveCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 14,
+    gap: 12,
+    flexGrow: 1,
+    flexBasis: '48%',
+    maxWidth: '48%',
+    minWidth: 150,
+  },
+  shopActiveIconShell: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopActiveIconInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopActiveInfo: {
+    flex: 1,
+    gap: 6,
+  },
+  shopActiveName: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  shopActiveTimerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  shopActiveTimerText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  shopActivePassive: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  shopActiveDescription: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  shopSecondaryTabs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 999,
+    padding: 4,
+    gap: 6,
+  },
+  shopSecondaryTabButton: {
+    flex: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  shopSecondaryTabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  shopSecondaryTabIcon: {
+    marginRight: 0,
+  },
+  shopSecondaryTabLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  shopCardList: {
+    gap: 12,
+  },
+  shopCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    gap: 16,
+  },
+  shopCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  shopIconShell: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopIconInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopCardTitleArea: {
+    flex: 1,
+    gap: 6,
+  },
+  shopCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  shopCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  shopCardBadge: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  shopCardBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  shopCardDescription: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  shopCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  shopMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  shopMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  shopMetaText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  shopPremiumCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 18,
+    gap: 16,
+  },
+  shopPremiumHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  shopPremiumTitleArea: {
+    flex: 1,
+    gap: 6,
+  },
+  shopPremiumTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  shopPremiumBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  shopPremiumBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  shopPremiumButton: {
+    marginLeft: 'auto',
+  },
+  shopPremiumProgressBar: {
+    height: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginTop: 12,
+  },
+  shopPremiumProgressFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  shopPremiumAmounts: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  shopPremiumRemaining: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  shopSliderTrack: {
+    marginTop: 16,
+    marginBottom: 12,
+    height: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+  },
+  shopSliderFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  shopSliderThumb: {
+    position: 'absolute',
+    top: -4,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  shopModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  shopModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    gap: 20,
+  },
+  shopModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  shopModalIconShell: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopModalIconInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopModalHeaderText: {
+    flex: 1,
+    gap: 6,
+  },
+  shopModalTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  shopModalDescription: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  shopModalLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  shopModalLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  shopModalLabelValue: {
+    fontSize: 12,
+  },
+  shopModalHint: {
+    fontSize: 11,
+  },
+  shopModalActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+  },
+  shopModalButton: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  shopModalButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  shopModalPrimary: {
+    backgroundColor: 'transparent',
+  },
+  shopModalPrimaryText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  shopConfirmCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    gap: 16,
+  },
+  shopConfirmIconRow: {
+    alignItems: 'center',
+  },
+  shopConfirmTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  shopCardShadowLight: {
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 5,
+  },
+  shopCardShadowDark: {
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 7,
+  },
+
   rewardsModalOverlay: {
     flex: 1,
     justifyContent: 'center',
