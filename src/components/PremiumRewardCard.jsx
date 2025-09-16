@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Clock, Coins, Crown, PiggyBank, Sparkles } from "lucide-react";
+import { Coins, Crown, PiggyBank } from "lucide-react";
 import GoldPill from "./GoldPill.jsx";
 import { Grey } from "../data.jsx";
 
@@ -75,8 +75,7 @@ export default function PremiumRewardCard({
               {item.name}
             </div>
             <p className="text-xs leading-snug" style={{ color: Grey }}>
-              Set aside gold to unlock {item.minutes} minutes of elevated
-              recovery.
+              Set aside gold to unlock this premium reward.
             </p>
           </div>
         </div>
@@ -89,23 +88,13 @@ export default function PremiumRewardCard({
         </GoldPill>
       </div>
       <div
-        className="flex flex-wrap items-center gap-3 text-xs"
+        className="flex flex-wrap items-center gap-3 text-sm font-semibold"
         style={{ color: c.text }}
       >
-        <span className="inline-flex items-center gap-1 opacity-80">
-          <Clock className="w-3 h-3" aria-hidden="true" />
-          {item.minutes} min
-        </span>
-        <span className="inline-flex items-center gap-1 opacity-80">
+        <span className="inline-flex items-center gap-1">
           <Coins className="w-3 h-3" aria-hidden="true" />
           Goal {formatGold(cost)}
         </span>
-        {item.pleasure > 1 && (
-          <span className="inline-flex items-center gap-1 opacity-80">
-            <Sparkles className="w-3 h-3" aria-hidden="true" />
-            Pleasure x{item.pleasure}
-          </span>
-        )}
       </div>
       <div className="space-y-2">
         <div
@@ -126,7 +115,7 @@ export default function PremiumRewardCard({
         >
           <span className="inline-flex items-center gap-1 font-semibold">
             <PiggyBank className="w-3 h-3" aria-hidden="true" />
-            {formatGold(savedGold)} saved
+            {formatGold(savedGold)}
           </span>
           <span className="opacity-70">
             {remainingGold === 0
