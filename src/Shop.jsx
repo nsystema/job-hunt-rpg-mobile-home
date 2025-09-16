@@ -613,18 +613,6 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                               >
                                 Reward yourself with {item.minutes} minutes of joy.
                               </p>
-                              {item.pleasure > 1 && (
-                                <span
-                                  className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                                  style={{
-                                    background: c.surface,
-                                    border: `1px solid ${c.surfaceBorder}`,
-                                    color: c.text
-                                  }}
-                                >
-                                  Pleasure x{item.pleasure}
-                                </span>
-                              )}
                             </div>
                           </div>
                           <div className="flex items-end justify-between">
@@ -857,8 +845,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
               </div>
               {!confirmReward.premium && (
                 <div className="text-xs" style={{ color: Grey }}>
-                  {confirmReward.minutes} minutes • Pleasure x
-                  {confirmReward.pleasure ?? 1}
+                  {confirmReward.minutes} minutes of joy await.
                 </div>
               )}
               <div className="flex justify-center gap-2">
