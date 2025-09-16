@@ -1,27 +1,25 @@
 {
-  "name": "job-hunt-rpg-mobile",
+  "name": "job-hunt-rpg-mobile-home",
+  "private": true,
   "version": "1.0.0",
-  "main": "App.js",
+  "type": "module",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "expo": "~49.0.0",
-    "react": "18.2.0",
-    "react-native": "0.72.6",
-    "react-native-svg": "13.9.0",
-    "react-native-reanimated": "~3.3.0",
-    "react-native-gesture-handler": "~2.12.0",
-    "expo-linear-gradient": "~12.3.0",
-    "expo-blur": "~12.4.0",
-    "react-native-vector-icons": "^10.0.0",
-    "@expo/vector-icons": "^13.0.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "framer-motion": "^11.0.8",
+    "lucide-react": "^0.453.0",
+    "recharts": "^2.12.7"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
-  },
-  "private": true
+    "vite": "^5.3.1",
+    "tailwindcss": "^3.4.10",
+    "postcss": "^8.4.41",
+    "autoprefixer": "^10.4.20",
+    "@vitejs/plugin-react": "^4.3.1"
+  }
 }

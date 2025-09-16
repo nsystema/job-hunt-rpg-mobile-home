@@ -256,7 +256,6 @@ export default function Rewards({ c, eff, setGold, chests, setChests, effects = 
     [chests, filter]
   );
 
-  const overallPotential = useMemo(() => computePotential(chests), [chests]);
   const filteredPotential = useMemo(() => computePotential(visibleChests), [visibleChests]);
 
   const goldMultiplier = useMemo(
@@ -287,13 +286,11 @@ export default function Rewards({ c, eff, setGold, chests, setChests, effects = 
   };
 
   const viewRange = filteredPotential ? `${formatRange(filteredPotential)}g` : "0g";
-  const vaultRange = overallPotential ? `${formatRange(overallPotential)}g` : null;
   const hasChests = chests.length > 0;
   const summaryMuted = eff === "light" ? "rgba(15,23,42,0.66)" : "rgba(226,232,240,0.76)";
   const summaryStrong = eff === "light" ? "#0f172a" : c.text;
   const pillBg = eff === "light" ? "rgba(255,255,255,0.55)" : "rgba(15,23,42,0.38)";
   const filterHintColor = eff === "light" ? "rgba(15,23,42,0.5)" : "rgba(226,232,240,0.6)";
-  const vaultLabel = chests.length === 1 ? "chest" : "chests";
   const headlineColor = hexToRgba(c.text, 0.85);
 
   return (
@@ -330,10 +327,17 @@ export default function Rewards({ c, eff, setGold, chests, setChests, effects = 
               className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-semibold"
               style={{
                 background: hasChests
-                  ? hexToRgba(c.sky, eff === "light" ? 0.28 : 0.38)
+                  ? `linear-gradient(120deg, ${c.sky}, ${c.emerald})`
                   : hexToRgba(c.text, eff === "light" ? 0.08 : 0.18),
-                color: hasChests ? summaryStrong : hexToRgba(c.text, 0.55),
-                border: `1px solid ${hasChests ? hexToRgba(c.emerald, 0.45) : c.surfaceBorder}`,
+                color: hasChests ? "#0f172a" : hexToRgba(c.text, 0.55),
+                border: `1px solid ${hasChests ? hexToRgba(c.emerald, 0.48) : c.surfaceBorder}`,
+                boxShadow: hasChests
+                  ? shadow(
+                      eff,
+                      "0 12px 26px rgba(148, 163, 184, 0.26)",
+                      "0 14px 34px rgba(6, 8, 18, 0.46)"
+                    )
+                  : "none",
                 cursor: hasChests ? "pointer" : "not-allowed",
                 transition: "transform .2s ease, background .2s ease",
               }}
@@ -368,19 +372,6 @@ export default function Rewards({ c, eff, setGold, chests, setChests, effects = 
                 {viewRange}
               </span>
             </span>
-            {vaultRange && (
-              <span className="inline-flex items-center gap-1">
-                <span>Vault</span>
-                <span className="font-semibold tabular-nums" style={{ color: summaryStrong }}>
-                  {chests.length}
-                </span>
-                <span>{vaultLabel}</span>
-                <span aria-hidden>•</span>
-                <span className="font-semibold" style={{ color: summaryStrong }}>
-                  {vaultRange}
-                </span>
-              </span>
-            )}
           </div>
         </div>
       </motion.section>
