@@ -601,6 +601,46 @@ export default function App() {
 
   const unclaimedQuestsTotal = useMemo(() => countUnclaimedQuests(claimedQuests), [claimedQuests]);
 
+  const questCardShadow = useMemo(
+    () =>
+      eff === 'light'
+        ? {
+            shadowColor: '#000',
+            shadowOpacity: 0.12,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 4,
+          }
+        : {
+            shadowColor: '#000',
+            shadowOpacity: 0.35,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 6,
+          },
+    [eff],
+  );
+
+  const questBadgeShadow = useMemo(
+    () =>
+      eff === 'light'
+        ? {
+            shadowColor: '#f43f5e',
+            shadowOpacity: 0.35,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 3 },
+            elevation: 4,
+          }
+        : {
+            shadowColor: '#f43f5e',
+            shadowOpacity: 0.55,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 6,
+          },
+    [eff],
+  );
+
   const handleClaimQuest = useCallback(
     (quest) => {
       if (quest.progress < quest.goal) {
@@ -1048,23 +1088,32 @@ export default function App() {
                 <TouchableOpacity
                   key={tab.key}
                   onPress={() => setQuestTab(tab.key)}
+                  activeOpacity={0.85}
                   style={[
                     styles.questTabButton,
-                    {
-                      backgroundColor: isActive ? colors.sky : colors.chipBg,
-                      borderColor: colors.surfaceBorder,
-                    },
+                    { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
                   ]}
                 >
-                  <Ionicons
-                    name={tab.icon}
-                    size={16}
-                    color={isActive ? '#0f172a' : colors.text}
-                    style={styles.questTabIcon}
-                  />
-                  <Text style={[styles.questTabText, { color: isActive ? '#0f172a' : colors.text }]}>{tab.key}</Text>
+                  {isActive ? (
+                    <LinearGradient
+                      colors={[colors.sky, colors.emerald]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[StyleSheet.absoluteFillObject, styles.questTabButtonGradient]}
+                      pointerEvents="none"
+                    />
+                  ) : null}
+                  <View style={styles.questTabButtonContent}>
+                    <Ionicons
+                      name={tab.icon}
+                      size={16}
+                      color={isActive ? '#0f172a' : colors.text}
+                      style={styles.questTabIcon}
+                    />
+                    <Text style={[styles.questTabText, { color: isActive ? '#0f172a' : colors.text }]}>{tab.key}</Text>
+                  </View>
                   {badge > 0 && (
-                    <View style={[styles.questTabBadge, { backgroundColor: colors.rose }]} >
+                    <View style={[styles.questTabBadge, questBadgeShadow]}>
                       <Text style={styles.questTabBadgeText}>{badge}</Text>
                     </View>
                   )}
@@ -1075,8 +1124,8 @@ export default function App() {
 
           <View style={styles.questList}>
             {quests.map((quest, index) => {
-              const canClaim = quest.progress >= quest.goal;
               const claimed = claimedQuests.has(quest.id);
+              const claimable = quest.progress >= quest.goal && !claimed;
               const percent = quest.goal ? Math.min(100, (quest.progress / quest.goal) * 100) : 0;
               return (
                 <View
@@ -1088,6 +1137,7 @@ export default function App() {
                       borderColor: colors.surfaceBorder,
                       marginBottom: index === quests.length - 1 ? 0 : 12,
                     },
+                    questCardShadow,
                   ]}
                 >
                   <View style={styles.questCardHeader}>
@@ -1110,36 +1160,48 @@ export default function App() {
                     <View
                       style={[
                         styles.questProgressTrack,
-                        { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
+                        { backgroundColor: colors.chipBg },
                       ]}
                     >
                       <LinearGradient
                         colors={[colors.sky, colors.emerald]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={[styles.questProgressFill, { width: ${Math.max(6, percent)}% }]}
+                        style={[styles.questProgressFill, { width: `${Math.max(6, percent)}%` }]}
                       />
                     </View>
-                    <Text style={[styles.questProgressLabel, { color: 'rgba(148,163,184,.95)' }]}>{quest.progress} / {quest.goal}</Text>
+                    <Text style={[styles.questProgressLabel, { color: 'rgba(148,163,184,.95)' }]}>
+                      {quest.progress} / {quest.goal}
+                    </Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => handleClaimQuest(quest)}
-                    disabled={!canClaim || claimed}
+                    disabled={!claimable}
+                    activeOpacity={0.85}
                     style={[
                       styles.questClaimButton,
                       {
-                        backgroundColor: canClaim && !claimed ? colors.sky : colors.chipBg,
                         borderColor: colors.surfaceBorder,
+                        backgroundColor: claimable ? 'transparent' : colors.chipBg,
                       },
                     ]}
                   >
+                    {claimable ? (
+                      <LinearGradient
+                        colors={[colors.sky, colors.emerald]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[StyleSheet.absoluteFillObject, styles.questClaimGradient]}
+                        pointerEvents="none"
+                      />
+                    ) : null}
                     <Text
                       style={[
                         styles.questClaimText,
-                        { color: canClaim && !claimed ? '#0f172a' : colors.text },
+                        { color: claimable ? '#0f172a' : 'rgba(148,163,184,.95)' },
                       ]}
                     >
-                      {claimed ? 'Claimed' : canClaim ? 'Claim reward' : 'Keep going'}
+                      {claimed ? 'Claimed' : 'Claim'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1147,136 +1209,7 @@ export default function App() {
             })}
             {!quests.length && (
               <View style={[styles.questEmpty, { borderColor: colors.surfaceBorder }]}>
-                <Text style={[styles.questEmptyText, { color: colors.text }]}>
-                  No quests available yet. Check back soon.
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      )}
-
-      {activeTab === 'Quests' && (
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View
-            style={[
-              styles.questTabsRow,
-              { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
-            ]}
-          >
-            {QUEST_TABS.map((tab) => {
-              const isActive = questTab === tab.key;
-              const badge = countUnclaimedQuestsByTab(tab.key, claimedQuests);
-              return (
-                <TouchableOpacity
-                  key={tab.key}
-                  onPress={() => setQuestTab(tab.key)}
-                  style={[
-                    styles.questTabButton,
-                    {
-                      backgroundColor: isActive ? colors.sky : colors.chipBg,
-                      borderColor: colors.surfaceBorder,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={tab.icon}
-                    size={16}
-                    color={isActive ? '#0f172a' : colors.text}
-                    style={styles.questTabIcon}
-                  />
-                  <Text style={[styles.questTabText, { color: isActive ? '#0f172a' : colors.text }]}>{tab.key}</Text>
-                  {badge > 0 && (
-                    <View style={[styles.questTabBadge, { backgroundColor: colors.rose }]}>
-                      <Text style={styles.questTabBadgeText}>{badge}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <View style={styles.questList}>
-            {quests.map((quest, index) => {
-              const canClaim = quest.progress >= quest.goal;
-              const claimed = claimedQuests.has(quest.id);
-              const percent = quest.goal ? Math.min(100, (quest.progress / quest.goal) * 100) : 0;
-              return (
-                <View
-                  key={quest.id}
-                  style={[
-                    styles.questCard,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.surfaceBorder,
-                      marginBottom: index === quests.length - 1 ? 0 : 12,
-                    },
-                  ]}
-                >
-                  <View style={styles.questCardHeader}>
-                    <View style={styles.questTitleGroup}>
-                      <Text style={[styles.questTitle, { color: colors.text }]}>{quest.title}</Text>
-                      <Text style={[styles.questDescription, { color: 'rgba(148,163,184,.95)' }]}>{quest.desc}</Text>
-                    </View>
-                    <View style={styles.questRewardMeta}>
-                      <View style={styles.questRewardPill}>
-                        <Ionicons name="flash" size={14} color={colors.sky} />
-                        <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.xp}</Text>
-                      </View>
-                      <View style={styles.questRewardPill}>
-                        <Ionicons name="cash" size={14} color={colors.emerald} />
-                        <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.gold}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.questProgressSection}>
-                    <View
-                      style={[
-                        styles.questProgressTrack,
-                        { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
-                      ]}
-                    >
-                      <LinearGradient
-                        colors={[colors.sky, colors.emerald]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[styles.questProgressFill, { width: ${Math.max(6, percent)}% }]}
-                      />
-                    </View>
-                    <Text style={[styles.questProgressLabel, { color: 'rgba(148,163,184,.95)' }]}>{quest.progress} / {quest.goal}</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleClaimQuest(quest)}
-                    disabled={!canClaim || claimed}
-                    style={[
-                      styles.questClaimButton,
-                      {
-                        backgroundColor: canClaim && !claimed ? colors.sky : colors.chipBg,
-                        borderColor: colors.surfaceBorder,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.questClaimText,
-                        { color: canClaim && !claimed ? '#0f172a' : colors.text },
-                      ]}
-                    >
-                      {claimed ? 'Claimed' : canClaim ? 'Claim reward' : 'Keep going'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-            {!quests.length && (
-              <View style={[styles.questEmpty, { borderColor: colors.surfaceBorder }]}>
-                <Text style={[styles.questEmptyText, { color: colors.text }]}>
-                  No quests available yet. Check back soon.
-                </Text>
+                <Text style={styles.questEmptyText}>No quests available.</Text>
               </View>
             )}
           </View>
@@ -1438,7 +1371,7 @@ export default function App() {
                   />
                 )}
                 {badge ? (
-                  <View style={[styles.bottomNavBadge, { backgroundColor: colors.rose }]}>
+                  <View style={[styles.bottomNavBadge, questBadgeShadow]}>
                     <Text style={styles.bottomNavBadgeText}>{badge}</Text>
                   </View>
                 ) : null}
@@ -1659,22 +1592,30 @@ const styles = StyleSheet.create({
   },
   questTabsRow: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
     padding: 6,
-    borderRadius: 16,
+    borderRadius: 999,
     borderWidth: 1,
     marginTop: 12,
   },
   questTabButton: {
     flex: 1,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  questTabButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    position: 'relative',
+  },
+  questTabButtonGradient: {
+    borderRadius: 999,
   },
   questTabIcon: {
     marginRight: 6,
@@ -1693,6 +1634,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 5,
+    backgroundColor: '#f43f5e',
   },
   questTabBadgeText: {
     fontSize: 10,
@@ -1744,7 +1686,6 @@ const styles = StyleSheet.create({
   questProgressTrack: {
     height: 8,
     borderRadius: 999,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   questProgressFill: {
@@ -1761,6 +1702,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  questClaimGradient: {
+    borderRadius: 12,
   },
   questClaimText: {
     fontSize: 13,
@@ -1777,6 +1723,7 @@ const styles = StyleSheet.create({
   questEmptyText: {
     fontSize: 12,
     textAlign: 'center',
+    color: 'rgba(148,163,184,.95)',
   },
   footerText: {
     fontSize: 11,
@@ -1982,6 +1929,23 @@ const styles = StyleSheet.create({
   },
   bottomNavButtonDisabled: {
     opacity: 0.45,
+  },
+  bottomNavBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 22,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    borderRadius: 12,
+    backgroundColor: '#f43f5e',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomNavBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
   },
   bottomNavLabel: {
     fontSize: 11,
