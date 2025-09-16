@@ -282,7 +282,7 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
             </button>
           </Panel>
         ) : (
-          <div className="grid w-full min-w-0 gap-3 pb-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="flex w-full flex-wrap gap-3 pb-2">
             {effects.map((e) => {
               const Icon = e.icon || Zap;
               const remaining = e.expiresAt
@@ -292,85 +292,75 @@ export default function Shop({ c, eff, gold, setGold, effects, setEffects }) {
                 e.duration && remaining !== null
                   ? Math.max(0, Math.min(1, remaining / e.duration))
                   : null;
+              const angle = progress !== null ? progress * 360 : 360;
+              const ringBackground =
+                progress !== null
+                  ? `conic-gradient(from -90deg, ${c.sky} 0deg, ${c.emerald} ${angle}deg, ${c.surfaceBorder} ${angle}deg 360deg)`
+                  : `linear-gradient(135deg, ${c.sky}, ${c.emerald})`;
+              const tooltip = [e.description, remaining !== null ? `${formatTime(Math.ceil(remaining))} left` : null]
+                .filter(Boolean)
+                .join(" • ");
               return (
                 <motion.div
                   key={e.id}
-                  className="rounded-2xl p-4 space-y-3 h-full"
+                  className="flex flex-col items-center gap-2 rounded-2xl p-3"
                   style={{
                     background: `linear-gradient(135deg, ${c.surface}, ${c.chipBg})`,
                     border: `1px solid ${c.surfaceBorder}`,
                     boxShadow: shadow(
                       eff,
-                      "0 14px 38px rgba(0,0,0,.12),0 3px 10px rgba(0,0,0,.06)",
-                      "0 18px 50px rgba(0,0,0,.46),0 4px 12px rgba(0,0,0,.32)"
-                    )
+                      "0 12px 32px rgba(0,0,0,.12),0 4px 10px rgba(0,0,0,.06)",
+                      "0 16px 40px rgba(0,0,0,.46),0 5px 14px rgba(0,0,0,.32)"
+                    ),
+                    color: c.text,
+                    minWidth: 112
                   }}
                   whileHover={{ translateY: -4 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                  title={tooltip ? `${e.name} • ${tooltip}` : e.name}
                 >
-                  <div className="flex items-start gap-3">
+                  <div
+                    className="rounded-full p-[3px]"
+                    style={{
+                      background: ringBackground,
+                      transition: "background 0.35s ease"
+                    }}
+                  >
                     <div
-                      className="grid h-10 w-10 place-items-center rounded-xl"
+                      className="grid h-12 w-12 place-items-center rounded-full"
                       style={{
-                        background: `linear-gradient(135deg, ${c.sky}, ${c.emerald})`,
+                        background: `linear-gradient(135deg, ${c.surface}, ${c.chipBg})`,
+                        border: `1px solid ${c.surfaceBorder}`,
                         color: "#0f172a"
                       }}
                     >
                       <Icon className="w-5 h-5" aria-hidden="true" />
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div
-                          className="text-sm font-semibold leading-tight"
-                          style={{ color: c.text }}
-                        >
-                          {e.name}
-                        </div>
-                        <span
-                          className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full"
-                          style={{
-                            background: `linear-gradient(135deg, ${c.sky}, ${c.emerald})`,
-                            color: "#0f172a"
-                          }}
-                        >
-                          Active
-                        </span>
-                      </div>
-                      <p
-                        className="text-[11px] mt-1 leading-snug"
+                  </div>
+                  <div className="flex flex-col items-center gap-1 text-center">
+                    <span
+                      className="text-xs font-semibold leading-tight"
+                      style={{ color: c.text }}
+                    >
+                      {e.name}
+                    </span>
+                    {remaining !== null && e.duration ? (
+                      <span
+                        className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide"
                         style={{ color: Grey }}
                       >
-                        {e.description}
-                      </p>
-                    </div>
+                        <Clock className="w-3 h-3" aria-hidden="true" />
+                        {formatTime(Math.ceil(remaining))}
+                      </span>
+                    ) : (
+                      <span
+                        className="text-[10px] uppercase tracking-wide"
+                        style={{ color: Grey }}
+                      >
+                        Passive boost
+                      </span>
+                    )}
                   </div>
-                  {remaining !== null && e.duration && (
-                    <div className="space-y-1">
-                      <div
-                        className="h-1.5 rounded-full overflow-hidden"
-                        style={{ background: c.surfaceBorder }}
-                      >
-                        <div
-                          className="h-full"
-                          style={{
-                            width: `${progress * 100}%`,
-                            background: `linear-gradient(90deg, ${c.sky}, ${c.emerald})`
-                          }}
-                        />
-                      </div>
-                      <div
-                        className="flex items-center justify-between text-[11px]"
-                        style={{ color: c.text }}
-                      >
-                        <span className="flex items-center gap-1 font-semibold">
-                          <Clock className="w-3 h-3" aria-hidden="true" />
-                          {formatTime(Math.ceil(remaining))}
-                        </span>
-                        <span className="opacity-70">
-                          {Math.max(0, Math.round(progress * 100))}% left
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </motion.div>
               );
             })}
