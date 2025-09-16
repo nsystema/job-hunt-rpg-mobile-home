@@ -288,6 +288,13 @@ export default function Rewards({ c, eff, setGold, chests, setChests, effects = 
 
   const viewRange = filteredPotential ? `${formatRange(filteredPotential)}g` : "0g";
   const vaultRange = overallPotential ? `${formatRange(overallPotential)}g` : null;
+  const hasChests = chests.length > 0;
+  const summaryMuted = eff === "light" ? "rgba(15,23,42,0.66)" : "rgba(226,232,240,0.76)";
+  const summaryStrong = eff === "light" ? "#0f172a" : c.text;
+  const pillBg = eff === "light" ? "rgba(255,255,255,0.55)" : "rgba(15,23,42,0.38)";
+  const filterHintColor = eff === "light" ? "rgba(15,23,42,0.5)" : "rgba(226,232,240,0.6)";
+  const vaultLabel = chests.length === 1 ? "chest" : "chests";
+  const headlineColor = hexToRgba(c.text, 0.85);
 
   return (
     <div className="space-y-5">
@@ -308,125 +315,73 @@ export default function Rewards({ c, eff, setGold, chests, setChests, effects = 
           backdropFilter: "blur(12px)",
         }}
       >
-        <div className="relative flex flex-col gap-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div
-                className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide"
-                style={{
-                  background:
-                    eff === "light" ? "rgba(255,255,255,0.65)" : "rgba(15,23,42,0.32)",
-                  border: `1px solid ${hexToRgba(c.sky, 0.4)}`,
-                  color: eff === "light" ? "#0f172a" : c.text,
-                }}
-              >
-                <Gift className="h-4 w-4" />
-                Treasure vault
-              </div>
-              <div
-                className="text-2xl font-semibold leading-tight"
-                style={{ color: eff === "light" ? "#0f172a" : c.text }}
-              >
-                Streamline your loot stash.
-              </div>
-              <p
-                className="text-sm leading-snug"
-                style={{
-                  color:
-                    eff === "light"
-                      ? "rgba(15,23,42,0.66)"
-                      : "rgba(226,232,240,0.76)",
-                }}
-              >
-                Track how much gold is tucked away and open chests when you're ready for a boost.
-              </p>
+        <div className="relative flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div
+              className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide"
+              style={{ color: headlineColor }}
+            >
+              <Gift className="h-4 w-4" />
+              Treasure vault
             </div>
             <motion.button
               onClick={openAll}
-              disabled={!chests.length}
-              className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold"
+              disabled={!hasChests}
+              className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-semibold"
               style={{
-                background: chests.length
-                  ? `linear-gradient(120deg, ${c.sky}, ${c.emerald})`
-                  : eff === "light"
-                  ? "rgba(255,255,255,0.45)"
-                  : "rgba(15,23,42,0.45)",
-                color: chests.length ? "#0f172a" : hexToRgba(c.text, 0.6),
-                border: `1px solid ${chests.length ? hexToRgba(c.emerald, 0.45) : c.surfaceBorder}`,
-                cursor: chests.length ? "pointer" : "not-allowed",
-                boxShadow: chests.length
-                  ? shadow(
-                      eff,
-                      "0 14px 30px rgba(15,23,42,0.18)",
-                      "0 16px 38px rgba(6,8,18,0.58)"
-                    )
-                  : "none",
+                background: hasChests
+                  ? hexToRgba(c.sky, eff === "light" ? 0.28 : 0.38)
+                  : hexToRgba(c.text, eff === "light" ? 0.08 : 0.18),
+                color: hasChests ? summaryStrong : hexToRgba(c.text, 0.55),
+                border: `1px solid ${hasChests ? hexToRgba(c.emerald, 0.45) : c.surfaceBorder}`,
+                cursor: hasChests ? "pointer" : "not-allowed",
+                transition: "transform .2s ease, background .2s ease",
               }}
-              whileHover={chests.length ? { scale: 1.02 } : undefined}
-              whileTap={chests.length ? { scale: 0.96 } : undefined}
+              whileHover={hasChests ? { scale: 1.02 } : undefined}
+              whileTap={hasChests ? { scale: 0.96 } : undefined}
             >
               <Sparkles className="h-4 w-4" />
               Open all
             </motion.button>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div
-              className="rounded-2xl px-4 py-3"
-              style={{
-                background: eff === "light" ? "rgba(255,255,255,0.58)" : "rgba(15,23,42,0.32)",
-                border: `1px solid ${hexToRgba(c.sky, 0.35)}`,
-              }}
-            >
-              <div
-                className="text-[11px] uppercase tracking-wide"
-                style={{ color: eff === "light" ? "rgba(15,23,42,0.6)" : "rgba(226,232,240,0.7)" }}
+          <div
+            className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] leading-tight"
+            style={{ color: summaryMuted }}
+          >
+            <span className="inline-flex items-center gap-1">
+              <span>In view</span>
+              <span
+                className="rounded-full px-2 py-0.5 text-[12px] font-semibold tabular-nums"
+                style={{ background: pillBg, color: summaryStrong }}
               >
-                In view ({filter})
-              </div>
-              <div className="mt-1 flex items-baseline justify-between">
-                <span
-                  className="text-2xl font-semibold tabular-nums"
-                  style={{ color: eff === "light" ? "#0f172a" : c.text }}
-                >
-                  {visibleChests.length}
+                {visibleChests.length}
+              </span>
+              {filter !== "All" && (
+                <span style={{ color: filterHintColor }}>({filter.toLowerCase()})</span>
+              )}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Coins className="h-3.5 w-3.5" />
+              <span>Potential</span>
+              <span className="font-semibold" style={{ color: summaryStrong }}>
+                {viewRange}
+              </span>
+            </span>
+            {vaultRange && (
+              <span className="inline-flex items-center gap-1">
+                <span>Vault</span>
+                <span className="font-semibold tabular-nums" style={{ color: summaryStrong }}>
+                  {chests.length}
                 </span>
-                <span
-                  className="text-xs uppercase tracking-wide"
-                  style={{ color: eff === "light" ? "rgba(15,23,42,0.55)" : "rgba(226,232,240,0.65)" }}
-                >
-                  chests
+                <span>{vaultLabel}</span>
+                <span aria-hidden>•</span>
+                <span className="font-semibold" style={{ color: summaryStrong }}>
+                  {vaultRange}
                 </span>
-              </div>
-            </div>
-            <div
-              className="rounded-2xl px-4 py-3"
-              style={{
-                background: eff === "light" ? "rgba(255,255,255,0.5)" : "rgba(15,23,42,0.28)",
-                border: `1px solid ${hexToRgba(c.emerald, 0.35)}`,
-              }}
-            >
-              <div
-                className="text-[11px] uppercase tracking-wide"
-                style={{ color: eff === "light" ? "rgba(15,23,42,0.6)" : "rgba(226,232,240,0.7)" }}
-              >
-                Gold potential
-              </div>
-              <div className="mt-1 inline-flex items-center gap-2 text-base font-semibold">
-                <Coins className="h-4 w-4" /> {viewRange}
-              </div>
-            </div>
+              </span>
+            )}
           </div>
-
-          {vaultRange && (
-            <div
-              className="text-[11px]"
-              style={{ color: eff === "light" ? "rgba(15,23,42,0.6)" : "rgba(226,232,240,0.7)" }}
-            >
-              Vault holds {vaultRange} across {chests.length} chest
-              {chests.length === 1 ? "" : "s"}.
-            </div>
-          )}
         </div>
       </motion.section>
 
