@@ -3347,93 +3347,151 @@ export default function App() {
       />
 
       <Modal visible={filterModalVisible} transparent animationType="fade">
-        <View style={styles.sheetOverlay}>
-          <View
-            style={[styles.sheetBody, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
-          >
-            <View style={styles.sheetHandle} />
-            <Text style={[styles.sheetTitle, { color: colors.text }]}>Filters</Text>
-            <Text style={[styles.sheetSubtitle, { color: colors.text }]}>Status</Text>
-            <View style={styles.sheetOptionRow}>
-              {STATUSES.map((status) => {
-                const active = filterStatuses.includes(status.key);
-                return (
+        <TouchableWithoutFeedback onPress={() => setFilterModalVisible(false)} accessible={false}>
+          <View style={styles.sheetOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}} accessible={false}>
+              <View
+                style={[styles.sheetBody, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
+              >
+                <View style={[styles.sheetHeader, { borderBottomColor: colors.surfaceBorder }]}>
+                  <Text style={[styles.sheetTitle, { color: colors.text }]}>Filters</Text>
                   <TouchableOpacity
-                    key={status.key}
-                    onPress={() => toggleFilterStatus(status.key)}
+                    onPress={() => setFilterModalVisible(false)}
+                    style={[styles.closeButton, { backgroundColor: colors.chipBg }]}
+                  >
+                    <Ionicons name="close" size={20} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView
+                  style={styles.sheetContent}
+                  contentContainerStyle={styles.sheetContentContainer}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View>
+                    <Text style={[styles.sheetSubtitle, { color: colors.text }]}>Status</Text>
+                    <View style={styles.sheetOptionRow}>
+                      {STATUSES.map((status) => {
+                        const active = filterStatuses.includes(status.key);
+                        return (
+                          <TouchableOpacity
+                            key={status.key}
+                            onPress={() => toggleFilterStatus(status.key)}
+                            style={[
+                              styles.sheetOption,
+                              {
+                                backgroundColor: active ? colors.sky : colors.chipBg,
+                                borderColor: colors.surfaceBorder,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>
+                              {status.key}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                  <View>
+                    <Text style={[styles.sheetSubtitle, { color: colors.text }]}>Platform</Text>
+                    <View style={styles.sheetOptionWrap}>
+                      {PLATFORMS.map((platform) => {
+                        const active = filterPlatforms.includes(platform);
+                        return (
+                          <TouchableOpacity
+                            key={platform}
+                            onPress={() => toggleFilterPlatform(platform)}
+                            style={[
+                              styles.sheetOption,
+                              {
+                                backgroundColor: active ? colors.emerald : colors.chipBg,
+                                borderColor: colors.surfaceBorder,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>
+                              {platform}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </ScrollView>
+                <View style={[styles.sheetFooter, { borderTopColor: colors.surfaceBorder }]}>
+                  <TouchableOpacity
+                    onPress={clearFilters}
                     style={[
-                      styles.sheetOption,
-                      { backgroundColor: active ? colors.sky : colors.chipBg, borderColor: colors.surfaceBorder },
+                      styles.sheetSecondaryButton,
+                      { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
                     ]}
                   >
-                    <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>{status.key}</Text>
+                    <Text style={[styles.sheetSecondaryButtonText, { color: colors.text }]}>Reset</Text>
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-            <Text style={[styles.sheetSubtitle, { color: colors.text }]}>Platform</Text>
-            <View style={styles.sheetOptionWrap}>
-              {PLATFORMS.map((platform) => {
-                const active = filterPlatforms.includes(platform);
-                return (
-                  <TouchableOpacity
-                    key={platform}
-                    onPress={() => toggleFilterPlatform(platform)}
-                    style={[
-                      styles.sheetOption,
-                      { backgroundColor: active ? colors.emerald : colors.chipBg, borderColor: colors.surfaceBorder },
-                    ]}
-                  >
-                    <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>{platform}</Text>
+                  <TouchableOpacity onPress={() => setFilterModalVisible(false)} style={styles.sheetPrimaryButton}>
+                    <LinearGradient
+                      colors={[colors.sky, colors.emerald]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.sheetPrimaryButtonGradient}
+                    >
+                      <Text style={styles.sheetPrimaryButtonText}>Done</Text>
+                    </LinearGradient>
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-            <View style={styles.sheetButtons}>
-              <TouchableOpacity
-                onPress={clearFilters}
-                style={[styles.sheetButton, { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder }]}
-              >
-                <Text style={[styles.sheetButtonText, { color: colors.text }]}>Reset</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setFilterModalVisible(false)}
-                style={[styles.sheetButton, { backgroundColor: colors.sky }]}
-              >
-                <Text style={[styles.sheetButtonText, { color: '#0f172a' }]}>Done</Text>
-              </TouchableOpacity>
-            </View>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal visible={sortModalVisible} transparent animationType="fade">
-        <View style={styles.sheetOverlay}>
-          <View
-            style={[styles.sheetBody, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
-          >
-            <View style={styles.sheetHandle} />
-            <Text style={[styles.sheetTitle, { color: colors.text }]}>Sort by</Text>
-            {['Newest', 'Oldest', 'Company A-Z', 'Favorites first'].map((option) => {
-              const active = sortKey === option;
-              return (
-                <TouchableOpacity
-                  key={option}
-                  onPress={() => {
-                    setSortKey(option);
-                    setSortModalVisible(false);
-                  }}
-                  style={[
-                    styles.sheetOption,
-                    { backgroundColor: active ? colors.sky : colors.chipBg, borderColor: colors.surfaceBorder },
-                  ]}
-                >
-                  <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>{option}</Text>
-                </TouchableOpacity>
-              );
-            })}
+        <TouchableWithoutFeedback onPress={() => setSortModalVisible(false)} accessible={false}>
+          <View style={styles.sheetOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}} accessible={false}>
+              <View
+                style={[styles.sheetBody, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
+              >
+                <View style={[styles.sheetHeader, { borderBottomColor: colors.surfaceBorder }]}>
+                  <Text style={[styles.sheetTitle, { color: colors.text }]}>Sort by</Text>
+                  <TouchableOpacity
+                    onPress={() => setSortModalVisible(false)}
+                    style={[styles.closeButton, { backgroundColor: colors.chipBg }]}
+                  >
+                    <Ionicons name="close" size={20} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.sheetContent}>
+                  <View style={styles.sheetOptionList}>
+                    {['Newest', 'Oldest', 'Company A-Z', 'Favorites first'].map((option) => {
+                      const active = sortKey === option;
+                      return (
+                        <TouchableOpacity
+                          key={option}
+                          onPress={() => {
+                            setSortKey(option);
+                            setSortModalVisible(false);
+                          }}
+                          style={[
+                            styles.sheetOption,
+                            {
+                              backgroundColor: active ? colors.sky : colors.chipBg,
+                              borderColor: colors.surfaceBorder,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>
+                            {option}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <View
@@ -3701,13 +3759,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 12,
+    height: 38,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 0,
     gap: 8,
   },
   searchInputField: {
     flex: 1,
     fontSize: 14,
+    paddingVertical: 0,
   },
   questTabsRow: {
     flexDirection: 'row',
@@ -3964,72 +4024,95 @@ const styles = StyleSheet.create({
   },
   sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(15,23,42,0.55)',
+    justifyContent: 'center',
+    padding: 24,
   },
   sheetBody: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 24,
     borderWidth: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 44,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(148,163,184,0.4)',
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
     marginBottom: 16,
   },
   sheetTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 16,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  sheetContent: {
+    flexGrow: 0,
+  },
+  sheetContentContainer: {
+    gap: 20,
+    paddingBottom: 8,
   },
   sheetSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   sheetOptionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 16,
   },
   sheetOptionWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 16,
+  },
+  sheetOptionList: {
+    gap: 12,
   },
   sheetOption: {
     borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
   },
   sheetOptionText: {
     fontSize: 13,
     fontWeight: '600',
   },
-  sheetButtons: {
+  sheetFooter: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    marginTop: 16,
   },
-  sheetButton: {
+  sheetSecondaryButton: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  sheetSecondaryButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  sheetPrimaryButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  sheetPrimaryButtonGradient: {
     paddingVertical: 12,
     alignItems: 'center',
   },
-  sheetButtonText: {
+  sheetPrimaryButtonText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#0f172a',
   },
   bottomNav: {
     borderTopWidth: 1,
