@@ -34,7 +34,7 @@ import {
   buyEffect,
   redeemReward,
 } from './gameMechanics';
-import { STATUSES, PLATFORMS, COUNTRIES, CITIES_BY_COUNTRY } from './data';
+import { STATUSES, PLATFORMS, COUNTRIES, getCitiesForCountry } from './data';
 
 const buildInitialFormValues = () => ({
   company: '',
@@ -131,6 +131,13 @@ const hexToRgba = (hex, alpha) => {
   const b = bigint & 255;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
+
+const getGlassGradientColors = (colors) => [
+  hexToRgba(colors.sky, 0.35),
+  hexToRgba(colors.emerald, 0.35),
+];
+
+const getGlassBorderColor = (colors) => hexToRgba(colors.sky, 0.45);
 
 const costFor = (item) => Math.round(item.minutes * (item.pleasure ?? 1));
 
@@ -513,19 +520,23 @@ const AutoCompleteField = ({
 
   const trimmedQuery = query.trim();
 
+  const normalizedOptions = useMemo(() => options.filter(Boolean), [options]);
+
   const suggestions = useMemo(() => {
     if (!focused || disabled) {
       return [];
     }
+    if (!trimmedQuery.length) {
+      return normalizedOptions;
+    }
     if (trimmedQuery.length < minChars) {
-      return [];
+      return normalizedOptions;
     }
     const lower = trimmedQuery.toLowerCase();
-    return options.filter((option) => option.toLowerCase().startsWith(lower));
-  }, [focused, disabled, trimmedQuery, minChars, options]);
+    return normalizedOptions.filter((option) => option.toLowerCase().includes(lower));
+  }, [focused, disabled, trimmedQuery, normalizedOptions, minChars]);
 
-  const shouldShowList =
-    focused && !disabled && options.length > 0 && trimmedQuery.length >= minChars;
+  const shouldShowList = focused && !disabled && normalizedOptions.length > 0;
 
   const handleChange = (text) => {
     if (disabled) {
@@ -637,80 +648,126 @@ const AutoCompleteField = ({
   );
 };
 
-const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors, activeColor }) => {
-  const highlight = activeColor ?? colors.sky;
+const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors }) => {
   const iconName = value && activeIcon ? activeIcon : icon;
+  const glassColors = getGlassGradientColors(colors);
+  const glassBorder = getGlassBorderColor(colors);
+  const inactiveBorder = colors.surfaceBorder;
+  const activeContentColor = colors.text;
+  const inactiveContentColor = hexToRgba(colors.text, 0.75);
+  const Container = value ? LinearGradient : View;
+  const containerProps = value
+    ? { colors: glassColors, start: { x: 0, y: 0 }, end: { x: 1, y: 1 } }
+    : {};
+
   return (
-    <TouchableOpacity
-      onPress={() => onToggle(!value)}
-      activeOpacity={0.9}
-      style={[
-        styles.iconToggle,
-        { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
-        value && {
-          backgroundColor: hexToRgba(highlight, 0.2),
-          borderColor: highlight,
-        },
-      ]}
-    >
-      <Ionicons name={iconName} size={22} color={value ? highlight : colors.text} />
-      <Text style={[styles.iconToggleLabel, { color: value ? highlight : colors.text }]}>{label}</Text>
+    <TouchableOpacity onPress={() => onToggle(!value)} activeOpacity={0.9} style={styles.iconToggle}>
+      <Container
+        {...containerProps}
+        style={[
+          styles.iconToggleInner,
+          value
+            ? { borderColor: glassBorder }
+            : { borderColor: inactiveBorder, backgroundColor: colors.surface },
+        ]}
+      >
+        <View
+          style={[
+            styles.iconToggleIconWrap,
+            value
+              ? [styles.iconToggleIconWrapActive, { borderColor: glassBorder }]
+              : { backgroundColor: colors.chipBg, borderColor: inactiveBorder },
+          ]}
+        >
+          <Ionicons
+            name={iconName}
+            size={20}
+            color={value ? activeContentColor : inactiveContentColor}
+          />
+        </View>
+        <Text
+          style={[
+            styles.iconToggleLabel,
+            { color: value ? activeContentColor : inactiveContentColor },
+          ]}
+        >
+          {label}
+        </Text>
+      </Container>
     </TouchableOpacity>
   );
 };
 
-const RewardPreview = ({ xp, gold, focus, colors }) => (
-  <View style={styles.rewardPreview}>
-    <View
-      style={[
-        styles.rewardChip,
-        { backgroundColor: hexToRgba(colors.sky, 0.18) },
-      ]}
-    >
-      <Ionicons name="sparkles" size={14} color={colors.sky} />
-      <Text style={[styles.rewardChipText, { color: colors.sky }]}>+{xp}</Text>
-    </View>
-    <View
-      style={[
-        styles.rewardChip,
-        { backgroundColor: hexToRgba(colors.emerald, 0.18) },
-      ]}
-    >
-      <Ionicons name="cash" size={14} color={colors.emerald} />
-      <Text style={[styles.rewardChipText, { color: colors.emerald }]}>+{gold}</Text>
-    </View>
-    <View
-      style={[
-        styles.rewardChip,
-        { backgroundColor: hexToRgba(colors.rose, 0.18) },
-      ]}
-    >
-      <Ionicons name="flash" size={14} color={colors.rose} />
-      <Text style={[styles.rewardChipText, { color: colors.rose }]}>-{focus}</Text>
-    </View>
-  </View>
-);
+const RewardPreview = ({ xp, gold, focus, colors }) => {
+  const glassColors = getGlassGradientColors(colors);
+  const glassBorder = getGlassBorderColor(colors);
+  const chipTextColor = colors.text;
+  const chips = [
+    { key: 'xp', icon: 'sparkles', label: `+${xp}` },
+    { key: 'gold', icon: 'cash', label: `+${gold}` },
+    { key: 'focus', icon: 'flash', label: `-${focus}` },
+  ];
 
-const TypeSelector = ({ value, onChange, colors }) => (
-  <View style={styles.segmentedControl}>
-    {TYPE_OPTIONS.map((option) => {
-      const isActive = value === option;
-      return (
-        <TouchableOpacity
-          key={option}
-          onPress={() => onChange(option)}
-          style={[
-            styles.segmentButton,
-            { borderColor: colors.surfaceBorder },
-            isActive && { backgroundColor: colors.sky },
-          ]}
+  return (
+    <View style={styles.rewardPreview}>
+      {chips.map((chip) => (
+        <LinearGradient
+          key={chip.key}
+          colors={glassColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.rewardChip, { borderColor: glassBorder }]}
         >
-          <Text style={[styles.segmentText, { color: isActive ? '#0f172a' : colors.text }]}>{option}</Text>
-        </TouchableOpacity>
-      );
-    })}
-  </View>
-);
+          <Ionicons name={chip.icon} size={14} color={chipTextColor} />
+          <Text style={[styles.rewardChipText, { color: chipTextColor }]}>{chip.label}</Text>
+        </LinearGradient>
+      ))}
+    </View>
+  );
+};
+
+const TypeSelector = ({ value, onChange, colors }) => {
+  const glassColors = getGlassGradientColors(colors);
+  const glassBorder = getGlassBorderColor(colors);
+  const activeTextColor = colors.text;
+  const inactiveTextColor = hexToRgba(colors.text, 0.75);
+
+  return (
+    <View style={styles.segmentedControl}>
+      {TYPE_OPTIONS.map((option) => {
+        const isActive = value === option;
+        return (
+          <TouchableOpacity
+            key={option}
+            onPress={() => onChange(option)}
+            activeOpacity={0.85}
+            style={styles.segmentButton}
+          >
+            {isActive ? (
+              <LinearGradient
+                colors={glassColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.segmentButtonInner, { borderColor: glassBorder }]}
+              >
+                <Text style={[styles.segmentText, { color: activeTextColor }]}>{option}</Text>
+              </LinearGradient>
+            ) : (
+              <View
+                style={[
+                  styles.segmentButtonInner,
+                  { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                ]}
+              >
+                <Text style={[styles.segmentText, { color: inactiveTextColor }]}>{option}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
 
 const StatusSelector = ({ value, onChange, colors }) => (
   <View>
@@ -769,35 +826,52 @@ const StatusSelector = ({ value, onChange, colors }) => (
   </View>
 );
 
-const PlatformSelector = ({ value, onChange, colors }) => (
-  <View style={styles.platformOptions}>
-    {PLATFORMS.map((platform) => {
-      const isActive = value === platform;
-      return (
-        <TouchableOpacity
-          key={platform}
-          onPress={() => onChange(platform)}
-          activeOpacity={0.85}
-          style={[
-            styles.platformChip,
-            {
-              backgroundColor: colors.chipBg,
-              borderColor: colors.surfaceBorder,
-            },
-            isActive && {
-              backgroundColor: colors.emerald,
-              borderColor: colors.emerald,
-            },
-          ]}
-        >
-          <Text style={[styles.platformChipText, { color: isActive ? '#0f172a' : colors.text }]}>
-            {platform}
-          </Text>
-        </TouchableOpacity>
-      );
-    })}
-  </View>
-);
+const PlatformSelector = ({ value, onChange, colors }) => {
+  const glassColors = getGlassGradientColors(colors);
+  const glassBorder = getGlassBorderColor(colors);
+  const activeLabelColor = colors.text;
+  const inactiveLabelColor = hexToRgba(colors.text, 0.75);
+
+  return (
+    <View style={styles.platformOptions}>
+      {PLATFORMS.map((platform) => {
+        const isActive = value === platform;
+        return (
+          <TouchableOpacity
+            key={platform}
+            onPress={() => onChange(platform)}
+            activeOpacity={0.85}
+            style={styles.platformChip}
+          >
+            {isActive ? (
+              <LinearGradient
+                colors={glassColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.platformChipInner, { borderColor: glassBorder }]}
+              >
+                <Text style={[styles.platformChipText, { color: activeLabelColor }]}>
+                  {platform}
+                </Text>
+              </LinearGradient>
+            ) : (
+              <View
+                style={[
+                  styles.platformChipInner,
+                  { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
+                ]}
+              >
+                <Text style={[styles.platformChipText, { color: inactiveLabelColor }]}>
+                  {platform}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
 
 // Helper components
 const StatBadge = ({ icon, count, colors }) => (
@@ -1941,10 +2015,7 @@ const AppFormModal = ({
     [type, cvTailored, motivation, effects],
   );
   const cost = useMemo(() => focusCost(type), [type]);
-  const cityOptions = useMemo(
-    () => (country ? CITIES_BY_COUNTRY[country] || [] : []),
-    [country],
-  );
+  const cityOptions = useMemo(() => (country ? getCitiesForCountry(country) : []), [country]);
 
   const handleCountrySelect = useCallback((selected) => {
     setForm((prev) => {
@@ -1983,7 +2054,7 @@ const AppFormModal = ({
         Alert.alert('Invalid City', 'Please select a country before choosing a city.');
         return;
       }
-      const validCities = CITIES_BY_COUNTRY[country] || [];
+      const validCities = getCitiesForCountry(country);
       if (!validCities.includes(city)) {
         Alert.alert('Invalid City', 'Please select a city from the list.');
         return;
@@ -2089,25 +2160,22 @@ const AppFormModal = ({
               value={cvTailored}
               onToggle={setField('cvTailored')}
               colors={colors}
-              activeColor={colors.sky}
             />
             <IconToggle
               label="Motivation"
-              icon="flame-outline"
-              activeIcon="flame"
+              icon="mail-outline"
+              activeIcon="mail"
               value={motivation}
               onToggle={setField('motivation')}
               colors={colors}
-              activeColor={colors.amber}
             />
             <IconToggle
-              label="Fav"
-              icon="heart-outline"
-              activeIcon="heart"
+              label="FAV"
+              icon="star-outline"
+              activeIcon="star"
               value={favorite}
               onToggle={setField('favorite')}
               colors={colors}
-              activeColor={colors.rose}
             />
           </View>
         </ScrollView>
@@ -4004,6 +4072,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
+    borderWidth: 1,
   },
   rewardChipText: {
     marginLeft: 4,
@@ -4096,11 +4165,16 @@ const styles = StyleSheet.create({
   },
   segmentButton: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  segmentButtonInner: {
+    borderWidth: 1,
+    borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   segmentText: {
     fontSize: 12,
@@ -4115,16 +4189,35 @@ const styles = StyleSheet.create({
   },
   iconToggle: {
     flex: 1,
+    aspectRatio: 1,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  iconToggleInner: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 12,
+    gap: 8,
+  },
+  iconToggleIconWrap: {
+    width: 44,
+    height: 44,
     borderRadius: 16,
     borderWidth: 1,
-    paddingVertical: 12,
-    gap: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconToggleIconWrapActive: {
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderColor: 'rgba(255,255,255,0.55)',
   },
   iconToggleLabel: {
     fontSize: 11,
     fontWeight: '600',
+    textAlign: 'center',
   },
   inlineFieldRow: {
     flexDirection: 'row',
@@ -4176,12 +4269,18 @@ const styles = StyleSheet.create({
     marginHorizontal: -6,
   },
   platformChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
     marginHorizontal: 6,
     marginBottom: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  platformChipInner: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   platformChipText: {
     fontSize: 12,

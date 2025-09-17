@@ -1,3 +1,5 @@
+import { City, Country } from 'country-state-city';
+
 export const Grey = 'rgba(148,163,184,.95)';
 
 export const PLATFORMS = [
@@ -22,28 +24,34 @@ export const STATUSES = [
   { key: 'Rejected', hint: 'Closed' },
 ];
 
-export const COUNTRIES = [
-  'Belgium',
-  'Canada',
-  'France',
-  'Germany',
-  'Italy',
-  'Netherlands',
-  'Spain',
-  'Switzerland',
-  'United Kingdom',
-  'United States',
-];
+const COUNTRIES_DATA = Country.getAllCountries();
 
-export const CITIES_BY_COUNTRY = {
-  Belgium: ['Brussels', 'Antwerp', 'Ghent', 'Bruges', 'Leuven'],
-  Canada: ['Toronto', 'Vancouver', 'Montreal', 'Calgary', 'Ottawa'],
-  France: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Bordeaux'],
-  Germany: ['Berlin', 'Munich', 'Hamburg', 'Frankfurt', 'Cologne'],
-  Italy: ['Rome', 'Milan', 'Turin', 'Naples', 'Florence'],
-  Netherlands: ['Amsterdam', 'Rotterdam', 'Utrecht', 'Eindhoven', 'The Hague'],
-  Spain: ['Madrid', 'Barcelona', 'Valencia', 'Seville', 'Bilbao'],
-  Switzerland: ['Zurich', 'Geneva', 'Lausanne', 'Bern', 'Basel'],
-  'United Kingdom': ['London', 'Manchester', 'Birmingham', 'Edinburgh', 'Glasgow'],
-  'United States': ['New York', 'San Francisco', 'Los Angeles', 'Chicago', 'Seattle'],
+export const COUNTRIES = COUNTRIES_DATA
+  .map((country) => country.name)
+  .filter(Boolean)
+  .sort((a, b) => a.localeCompare(b));
+
+const COUNTRY_CODE_LOOKUP = new Map(
+  COUNTRIES_DATA.map((country) => [country.name, country.isoCode]),
+);
+
+const cityCache = new Map();
+
+export const getCitiesForCountry = (countryName) => {
+  if (!countryName || !COUNTRY_CODE_LOOKUP.has(countryName)) {
+    return [];
+  }
+  if (cityCache.has(countryName)) {
+    return cityCache.get(countryName);
+  }
+  const isoCode = COUNTRY_CODE_LOOKUP.get(countryName);
+  const cities = Array.from(
+    new Set(
+      City.getCitiesOfCountry(isoCode)
+        .map((city) => city.name)
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+  cityCache.set(countryName, cities);
+  return cities;
 };
