@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "package:android-sdk": "node scripts/package-android-sdk.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -23,7 +24,8 @@
     "react-native-url-polyfill": "^2.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.20.0",
+    "eas-cli": "^16.19.3"
   },
   "private": true
 }

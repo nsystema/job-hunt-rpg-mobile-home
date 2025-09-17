@@ -39,6 +39,31 @@ A gamified job hunting experience built with React Native and Expo. Track your j
 - **iOS Simulator**: `npx expo start --ios`
 - **Android Emulator**: `npx expo start --android`
 
+### Packaging an Android APK for device testing
+
+You can generate a downloadable Android package using the included helper script. This wraps
+[EAS Build](https://docs.expo.dev/eas-build/) so you can hand an APK to testers without
+opening the project in Android Studio.
+
+1. Sign in to Expo (only required once per machine):
+   ```bash
+   npx eas login
+   ```
+2. Trigger the build and download the artifact:
+   ```bash
+   npm run package:android-sdk
+   ```
+   The script will wait for Expo to finish the build, download the generated APK and place
+   it in the `dist/` directory (e.g. `dist/job-hunt-rpg-mobile-development.apk`).
+3. Transfer the APK to your Android phone and install it to test the app.
+
+Pass `-- --profile <profile>` to pick a different EAS build profile, or `-- --output <path>`
+to control where the APK is saved. For example:
+
+```bash
+npm run package:android-sdk -- --profile preview --output ~/Downloads/job-hunt.apk
+```
+
 ## Usage
 
 1. **Log Applications**: Tap "Log application" to add new job applications
