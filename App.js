@@ -650,25 +650,17 @@ const AutoCompleteField = ({
 
 const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors }) => {
   const iconName = value && activeIcon ? activeIcon : icon;
-  const glassColors = getGlassGradientColors(colors);
   const glassBorder = getGlassBorderColor(colors);
   const inactiveBorder = colors.surfaceBorder;
   const activeContentColor = colors.text;
   const inactiveContentColor = hexToRgba(colors.text, 0.75);
-  const Container = value ? LinearGradient : View;
-  const containerProps = value
-    ? { colors: glassColors, start: { x: 0, y: 0 }, end: { x: 1, y: 1 } }
-    : {};
 
   return (
     <TouchableOpacity onPress={() => onToggle(!value)} activeOpacity={0.9} style={styles.iconToggle}>
-      <Container
-        {...containerProps}
+      <View
         style={[
           styles.iconToggleInner,
-          value
-            ? { borderColor: glassBorder }
-            : { borderColor: inactiveBorder, backgroundColor: colors.surface },
+          { borderColor: 'transparent', backgroundColor: 'transparent' },
         ]}
       >
         <View
@@ -693,7 +685,7 @@ const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors }) => {
         >
           {label}
         </Text>
-      </Container>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -2196,7 +2188,7 @@ const AppFormModal = ({
           <TouchableOpacity onPress={handleCancel} style={[styles.cancelButton, { backgroundColor: colors.chipBg }]}>
             <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleSubmit}>
+          <TouchableOpacity onPress={handleSubmit} style={styles.submitButtonWrapper}>
             <LinearGradient
               colors={[colors.sky, colors.emerald]}
               start={{ x: 0, y: 0 }}
@@ -4333,6 +4325,10 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  submitButtonWrapper: {
+    flex: 1,
+    borderRadius: 12,
   },
   submitButton: {
     flex: 1,
