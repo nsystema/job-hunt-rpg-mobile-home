@@ -144,6 +144,26 @@ const getGlassGradientColors = (colors) => [
 
 const getGlassBorderColor = (colors) => hexToRgba(colors.sky, 0.45);
 
+const ensureOpaque = (color, fallback = '#fff') => {
+  if (!color || typeof color !== 'string') {
+    return fallback;
+  }
+  const normalized = color.replace(/\s+/g, '');
+  const rgbaMatch = normalized.match(/^rgba?\(([-\d.]+),([-\d.]+),([-\d.]+)(?:,([-\d.]+))?\)$/i);
+  if (rgbaMatch) {
+    const r = Math.round(Number(rgbaMatch[1]));
+    const g = Math.round(Number(rgbaMatch[2]));
+    const b = Math.round(Number(rgbaMatch[3]));
+    if ([r, g, b].every((value) => !Number.isNaN(value))) {
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+  }
+  if (normalized.startsWith('#')) {
+    return color;
+  }
+  return fallback;
+};
+
 const costFor = (item) => Math.round(item.minutes * (item.pleasure ?? 1));
 
 const formatGoldValue = (value) =>
@@ -1112,6 +1132,10 @@ const ShopScreen = ({
   );
 
   const cardShadow = eff === 'light' ? styles.shopCardShadowLight : styles.shopCardShadowDark;
+  const filledSurface = useMemo(
+    () => (eff === 'light' ? ensureOpaque(colors.surface) : colors.surface),
+    [eff, colors.surface],
+  );
 
   const handleBuyEffect = useCallback(
     (item) => {
@@ -1294,7 +1318,7 @@ const ShopScreen = ({
                   <View
                     style={[
                       styles.shopEmptyCard,
-                      { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                      { backgroundColor: filledSurface, borderColor: colors.surfaceBorder },
                       cardShadow,
                     ]}
                   >
@@ -1334,7 +1358,7 @@ const ShopScreen = ({
                           key={effect.id}
                           style={[
                             styles.shopActiveCard,
-                            { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                            { backgroundColor: filledSurface, borderColor: colors.surfaceBorder },
                             cardShadow,
                           ]}
                         >
@@ -1442,7 +1466,7 @@ const ShopScreen = ({
                             key={item.id}
                             style={[
                               styles.shopCard,
-                              { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                              { backgroundColor: filledSurface, borderColor: colors.surfaceBorder },
                               cardShadow,
                             ]}
                           >
@@ -1523,7 +1547,7 @@ const ShopScreen = ({
                           key={item.id}
                           style={[
                             styles.shopCard,
-                            { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                            { backgroundColor: filledSurface, borderColor: colors.surfaceBorder },
                             cardShadow,
                           ]}
                         >
@@ -1595,7 +1619,7 @@ const ShopScreen = ({
                           key={item.id}
                           style={[
                             styles.shopPremiumCard,
-                            { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+                            { backgroundColor: filledSurface, borderColor: colors.surfaceBorder },
                             cardShadow,
                           ]}
                         >
@@ -1886,6 +1910,8 @@ const ChestCard = ({ chest, colors, theme, isFocused, onFocus, onOpen }) => {
   const ChestArt = CHEST_ART[rarity] || CHEST_ART.Common;
   const detail = RARITY_DETAILS[rarity] || RARITY_DETAILS.Common;
   const goldRange = chest.gold ? formatRange(chest.gold) : '?';
+  const cardBackground = theme === 'light' ? ensureOpaque(colors.surface) : 'rgba(15,23,42,0.55)';
+  const iconBackground = theme === 'light' ? ensureOpaque(colors.surface) : 'rgba(15,23,42,0.45)';
 
   const overlayColors =
     theme === 'light'
@@ -1899,7 +1925,7 @@ const ChestCard = ({ chest, colors, theme, isFocused, onFocus, onOpen }) => {
       style={[
         styles.chestCard,
         {
-          backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.72)' : 'rgba(15,23,42,0.55)',
+          backgroundColor: cardBackground,
           borderColor: colors.surfaceBorder,
         },
         theme === 'light' ? styles.chestCardShadowLight : styles.chestCardShadowDark,
@@ -1910,7 +1936,7 @@ const ChestCard = ({ chest, colors, theme, isFocused, onFocus, onOpen }) => {
           style={[
             styles.chestIconWrapper,
             {
-              backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(15,23,42,0.45)',
+              backgroundColor: iconBackground,
               borderColor: colors.surfaceBorder,
             },
           ]}
@@ -2224,6 +2250,10 @@ export default function App() {
   const { mode, eff, cycle } = useTheme();
   const { cycle: cyclePal, pal } = usePalette();
   const colors = useMemo(() => cur(eff, pal), [eff, pal]);
+  const filledSurface = useMemo(
+    () => (eff === 'light' ? ensureOpaque(colors.surface) : colors.surface),
+    [eff, colors.surface],
+  );
 
   // Game state
   const [xp, setXp] = useState(520);
@@ -2981,7 +3011,7 @@ export default function App() {
                   style={[
                     styles.questCard,
                     {
-                      backgroundColor: colors.surface,
+                      backgroundColor: filledSurface,
                       borderColor: colors.surfaceBorder,
                       marginBottom: index === quests.length - 1 ? 0 : 12,
                     },
