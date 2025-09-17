@@ -13,8 +13,8 @@ import {
   Modal,
   TextInput,
   Alert,
-  Switch,
   PanResponder,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +34,7 @@ import {
   buyEffect,
   redeemReward,
 } from './gameMechanics';
-import { STATUSES, PLATFORMS } from './data';
+import { STATUSES, PLATFORMS, COUNTRIES, CITIES_BY_COUNTRY } from './data';
 
 const buildInitialFormValues = () => ({
   company: '',
@@ -481,31 +481,214 @@ const TextField = ({
   </View>
 );
 
-const ToggleControl = ({ label, value, onValueChange, colors }) => (
-  <TouchableOpacity
-    onPress={() => onValueChange(!value)}
-    activeOpacity={0.85}
-    style={[
-      styles.toggleItem,
-      {
-        backgroundColor: colors.surface,
-        borderColor: colors.surfaceBorder,
-      },
-      value && {
-        backgroundColor: hexToRgba(colors.sky, 0.22),
-        borderColor: colors.sky,
-      },
-    ]}
-  >
-    <Text style={[styles.toggleLabel, { color: colors.text }]}>{label}</Text>
-    <Switch
-      value={value}
-      onValueChange={onValueChange}
-      trackColor={{ false: hexToRgba(colors.text, 0.18), true: colors.sky }}
-      thumbColor={Platform.OS === 'android' ? (value ? '#0f172a' : '#f8fafc') : undefined}
-      ios_backgroundColor={hexToRgba(colors.text, 0.18)}
-    />
-  </TouchableOpacity>
+const AutoCompleteField = ({
+  label,
+  value,
+  onSelect,
+  colors,
+  placeholder,
+  options = [],
+  minChars = 0,
+  containerStyle,
+  disabled = false,
+}) => {
+  const [query, setQuery] = useState(value ?? '');
+  const [focused, setFocused] = useState(false);
+  const blurTimeout = useRef(null);
+
+  useEffect(() => {
+    if (!focused) {
+      setQuery(value ?? '');
+    }
+  }, [value, focused]);
+
+  useEffect(
+    () => () => {
+      if (blurTimeout.current) {
+        clearTimeout(blurTimeout.current);
+      }
+    },
+    [],
+  );
+
+  const trimmedQuery = query.trim();
+
+  const suggestions = useMemo(() => {
+    if (!focused || disabled) {
+      return [];
+    }
+    if (trimmedQuery.length < minChars) {
+      return [];
+    }
+    const lower = trimmedQuery.toLowerCase();
+    return options.filter((option) => option.toLowerCase().startsWith(lower));
+  }, [focused, disabled, trimmedQuery, minChars, options]);
+
+  const shouldShowList =
+    focused && !disabled && options.length > 0 && trimmedQuery.length >= minChars;
+
+  const handleChange = (text) => {
+    if (disabled) {
+      return;
+    }
+    setQuery(text);
+    setFocused(true);
+  };
+
+  const handleSelect = (option) => {
+    setQuery(option);
+    onSelect?.(option);
+    setFocused(false);
+    Keyboard.dismiss();
+  };
+
+  const handleFocus = () => {
+    if (disabled) {
+      return;
+    }
+    setFocused(true);
+    if (!query && value) {
+      setQuery(value);
+    }
+  };
+
+  const handleBlur = () => {
+    if (blurTimeout.current) {
+      clearTimeout(blurTimeout.current);
+    }
+    blurTimeout.current = setTimeout(() => {
+      setFocused(false);
+      if ((value ?? '') !== query) {
+        setQuery(value ?? '');
+      }
+    }, 120);
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    onSelect?.('');
+    setFocused(false);
+    Keyboard.dismiss();
+  };
+
+  const hasMatches = suggestions.length > 0;
+
+  return (
+    <View style={[styles.formGroup, containerStyle]}>
+      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+      <View
+        style={[
+          styles.autoCompleteInputWrapper,
+          { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+          disabled && styles.disabledInput,
+        ]}
+      >
+        <TextInput
+          value={query}
+          onChangeText={handleChange}
+          placeholder={placeholder}
+          placeholderTextColor={`${colors.text}80`}
+          style={[
+            styles.textInput,
+            styles.autoCompleteInput,
+            { color: colors.text, borderColor: 'transparent', backgroundColor: 'transparent' },
+          ]}
+          editable={!disabled}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          autoCapitalize="words"
+          autoCorrect={false}
+          selectTextOnFocus
+        />
+        {!!(query || value) && !disabled && (
+          <TouchableOpacity onPress={handleClear} style={styles.autoCompleteClear} hitSlop={8}>
+            <Ionicons name="close-circle" size={18} color={hexToRgba(colors.text, 0.5)} />
+          </TouchableOpacity>
+        )}
+      </View>
+      {shouldShowList && (
+        <View
+          style={[
+            styles.autoCompleteSuggestions,
+            { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+          ]}
+        >
+          <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+            {hasMatches ? (
+              suggestions.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  onPress={() => handleSelect(option)}
+                  style={styles.autoCompleteOption}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.autoCompleteOptionText, { color: colors.text }]}>{option}</Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.autoCompleteEmpty}>
+                <Text style={[styles.autoCompleteEmptyText, { color: hexToRgba(colors.text, 0.6) }]}>No matches</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors, activeColor }) => {
+  const highlight = activeColor ?? colors.sky;
+  const iconName = value && activeIcon ? activeIcon : icon;
+  return (
+    <TouchableOpacity
+      onPress={() => onToggle(!value)}
+      activeOpacity={0.9}
+      style={[
+        styles.iconToggle,
+        { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
+        value && {
+          backgroundColor: hexToRgba(highlight, 0.2),
+          borderColor: highlight,
+        },
+      ]}
+    >
+      <Ionicons name={iconName} size={22} color={value ? highlight : colors.text} />
+      <Text style={[styles.iconToggleLabel, { color: value ? highlight : colors.text }]}>{label}</Text>
+    </TouchableOpacity>
+  );
+};
+
+const RewardPreview = ({ xp, gold, focus, colors }) => (
+  <View style={styles.rewardPreview}>
+    <View
+      style={[
+        styles.rewardChip,
+        { backgroundColor: hexToRgba(colors.sky, 0.18) },
+      ]}
+    >
+      <Ionicons name="sparkles" size={14} color={colors.sky} />
+      <Text style={[styles.rewardChipText, { color: colors.sky }]}>+{xp}</Text>
+    </View>
+    <View
+      style={[
+        styles.rewardChip,
+        { backgroundColor: hexToRgba(colors.emerald, 0.18) },
+      ]}
+    >
+      <Ionicons name="cash" size={14} color={colors.emerald} />
+      <Text style={[styles.rewardChipText, { color: colors.emerald }]}>+{gold}</Text>
+    </View>
+    <View
+      style={[
+        styles.rewardChip,
+        { backgroundColor: hexToRgba(colors.rose, 0.18) },
+      ]}
+    >
+      <Ionicons name="flash" size={14} color={colors.rose} />
+      <Text style={[styles.rewardChipText, { color: colors.rose }]}>-{focus}</Text>
+    </View>
+  </View>
 );
 
 const TypeSelector = ({ value, onChange, colors }) => (
@@ -1758,6 +1941,26 @@ const AppFormModal = ({
     [type, cvTailored, motivation, effects],
   );
   const cost = useMemo(() => focusCost(type), [type]);
+  const cityOptions = useMemo(
+    () => (country ? CITIES_BY_COUNTRY[country] || [] : []),
+    [country],
+  );
+
+  const handleCountrySelect = useCallback((selected) => {
+    setForm((prev) => {
+      const nextCountry = selected;
+      const shouldResetCity = nextCountry !== prev.country;
+      return {
+        ...prev,
+        country: nextCountry,
+        city: shouldResetCity ? '' : prev.city,
+      };
+    });
+  }, []);
+
+  const handleCitySelect = useCallback((selected) => {
+    setForm((prev) => ({ ...prev, city: selected }));
+  }, []);
 
   const handleCancel = useCallback(() => {
     setForm(initialValues);
@@ -1768,6 +1971,23 @@ const AppFormModal = ({
     if (!company || !role) {
       Alert.alert('Error', 'Please fill in company and role');
       return;
+    }
+
+    if (country && !COUNTRIES.includes(country)) {
+      Alert.alert('Invalid Country', 'Please select a country from the list.');
+      return;
+    }
+
+    if (city) {
+      if (!country) {
+        Alert.alert('Invalid City', 'Please select a country before choosing a city.');
+        return;
+      }
+      const validCities = CITIES_BY_COUNTRY[country] || [];
+      if (!validCities.includes(city)) {
+        Alert.alert('Invalid City', 'Please select a city from the list.');
+        return;
+      }
     }
 
     const payload = { ...form };
@@ -1785,13 +2005,20 @@ const AppFormModal = ({
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.bg }]}>
         <View style={[styles.modalHeader, { borderBottomColor: colors.surfaceBorder }]}>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
+          <View style={styles.modalTitleRow}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
+            <RewardPreview xp={xpReward} gold={goldReward} focus={cost} colors={colors} />
+          </View>
           <TouchableOpacity onPress={handleCancel} style={[styles.closeButton, { backgroundColor: colors.chipBg }]}>
             <Ionicons name="close" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.modalContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <TextField
             label="Company"
             value={company}
@@ -1821,23 +2048,26 @@ const AppFormModal = ({
           </View>
 
           <View style={styles.inlineFieldRow}>
-            <TextField
+            <AutoCompleteField
               label="Country"
               value={country}
-              onChangeText={setField('country')}
-              placeholder="Switzerland"
+              onSelect={handleCountrySelect}
+              placeholder="Start typing..."
               colors={colors}
+              options={COUNTRIES}
+              minChars={2}
               containerStyle={styles.inlineField}
-              autoCapitalize="words"
             />
-            <TextField
+            <AutoCompleteField
               label="City"
               value={city}
-              onChangeText={setField('city')}
-              placeholder="Zurich"
+              onSelect={handleCitySelect}
+              placeholder={country ? 'Start typing...' : 'Select country first'}
               colors={colors}
+              options={cityOptions}
+              minChars={1}
               containerStyle={styles.inlineField}
-              autoCapitalize="words"
+              disabled={!country}
             />
           </View>
 
@@ -1851,31 +2081,34 @@ const AppFormModal = ({
             numberOfLines={3}
           />
 
-          <View style={styles.toggleGrid}>
-            <ToggleControl
-              label="CV Tailored"
+          <View style={styles.iconToggleRow}>
+            <IconToggle
+              label="CV"
+              icon="document-text-outline"
+              activeIcon="document-text"
               value={cvTailored}
-              onValueChange={setField('cvTailored')}
+              onToggle={setField('cvTailored')}
               colors={colors}
+              activeColor={colors.sky}
             />
-            <ToggleControl
-              label="Motivation Letter"
+            <IconToggle
+              label="Motivation"
+              icon="flame-outline"
+              activeIcon="flame"
               value={motivation}
-              onValueChange={setField('motivation')}
+              onToggle={setField('motivation')}
               colors={colors}
+              activeColor={colors.amber}
             />
-            <ToggleControl
-              label="Favorite"
+            <IconToggle
+              label="Fav"
+              icon="heart-outline"
+              activeIcon="heart"
               value={favorite}
-              onValueChange={setField('favorite')}
+              onToggle={setField('favorite')}
               colors={colors}
+              activeColor={colors.rose}
             />
-          </View>
-
-          <View style={styles.rewardInfo}>
-            <Text style={[styles.rewardText, { color: colors.text }]}> 
-              Rewards: +{xpReward} XP, +{goldReward} Gold, -{cost} Focus
-            </Text>
           </View>
         </ScrollView>
 
@@ -3752,6 +3985,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
+  modalTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  rewardPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
+  },
+  rewardChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  rewardChipText: {
+    marginLeft: 4,
+    fontSize: 11,
+    fontWeight: '600',
+  },
   closeButton: {
     width: 32,
     height: 32,
@@ -3779,6 +4037,49 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
   },
+  autoCompleteInputWrapper: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    position: 'relative',
+  },
+  autoCompleteInput: {
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  autoCompleteClear: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+  },
+  autoCompleteSuggestions: {
+    marginTop: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    maxHeight: 160,
+    overflow: 'hidden',
+  },
+  autoCompleteOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  autoCompleteOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  autoCompleteEmpty: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  autoCompleteEmptyText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  disabledInput: {
+    opacity: 0.55,
+  },
   textArea: {
     borderWidth: 1,
     borderRadius: 12,
@@ -3805,26 +4106,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  toggleGrid: {
+  iconToggleRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
-    marginBottom: 16,
-  },
-  toggleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginHorizontal: 6,
-    marginBottom: 12,
-    flexGrow: 1,
+    gap: 12,
+    marginBottom: 20,
   },
-  toggleLabel: {
-    fontSize: 12,
+  iconToggle: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  iconToggleLabel: {
+    fontSize: 11,
     fontWeight: '600',
   },
   inlineFieldRow: {
@@ -3887,13 +4186,6 @@ const styles = StyleSheet.create({
   platformChipText: {
     fontSize: 12,
     fontWeight: '600',
-  },
-  rewardInfo: {
-    marginBottom: 20,
-  },
-  rewardText: {
-    fontSize: 11,
-    textAlign: 'center',
   },
   modalFooter: {
     flexDirection: 'row',
