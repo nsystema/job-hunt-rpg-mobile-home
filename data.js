@@ -19,6 +19,7 @@ export const PLATFORMS = [
 
 export const STATUSES = [
   { key: 'Applied', hint: 'Sent' },
+  { key: 'Applied with referral', hint: 'Referral' },
   { key: 'Interview', hint: 'Stage' },
   { key: 'Ghosted', hint: 'No reply' },
   { key: 'Rejected', hint: 'Closed' },

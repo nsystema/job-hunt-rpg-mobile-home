@@ -105,10 +105,15 @@ const SHOP_CATALOG_TABS = [
 
 const STATUS_META = {
   Applied: { icon: 'document-text-outline', tint: 'sky' },
+  'Applied with referral': { icon: 'document-text-outline', tint: 'sky' },
   Interview: { icon: 'chatbubble-ellipses-outline', tint: 'emerald' },
   Ghosted: { icon: 'skull-outline', tint: 'rose' },
   Rejected: { icon: 'close-circle-outline', tint: 'rose' },
 };
+
+const LOG_STATUS_OPTIONS = STATUSES.filter(
+  (status) => status.key === 'Applied' || status.key === 'Applied with referral',
+);
 
 const hexToRgba = (hex, alpha) => {
   if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
@@ -650,42 +655,59 @@ const AutoCompleteField = ({
 
 const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors }) => {
   const iconName = value && activeIcon ? activeIcon : icon;
-  const glassBorder = getGlassBorderColor(colors);
   const inactiveBorder = colors.surfaceBorder;
-  const activeContentColor = colors.text;
+  const inactiveBackground = colors.chipBg;
+  const activeContentColor = '#0f172a';
   const inactiveContentColor = hexToRgba(colors.text, 0.75);
+
+  const iconWrapStyle = value
+    ? [styles.iconToggleIconWrap, styles.iconToggleIconWrapActive]
+    : [
+        styles.iconToggleIconWrap,
+        { backgroundColor: inactiveBackground, borderColor: inactiveBorder },
+      ];
+
+  const iconElement = (
+    <View style={iconWrapStyle}>
+      <Ionicons
+        name={iconName}
+        size={20}
+        color={value ? activeContentColor : inactiveContentColor}
+      />
+    </View>
+  );
+
+  const labelElement = (
+    <Text
+      style={[styles.iconToggleLabel, { color: value ? activeContentColor : inactiveContentColor }]}
+    >
+      {label}
+    </Text>
+  );
 
   return (
     <TouchableOpacity onPress={() => onToggle(!value)} activeOpacity={0.9} style={styles.iconToggle}>
-      <View
-        style={[
-          styles.iconToggleInner,
-          { borderColor: 'transparent', backgroundColor: 'transparent' },
-        ]}
-      >
+      {value ? (
+        <LinearGradient
+          colors={[colors.sky, colors.emerald]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.iconToggleInner, styles.iconToggleInnerActive]}
+        >
+          {iconElement}
+          {labelElement}
+        </LinearGradient>
+      ) : (
         <View
           style={[
-            styles.iconToggleIconWrap,
-            value
-              ? [styles.iconToggleIconWrapActive, { borderColor: glassBorder }]
-              : { backgroundColor: colors.chipBg, borderColor: inactiveBorder },
+            styles.iconToggleInner,
+            { borderColor: inactiveBorder, backgroundColor: inactiveBackground },
           ]}
         >
-          <Ionicons
-            name={iconName}
-            size={20}
-            color={value ? activeContentColor : inactiveContentColor}
-          />
+          {iconElement}
+          {labelElement}
         </View>
-        <Text
-          style={[
-            styles.iconToggleLabel,
-            { color: value ? activeContentColor : inactiveContentColor },
-          ]}
-        >
-          {label}
-        </Text>
-      </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -761,9 +783,9 @@ const TypeSelector = ({ value, onChange, colors }) => {
   );
 };
 
-const StatusSelector = ({ value, onChange, colors }) => (
+const StatusSelector = ({ value, onChange, colors, options = STATUSES }) => (
   <View>
-    {STATUSES.map((status) => {
+    {options.map((status) => {
       const isActive = value === status.key;
       const meta = STATUS_META[status.key] || {};
       const tintColor = meta.tint ? colors[meta.tint] : colors.sky;
@@ -1992,11 +2014,15 @@ const AppFormModal = ({
   defaults,
   title = 'Log Application',
   submitLabel = 'Add Application',
+  statusOptions = STATUSES,
 }) => {
-  const initialValues = useMemo(
-    () => ({ ...buildInitialFormValues(), ...defaults }),
-    [defaults],
-  );
+  const initialValues = useMemo(() => {
+    const base = { ...buildInitialFormValues(), ...defaults };
+    if (statusOptions.length && !statusOptions.some((option) => option.key === base.status)) {
+      base.status = statusOptions[0].key;
+    }
+    return base;
+  }, [defaults, statusOptions]);
   const [form, setForm] = useState(initialValues);
 
   useEffect(() => {
@@ -2114,7 +2140,12 @@ const AppFormModal = ({
 
           <View style={styles.formGroup}>
             <Text style={[styles.label, { color: colors.text }]}>Status</Text>
-            <StatusSelector value={status} onChange={setField('status')} colors={colors} />
+            <StatusSelector
+              value={status}
+              onChange={setField('status')}
+              colors={colors}
+              options={statusOptions}
+            />
           </View>
 
           <View style={styles.formGroup}>
@@ -2174,7 +2205,7 @@ const AppFormModal = ({
               colors={colors}
             />
             <IconToggle
-              label="FAV"
+              label="Fav"
               icon="star-outline"
               activeIcon="star"
               value={favorite}
@@ -3317,6 +3348,7 @@ export default function App() {
         onSubmit={addApplication}
         colors={colors}
         effects={activeEffects}
+        statusOptions={LOG_STATUS_OPTIONS}
       />
       <AppFormModal
         visible={!!editingApp}
@@ -3327,6 +3359,7 @@ export default function App() {
         defaults={editingApp || undefined}
         title="Edit application"
         submitLabel="Save"
+        statusOptions={STATUSES}
       />
 
       <Modal visible={filterModalVisible} transparent animationType="fade">
@@ -4223,6 +4256,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     gap: 8,
+  },
+  iconToggleInnerActive: {
+    borderWidth: 0,
   },
   iconToggleIconWrap: {
     width: 44,
