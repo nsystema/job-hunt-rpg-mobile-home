@@ -17,7 +17,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Defs, Rect, Path, Circle, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { usePalette, cur } from './hooks/usePalette';
 import { useTheme } from './hooks/useTheme';
@@ -53,10 +53,10 @@ const buildInitialFormValues = () => ({
 const TYPE_OPTIONS = ['Full', 'Easy'];
 
 const QUEST_TABS = [
-  { key: 'Daily', icon: 'calendar' },
-  { key: 'Weekly', icon: 'time' },
-  { key: 'Growth', icon: 'trending-up' },
-  { key: 'Events', icon: 'sparkles' },
+  { key: 'Daily', icon: 'calendar-check-outline' },
+  { key: 'Weekly', icon: 'calendar-week-begin' },
+  { key: 'Growth', icon: 'chart-line' },
+  { key: 'Events', icon: 'party-popper' },
 ];
 
 const QUESTS = {
@@ -85,29 +85,29 @@ const countUnclaimedQuestsByTab = (tabKey, claimed) =>
   (QUESTS[tabKey] || []).filter((quest) => quest.progress >= quest.goal && !claimed.has(quest.id)).length;
 
 const BOTTOM_TABS = [
-  { key: 'Home', label: 'Home', icon: 'home' },
-  { key: 'Apps', label: 'Apps', icon: 'briefcase' },
-  { key: 'Quests', label: 'Quests', icon: 'flag' },
-  { key: 'Rewards', label: 'Rewards', icon: 'gift' },
-  { key: 'Shop', label: 'Shop', icon: 'cart' },
+  { key: 'Home', label: 'Home', icon: 'home-variant' },
+  { key: 'Apps', label: 'Apps', icon: 'briefcase-outline' },
+  { key: 'Quests', label: 'Quests', icon: 'flag-variant-outline' },
+  { key: 'Rewards', label: 'Rewards', icon: 'treasure-chest' },
+  { key: 'Shop', label: 'Shop', icon: 'shopping-outline' },
 ];
 
 const SHOP_MAIN_TABS = [
-  { key: 'active', label: 'Active', icon: 'sparkles' },
-  { key: 'catalogue', label: 'Catalogue', icon: 'wallet' },
+  { key: 'active', label: 'Active', icon: 'auto-fix' },
+  { key: 'catalogue', label: 'Catalogue', icon: 'view-grid-outline' },
 ];
 
 const SHOP_CATALOG_TABS = [
-  { key: 'effects', label: 'Boosts', icon: 'flash' },
-  { key: 'rewards', label: 'Treats', icon: 'gift' },
-  { key: 'premium', label: 'Premium', icon: 'trophy' },
+  { key: 'effects', label: 'Boosts', icon: 'lightning-bolt-outline' },
+  { key: 'rewards', label: 'Treats', icon: 'cupcake' },
+  { key: 'premium', label: 'Premium', icon: 'crown-outline' },
 ];
 
 const STATUS_META = {
-  Applied: { icon: 'document-text-outline', tint: 'sky' },
-  'Applied with referral': { icon: 'document-text-outline', tint: 'sky' },
-  Interview: { icon: 'chatbubble-ellipses-outline', tint: 'emerald' },
-  Ghosted: { icon: 'skull-outline', tint: 'rose' },
+  Applied: { icon: 'file-document-outline', tint: 'sky' },
+  'Applied with referral': { icon: 'account-star-outline', tint: 'sky' },
+  Interview: { icon: 'account-tie-voice', tint: 'emerald' },
+  Ghosted: { icon: 'ghost-outline', tint: 'rose' },
   Rejected: { icon: 'close-circle-outline', tint: 'rose' },
 };
 
@@ -618,7 +618,7 @@ const AutoCompleteField = ({
         />
         {!!(query || value) && !disabled && (
           <TouchableOpacity onPress={handleClear} style={styles.autoCompleteClear} hitSlop={8}>
-            <Ionicons name="close-circle" size={18} color={hexToRgba(colors.text, 0.5)} />
+            <MaterialCommunityIcons name="close-circle" size={18} color={hexToRgba(colors.text, 0.5)} />
           </TouchableOpacity>
         )}
       </View>
@@ -678,7 +678,7 @@ const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors }) => {
             end={{ x: 1, y: 1 }}
             style={[styles.iconToggleIconWrap, { borderColor: glassBorder }]}
           >
-            <Ionicons name={iconName} size={20} color={contentColor} />
+            <MaterialCommunityIcons name={iconName} size={20} color={contentColor} />
           </LinearGradient>
         ) : (
           <View
@@ -687,7 +687,7 @@ const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors }) => {
               { backgroundColor: colors.chipBg, borderColor: inactiveBorder },
             ]}
           >
-            <Ionicons name={iconName} size={20} color={contentColor} />
+            <MaterialCommunityIcons name={iconName} size={20} color={contentColor} />
           </View>
         )}
         <Text style={[styles.iconToggleLabel, { color: contentColor }]}>{label}</Text>
@@ -701,9 +701,9 @@ const RewardPreview = ({ xp, gold, focus, colors }) => {
   const glassBorder = getGlassBorderColor(colors);
   const chipTextColor = colors.text;
   const chips = [
-    { key: 'xp', icon: 'sparkles', label: `+${xp}` },
-    { key: 'gold', icon: 'cash', label: `+${gold}` },
-    { key: 'focus', icon: 'flash', label: `-${focus}` },
+    { key: 'xp', icon: 'star-shooting-outline', label: `+${xp}` },
+    { key: 'gold', icon: 'currency-usd', label: `+${gold}` },
+    { key: 'focus', icon: 'brain', label: `-${focus}` },
   ];
 
   return (
@@ -716,7 +716,7 @@ const RewardPreview = ({ xp, gold, focus, colors }) => {
           end={{ x: 1, y: 1 }}
           style={[styles.rewardChip, { borderColor: glassBorder }]}
         >
-          <Ionicons name={chip.icon} size={14} color={chipTextColor} />
+          <MaterialCommunityIcons name={chip.icon} size={14} color={chipTextColor} />
           <Text style={[styles.rewardChipText, { color: chipTextColor }]}>{chip.label}</Text>
         </LinearGradient>
       ))}
@@ -801,7 +801,7 @@ const StatusSelector = ({ value, onChange, colors, options = STATUSES }) => (
                   },
                 ]}
               >
-                <Ionicons
+                <MaterialCommunityIcons
                   name={meta.icon}
                   size={14}
                   color={isActive ? '#0f172a' : 'rgba(148,163,184,.95)'}
@@ -817,7 +817,7 @@ const StatusSelector = ({ value, onChange, colors, options = STATUSES }) => (
               ) : null}
             </View>
           </View>
-          {isActive ? <Ionicons name="checkmark-circle" size={18} color={tintColor} /> : null}
+          {isActive ? <MaterialCommunityIcons name="check-circle" size={18} color={tintColor} /> : null}
         </TouchableOpacity>
       );
     })}
@@ -874,7 +874,7 @@ const PlatformSelector = ({ value, onChange, colors }) => {
 // Helper components
 const StatBadge = ({ icon, count, colors }) => (
   <View style={[styles.statBadge, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
-    <Ionicons name={icon} size={20} color={colors.text} />
+    <MaterialCommunityIcons name={icon} size={20} color={colors.text} />
     <View style={[styles.statBadgeCount, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
       <Text style={[styles.statBadgeCountText, { color: colors.text }]}>{count}</Text>
     </View>
@@ -887,7 +887,7 @@ const IconButton = ({ onPress, icon, colors, accessibilityLabel }) => (
     style={[styles.iconButton, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
     accessibilityLabel={accessibilityLabel}
   >
-    <Ionicons name={icon} size={20} color={colors.text} />
+    <MaterialCommunityIcons name={icon} size={20} color={colors.text} />
   </TouchableOpacity>
 );
 
@@ -905,7 +905,7 @@ const ProgressBar = ({ value, max, fromColor, toColor, colors }) => {
   );
 };
 
-const GoldPill = ({ children, colors, onPress, dim = false, style = {}, icon = 'diamond' }) => {
+const GoldPill = ({ children, colors, onPress, dim = false, style = {}, icon = 'diamond-stone' }) => {
   const gradientColors = dim
     ? [hexToRgba('#94a3b8', 0.18), hexToRgba('#94a3b8', 0.12)]
     : ['#fde68a', '#f59e0b'];
@@ -917,7 +917,7 @@ const GoldPill = ({ children, colors, onPress, dim = false, style = {}, icon = '
       end={{ x: 1, y: 1 }}
       style={[styles.goldPill, dim && styles.goldPillDim]}
     >
-      <Ionicons name={icon} size={16} color={dim ? hexToRgba('#0f172a', 0.55) : '#1f2937'} />
+      <MaterialCommunityIcons name={icon} size={16} color={dim ? hexToRgba('#0f172a', 0.55) : '#1f2937'} />
       <Text style={[styles.goldPillText, dim && styles.goldPillTextDim]}>{children}</Text>
     </LinearGradient>
   );
@@ -1166,7 +1166,7 @@ const ShopScreen = ({
   }, [savingItem, premiumProgress, gold, saveAmount, setGold, setPremiumProgress]);
 
   const confirmCost = confirmReward ? costFor(confirmReward) : 0;
-  const ConfirmIcon = confirmReward?.premium ? 'trophy' : 'gift';
+  const ConfirmIcon = confirmReward?.premium ? 'crown' : 'gift-outline';
 
   const savingProgress = savingItem ? premiumProgress[savingItem.id] || 0 : 0;
   const savingCap = savingItem ? Math.max(costFor(savingItem) - savingProgress, 0) : 0;
@@ -1264,7 +1264,7 @@ const ShopScreen = ({
                       />
                     ) : null}
                     <View style={styles.shopMainTabContent}>
-                      <Ionicons
+                      <MaterialCommunityIcons
                         name={tab.icon}
                         size={16}
                         color={active ? '#0f172a' : colors.text}
@@ -1299,7 +1299,7 @@ const ShopScreen = ({
                     ]}
                   >
                     <View style={styles.shopEmptyHeader}>
-                      <Ionicons name="sparkles" size={18} color={colors.sky} />
+                      <MaterialCommunityIcons name="auto-fix" size={18} color={colors.sky} />
                       <Text style={[styles.shopEmptyTitle, { color: colors.text }]}>No active boosts yet</Text>
                     </View>
                     <Text style={[styles.shopEmptyDescription, { color: hexToRgba(colors.text, 0.65) }]}>Activate a boost to double down on XP or gold. Your effects will appear here with live timers once purchased.</Text>
@@ -1351,7 +1351,7 @@ const ShopScreen = ({
                                 end={{ x: 1, y: 1 }}
                                 style={styles.shopActiveIconInner}
                               >
-                                <Ionicons name={effect.icon || 'flash'} size={22} color="#0f172a" />
+                                <MaterialCommunityIcons name={effect.icon || 'lightning-bolt-outline'} size={22} color="#0f172a" />
                               </LinearGradient>
                             </View>
                           </EffectTimerRing>
@@ -1359,7 +1359,7 @@ const ShopScreen = ({
                             <Text style={[styles.shopActiveName, { color: colors.text }]}>{effect.name}</Text>
                             {remaining != null && effect.duration ? (
                               <View style={styles.shopActiveTimerRow}>
-                                <Ionicons name="time" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                <MaterialCommunityIcons name="clock-time-four-outline" size={14} color={hexToRgba(colors.text, 0.6)} />
                                 <Text style={[styles.shopActiveTimerText, { color: hexToRgba(colors.text, 0.6) }]}>
                                   {formatTime(remaining)}
                                 </Text>
@@ -1410,7 +1410,7 @@ const ShopScreen = ({
                           />
                         ) : null}
                         <View style={styles.shopSecondaryTabContent}>
-                          <Ionicons
+                          <MaterialCommunityIcons
                             name={tab.icon}
                             size={15}
                             color={active ? '#0f172a' : colors.text}
@@ -1459,7 +1459,7 @@ const ShopScreen = ({
                                   end={{ x: 1, y: 1 }}
                                   style={styles.shopIconInner}
                                 >
-                                  <Ionicons name={item.icon || 'flash'} size={20} color="#0f172a" />
+                                  <MaterialCommunityIcons name={item.icon || 'lightning-bolt-outline'} size={20} color="#0f172a" />
                                 </LinearGradient>
                               </View>
                               <View style={styles.shopCardTitleArea}>
@@ -1487,13 +1487,13 @@ const ShopScreen = ({
                             <View style={styles.shopCardFooter}>
                               <View style={styles.shopMetaRow}>
                                 <View style={styles.shopMetaItem}>
-                                  <Ionicons name="time" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                  <MaterialCommunityIcons name="clock-time-four-outline" size={14} color={hexToRgba(colors.text, 0.6)} />
                                   <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
                                     {durationLabel}
                                   </Text>
                                 </View>
                                 <View style={styles.shopMetaItem}>
-                                  <Ionicons name="cash" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                  <MaterialCommunityIcons name="currency-usd" size={14} color={hexToRgba(colors.text, 0.6)} />
                                   <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
                                     {formatGold(item.cost)}
                                   </Text>
@@ -1501,7 +1501,7 @@ const ShopScreen = ({
                               </View>
                               <GoldPill
                                 colors={colors}
-                                icon="cash"
+                                icon="currency-usd"
                                 onPress={() => handleBuyEffect(item)}
                                 dim={gold < item.cost || active}
                               >
@@ -1540,7 +1540,7 @@ const ShopScreen = ({
                                 end={{ x: 1, y: 1 }}
                                 style={styles.shopIconInner}
                               >
-                                <Ionicons name="gift" size={20} color="#0f172a" />
+                                <MaterialCommunityIcons name="gift-outline" size={20} color="#0f172a" />
                               </LinearGradient>
                             </View>
                             <View style={styles.shopCardTitleArea}>
@@ -1553,13 +1553,13 @@ const ShopScreen = ({
                           <View style={styles.shopCardFooter}>
                             <View style={styles.shopMetaRow}>
                               <View style={styles.shopMetaItem}>
-                                <Ionicons name="time" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                <MaterialCommunityIcons name="clock-time-four-outline" size={14} color={hexToRgba(colors.text, 0.6)} />
                                 <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
                                   {item.minutes} min
                                 </Text>
                               </View>
                               <View style={styles.shopMetaItem}>
-                                <Ionicons name="cash" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                <MaterialCommunityIcons name="currency-usd" size={14} color={hexToRgba(colors.text, 0.6)} />
                                 <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
                                   {formatGold(cost)}
                                 </Text>
@@ -1567,7 +1567,7 @@ const ShopScreen = ({
                             </View>
                             <GoldPill
                               colors={colors}
-                              icon="cash"
+                              icon="currency-usd"
                               onPress={() => setConfirmReward(item)}
                               dim={gold < cost}
                             >
@@ -1612,7 +1612,7 @@ const ShopScreen = ({
                                 end={{ x: 1, y: 1 }}
                                 style={styles.shopIconInner}
                               >
-                                <Ionicons name="trophy" size={20} color="#0f172a" />
+                                <MaterialCommunityIcons name="crown-outline" size={20} color="#0f172a" />
                               </LinearGradient>
                             </View>
                             <View style={styles.shopPremiumTitleArea}>
@@ -1632,7 +1632,7 @@ const ShopScreen = ({
                             </View>
                             <GoldPill
                               colors={colors}
-                              icon="cash"
+                              icon="currency-usd"
                               onPress={() => handlePremiumAction(item)}
                               dim={!completed && gold <= 0}
                               style={styles.shopPremiumButton}
@@ -1652,7 +1652,7 @@ const ShopScreen = ({
                           </View>
                           <View style={styles.shopPremiumAmounts}>
                             <View style={styles.shopMetaItem}>
-                              <Ionicons name="wallet" size={14} color={hexToRgba(colors.text, 0.6)} />
+                              <MaterialCommunityIcons name="wallet-outline" size={14} color={hexToRgba(colors.text, 0.6)} />
                               <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
                                 {formatGoldValue(savedGold)}
                               </Text>
@@ -1703,7 +1703,7 @@ const ShopScreen = ({
                       end={{ x: 1, y: 1 }}
                       style={styles.shopModalIconInner}
                     >
-                      <Ionicons name="wallet" size={20} color="#0f172a" />
+                      <MaterialCommunityIcons name="wallet-outline" size={20} color="#0f172a" />
                     </LinearGradient>
                   </View>
                   <View style={styles.shopModalHeaderText}>
@@ -1796,7 +1796,7 @@ const ShopScreen = ({
                       end={{ x: 1, y: 1 }}
                       style={styles.shopModalIconInner}
                     >
-                      <Ionicons name={ConfirmIcon} size={22} color="#0f172a" />
+                      <MaterialCommunityIcons name={ConfirmIcon} size={22} color="#0f172a" />
                     </LinearGradient>
                   </View>
                 </View>
@@ -1957,7 +1957,7 @@ const ChestCard = ({ chest, colors, theme, isFocused, onFocus, onOpen }) => {
               end={{ x: 1, y: 0 }}
               style={styles.chestOpenButtonBg}
             >
-              <Ionicons name="sparkles" size={16} color="#0f172a" />
+              <MaterialCommunityIcons name="auto-fix" size={16} color="#0f172a" />
               <Text style={styles.chestOpenButtonText}>Open chest</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -2095,7 +2095,7 @@ const AppFormModal = ({
             <RewardPreview xp={xpReward} gold={goldReward} focus={cost} colors={colors} />
           </View>
           <TouchableOpacity onPress={handleCancel} style={[styles.closeButton, { backgroundColor: colors.chipBg }]}>
-            <Ionicons name="close" size={20} color={colors.text} />
+            <MaterialCommunityIcons name="close" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -2174,16 +2174,16 @@ const AppFormModal = ({
           <View style={styles.iconToggleRow}>
             <IconToggle
               label="CV"
-              icon="document-text-outline"
-              activeIcon="document-text"
+              icon="file-document-edit-outline"
+              activeIcon="file-check"
               value={cvTailored}
               onToggle={setField('cvTailored')}
               colors={colors}
             />
             <IconToggle
               label="Motivation"
-              icon="mail-outline"
-              activeIcon="mail"
+              icon="email-edit-outline"
+              activeIcon="email-check-outline"
               value={motivation}
               onToggle={setField('motivation')}
               colors={colors}
@@ -2406,14 +2406,14 @@ export default function App() {
 
   const quickActions = useMemo(
     () => [
-      { key: 'Log application', icon: 'flash', onPress: handleLogPress, hint: 'Open log form' },
-      { key: 'Easy apply', icon: 'trending-up', onPress: handleEasyApply, hint: 'Log easy apply' },
-      { key: 'Networking', icon: 'people', onPress: handleNetworking, hint: 'Add networking' },
-      { key: 'Skill', icon: 'school', onPress: handleSkill, hint: 'Add skill block' },
-      { key: 'Interview', icon: 'chatbubbles', onPress: handleInterview, hint: 'Add interview prep' },
+      { key: 'Log application', icon: 'file-document-edit-outline', onPress: handleLogPress, hint: 'Open log form' },
+      { key: 'Easy apply', icon: 'lightning-bolt-outline', onPress: handleEasyApply, hint: 'Log easy apply' },
+      { key: 'Networking', icon: 'account-group-outline', onPress: handleNetworking, hint: 'Add networking' },
+      { key: 'Skill', icon: 'school-outline', onPress: handleSkill, hint: 'Add skill block' },
+      { key: 'Interview', icon: 'account-tie-voice', onPress: handleInterview, hint: 'Add interview prep' },
       {
         key: 'Prestige',
-        icon: 'trophy',
+        icon: 'crown-outline',
         onPress: handlePrestige,
         hint: 'Prestige (requires Level 100)',
         disabled: l < 100,
@@ -2653,7 +2653,7 @@ export default function App() {
         <View style={styles.headerLeft}>
           <IconButton
             onPress={cycle}
-            icon={mode === 'light' ? 'sunny' : mode === 'dark' ? 'moon' : 'desktop'}
+            icon={mode === 'light' ? 'white-balance-sunny' : mode === 'dark' ? 'moon-waning-crescent' : 'monitor-dashboard'}
             colors={colors}
             accessibilityLabel="Cycle theme"
           />
@@ -2661,14 +2661,14 @@ export default function App() {
             onPress={cyclePal}
             style={[styles.paletteButton, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
           >
-            <Ionicons name="color-palette" size={20} color={colors.text} />
+            <MaterialCommunityIcons name="palette-swatch" size={20} color={colors.text} />
             <Text style={[styles.paletteText, { color: colors.text }]}>{pal.name}</Text>
           </TouchableOpacity>
         </View>
         
         <View style={styles.headerRight}>
-          <StatBadge icon="school" count={skillPoints} colors={colors} />
-          <StatBadge icon="flame" count={streak} colors={colors} />
+          <StatBadge icon="school-outline" count={skillPoints} colors={colors} />
+          <StatBadge icon="fire" count={streak} colors={colors} />
           <GoldPill colors={colors}>{gold}</GoldPill>
         </View>
       </View>
@@ -2683,11 +2683,11 @@ export default function App() {
         <Panel colors={colors}>
           <View style={styles.levelHeader}>
             <View style={styles.levelInfo}>
-              <Ionicons name="medal" size={16} color={colors.sky} />
+              <MaterialCommunityIcons name="medal-outline" size={16} color={colors.sky} />
               <Text style={[styles.levelText, { color: colors.text }]}>Level {l}</Text>
             </View>
             <View style={styles.appsCount}>
-              <Ionicons name="briefcase" size={16} color={colors.text} />
+              <MaterialCommunityIcons name="briefcase-outline" size={16} color={colors.text} />
               <Text style={[styles.appsCountText, { color: colors.text }]}>{apps}</Text>
             </View>
           </View>
@@ -2695,7 +2695,7 @@ export default function App() {
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <View style={styles.progressLabel}>
-                <Ionicons name="flash" size={14} color="rgba(148,163,184,.95)" />
+                <MaterialCommunityIcons name="lightning-bolt-outline" size={14} color="rgba(148,163,184,.95)" />
                 <Text style={styles.progressLabelText}>XP to next</Text>
               </View>
               <Text style={styles.progressValue}>{Math.floor(rem)} / {need}</Text>
@@ -2706,7 +2706,7 @@ export default function App() {
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <View style={styles.progressLabel}>
-                <Ionicons name="bulb-outline" size={14} color="rgba(148,163,184,.95)" />
+                <MaterialCommunityIcons name="lightbulb-on-outline" size={14} color="rgba(148,163,184,.95)" />
                 <Text style={styles.progressLabelText}>Focus</Text>
               </View>
               <Text style={styles.progressValue}>{focus.toFixed(1)} / {FOCUS_BASELINE}</Text>
@@ -2719,7 +2719,7 @@ export default function App() {
         <Panel colors={colors}>
           <View style={styles.progressHeader}>
             <View style={styles.progressLabel}>
-              <Ionicons name="flag-outline" size={14} color="rgba(148,163,184,.95)" />
+              <MaterialCommunityIcons name="flag-checkered" size={14} color="rgba(148,163,184,.95)" />
               <Text style={styles.progressLabelText}>Milestone</Text>
             </View>
             <Text style={styles.progressValue}>{into.toFixed(1)} / {step}</Text>
@@ -2737,7 +2737,7 @@ export default function App() {
               style={[styles.quickAction, { opacity: action.disabled ? 0.5 : 1 }]}
               accessibilityLabel={action.hint}
             >
-              <Ionicons name={action.icon} size={20} color="rgba(148,163,184,.95)" />
+              <MaterialCommunityIcons name={action.icon} size={20} color="rgba(148,163,184,.95)" />
               <Text style={styles.quickActionText}>{action.key}</Text>
             </TouchableOpacity>
           ))}
@@ -2762,7 +2762,7 @@ export default function App() {
                 { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
               ]}
             >
-              <Ionicons name="search" size={16} color="rgba(148,163,184,.95)" />
+              <MaterialCommunityIcons name="magnify" size={16} color="rgba(148,163,184,.95)" />
               <TextInput
                 value={appsQuery}
                 onChangeText={setAppsQuery}
@@ -2773,7 +2773,7 @@ export default function App() {
             </View>
             <IconButton
               onPress={() => setFilterModalVisible(true)}
-              icon="filter"
+              icon="tune-variant"
               colors={colors}
               accessibilityLabel="Filter applications"
             />
@@ -2788,8 +2788,8 @@ export default function App() {
           {filteredApps.length ? (
             filteredApps.map((app) => {
               const extras = [
-                { key: 'cv', icon: 'document-text-outline', active: app.cvTailored },
-                { key: 'motivation', icon: 'mail-outline', active: app.motivation },
+                { key: 'cv', icon: 'file-document-outline', active: app.cvTailored },
+                { key: 'motivation', icon: 'email-outline', active: app.motivation },
                 { key: 'favorite', icon: 'star-outline', active: app.favorite },
               ];
               const statusInfo = statusIcons[app.status] || {};
@@ -2824,13 +2824,13 @@ export default function App() {
                           onPress={() => setEditingApp(app)}
                           style={[styles.appsActionButton, { borderColor: colors.surfaceBorder }]}
                         >
-                          <Ionicons name="create-outline" size={16} color={colors.text} />
+                          <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.text} />
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={handleDelete}
                           style={[styles.appsActionButton, { borderColor: colors.surfaceBorder }]}
                         >
-                          <Ionicons name="trash-outline" size={16} color={colors.rose} />
+                          <MaterialCommunityIcons name="trash-can-outline" size={16} color={colors.rose} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -2848,7 +2848,7 @@ export default function App() {
                             end={{ x: 1, y: 1 }}
                             style={[styles.appExtraIcon, marginStyle]}
                           >
-                            <Ionicons name={extra.icon} size={14} color="#0f172a" />
+                            <MaterialCommunityIcons name={extra.icon} size={14} color="#0f172a" />
                           </LinearGradient>
                         );
                       }
@@ -2861,7 +2861,7 @@ export default function App() {
                             { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder, borderWidth: 1 },
                           ]}
                         >
-                          <Ionicons name={extra.icon} size={14} color="rgba(148,163,184,.95)" />
+                          <MaterialCommunityIcons name={extra.icon} size={14} color="rgba(148,163,184,.95)" />
                         </View>
                       );
                     })}
@@ -2876,7 +2876,7 @@ export default function App() {
                         ]}
                       >
                         {statusInfo.icon ? (
-                          <Ionicons
+                          <MaterialCommunityIcons
                             name={statusInfo.icon}
                             size={14}
                             color={statusInfo.tint || colors.text}
@@ -2952,7 +2952,7 @@ export default function App() {
                     />
                   ) : null}
                   <View style={styles.questTabButtonContent}>
-                    <Ionicons
+                    <MaterialCommunityIcons
                       name={tab.icon}
                       size={16}
                       color={isActive ? '#0f172a' : colors.text}
@@ -2995,11 +2995,11 @@ export default function App() {
                     </View>
                     <View style={styles.questRewardMeta}>
                       <View style={styles.questRewardPill}>
-                        <Ionicons name="flash" size={14} color={colors.sky} />
+                        <MaterialCommunityIcons name="lightning-bolt-outline" size={14} color={colors.sky} />
                         <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.xp}</Text>
                       </View>
                       <View style={styles.questRewardPill}>
-                        <Ionicons name="cash" size={14} color={colors.emerald} />
+                        <MaterialCommunityIcons name="currency-usd" size={14} color={colors.emerald} />
                         <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.gold}</Text>
                       </View>
                     </View>
@@ -3079,7 +3079,7 @@ export default function App() {
             >
               <View style={styles.rewardsSummaryHeader}>
                 <View style={styles.rewardsSummaryTitle}>
-                  <Ionicons name="gift" size={16} color={headlineColor} />
+                  <MaterialCommunityIcons name="gift-outline" size={16} color={headlineColor} />
                   <Text style={[styles.rewardsSummaryTitleText, { color: headlineColor }]}>Treasure vault</Text>
                 </View>
                 <TouchableOpacity
@@ -3105,8 +3105,8 @@ export default function App() {
                     />
                   ) : null}
                   <View style={styles.rewardsSummaryButtonContent}>
-                    <Ionicons
-                      name="sparkles"
+                    <MaterialCommunityIcons
+                      name="auto-fix"
                       size={14}
                       color={hasChests ? '#0f172a' : hexToRgba(colors.text, 0.55)}
                     />
@@ -3135,7 +3135,7 @@ export default function App() {
                   ) : null}
                 </View>
                 <View style={styles.rewardsSummaryStat}>
-                  <Ionicons name="cash" size={14} color={summaryMuted} />
+                  <MaterialCommunityIcons name="currency-usd" size={14} color={summaryMuted} />
                   <Text style={[styles.rewardsSummaryStatText, { color: summaryMuted }]}>Potential</Text>
                   <Text style={[styles.rewardsSummaryRange, { color: summaryStrong }]}>{viewRange}</Text>
                 </View>
@@ -3252,7 +3252,7 @@ export default function App() {
                   Opened {openAllSummary?.opened} chest{openAllSummary?.opened === 1 ? '' : 's'}
                 </Text>
                 <View style={styles.rewardsModalGold}>
-                  <Ionicons name="cash" size={18} color={colors.emerald} />
+                  <MaterialCommunityIcons name="currency-usd" size={18} color={colors.emerald} />
                   <Text style={[styles.rewardsModalGoldText, { color: colors.text }]}> 
                     {openAllSummary?.gold}g
                   </Text>
@@ -3298,7 +3298,7 @@ export default function App() {
                   Fresh loot
                 </Text>
                 <View style={styles.rewardsToastValue}>
-                  <Ionicons name="cash" size={18} color={eff === 'light' ? '#0f172a' : colors.emerald} />
+                  <MaterialCommunityIcons name="currency-usd" size={18} color={eff === 'light' ? '#0f172a' : colors.emerald} />
                   <Text style={[styles.rewardsToastText, { color: eff === 'light' ? '#0f172a' : colors.text }]}>
                     {openResult.gold}g
                   </Text>
@@ -3359,7 +3359,7 @@ export default function App() {
                     onPress={() => setFilterModalVisible(false)}
                     style={[styles.closeButton, { backgroundColor: colors.chipBg }]}
                   >
-                    <Ionicons name="close" size={20} color={colors.text} />
+                    <MaterialCommunityIcons name="close" size={20} color={colors.text} />
                   </TouchableOpacity>
                 </View>
                 <ScrollView
@@ -3458,7 +3458,7 @@ export default function App() {
                     onPress={() => setSortModalVisible(false)}
                     style={[styles.closeButton, { backgroundColor: colors.chipBg }]}
                   >
-                    <Ionicons name="close" size={20} color={colors.text} />
+                    <MaterialCommunityIcons name="close" size={20} color={colors.text} />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.sheetContent}>
@@ -3514,7 +3514,7 @@ export default function App() {
                 activeOpacity={0.9}
                 style={styles.bottomNavButton}
               >
-                <Ionicons
+                <MaterialCommunityIcons
                   name={tab.icon}
                   size={22}
                   color={isActive ? colors.text : 'rgba(148,163,184,.65)'}
