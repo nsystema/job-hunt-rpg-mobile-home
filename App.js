@@ -1083,7 +1083,6 @@ const ShopScreen = ({
   setGold,
   effects,
   setEffects,
-  now,
   premiumProgress,
   setPremiumProgress,
   mainTab,
@@ -1095,6 +1094,19 @@ const ShopScreen = ({
   const [saveAmount, setSaveAmount] = useState(0);
   const [confirmReward, setConfirmReward] = useState(null);
   const [redeemed, setRedeemed] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
+  const hasTimers = useMemo(() => effects.some((effect) => effect.expiresAt), [effects]);
+
+  useEffect(() => {
+    if (!hasTimers) {
+      return;
+    }
+    setNow(Date.now());
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [hasTimers]);
 
   const sortedRewards = useMemo(
     () => REAL_REWARDS.slice().sort((a, b) => costFor(a) - costFor(b)),
@@ -2204,7 +2216,7 @@ const AppFormModal = ({
 export default function App() {
   const { mode, eff, cycle } = useTheme();
   const { cycle: cyclePal, pal } = usePalette();
-  const colors = cur(eff, pal);
+  const colors = useMemo(() => cur(eff, pal), [eff, pal]);
 
   // Game state
   const [xp, setXp] = useState(520);
@@ -2214,7 +2226,6 @@ export default function App() {
   const [skillPoints, setSkillPoints] = useState(0);
   const [streak, setStreak] = useState(0);
   const [activeEffects, setActiveEffects] = useState([]);
-  const [effectTimestamp, setEffectTimestamp] = useState(Date.now());
   const [focus, setFocus] = useState(FOCUS_BASELINE);
   const [applications, setApplications] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -2239,14 +2250,34 @@ export default function App() {
 
   const openResultTimer = useRef(null);
 
+  const hasTimedEffects = useMemo(
+    () => activeEffects.some((effect) => effect.expiresAt),
+    [activeEffects],
+  );
+
   useEffect(() => {
+    if (!hasTimedEffects) {
+      return;
+    }
     const interval = setInterval(() => {
       const current = Date.now();
-      setEffectTimestamp(current);
-      setActiveEffects((list) => list.filter((fx) => !fx.expiresAt || fx.expiresAt > current));
+      setActiveEffects((list) => {
+        if (!list.length) {
+          return list;
+        }
+        let changed = false;
+        const filtered = list.filter((fx) => {
+          if (fx.expiresAt && fx.expiresAt <= current) {
+            changed = true;
+            return false;
+          }
+          return true;
+        });
+        return changed ? filtered : list;
+      });
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [hasTimedEffects]);
 
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25;
@@ -3279,7 +3310,6 @@ export default function App() {
           setGold={setGold}
           effects={activeEffects}
           setEffects={setActiveEffects}
-          now={effectTimestamp}
           premiumProgress={premiumProgress}
           setPremiumProgress={setPremiumProgress}
           mainTab={shopMainTab}
