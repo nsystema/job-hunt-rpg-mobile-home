@@ -87,7 +87,7 @@ const countUnclaimedQuestsByTab = (tabKey, claimed) =>
 const BOTTOM_TABS = [
   { key: 'Home', label: 'Home', icon: 'home-variant' },
   { key: 'Apps', label: 'Apps', icon: 'briefcase-outline' },
-  { key: 'Quests', label: 'Quests', icon: 'flag-variant-outline' },
+  { key: 'Quests', label: 'Quests', icon: 'clipboard-check-outline' },
   { key: 'Rewards', label: 'Rewards', icon: 'treasure-chest' },
   { key: 'Shop', label: 'Shop', icon: 'shopping-outline' },
 ];
@@ -98,7 +98,7 @@ const SHOP_MAIN_TABS = [
 ];
 
 const SHOP_CATALOG_TABS = [
-  { key: 'effects', label: 'Boosts', icon: 'lightning-bolt-outline' },
+  { key: 'effects', label: 'Boosts', icon: 'flash-outline' },
   { key: 'rewards', label: 'Treats', icon: 'cupcake' },
   { key: 'premium', label: 'Premium', icon: 'crown-outline' },
 ];
@@ -701,8 +701,8 @@ const RewardPreview = ({ xp, gold, focus, colors }) => {
   const glassBorder = getGlassBorderColor(colors);
   const chipTextColor = colors.text;
   const chips = [
-    { key: 'xp', icon: 'star-shooting-outline', label: `+${xp}` },
-    { key: 'gold', icon: 'currency-usd', label: `+${gold}` },
+    { key: 'xp', icon: 'flash-outline', label: `+${xp}` },
+    { key: 'gold', icon: 'diamond-stone', label: `+${gold}` },
     { key: 'focus', icon: 'brain', label: `-${focus}` },
   ];
 
@@ -1351,7 +1351,7 @@ const ShopScreen = ({
                                 end={{ x: 1, y: 1 }}
                                 style={styles.shopActiveIconInner}
                               >
-                                <MaterialCommunityIcons name={effect.icon || 'lightning-bolt-outline'} size={22} color="#0f172a" />
+                                <MaterialCommunityIcons name={effect.icon || 'flash-outline'} size={22} color="#0f172a" />
                               </LinearGradient>
                             </View>
                           </EffectTimerRing>
@@ -1459,7 +1459,7 @@ const ShopScreen = ({
                                   end={{ x: 1, y: 1 }}
                                   style={styles.shopIconInner}
                                 >
-                                  <MaterialCommunityIcons name={item.icon || 'lightning-bolt-outline'} size={20} color="#0f172a" />
+                                  <MaterialCommunityIcons name={item.icon || 'flash-outline'} size={20} color="#0f172a" />
                                 </LinearGradient>
                               </View>
                               <View style={styles.shopCardTitleArea}>
@@ -1493,7 +1493,7 @@ const ShopScreen = ({
                                   </Text>
                                 </View>
                                 <View style={styles.shopMetaItem}>
-                                  <MaterialCommunityIcons name="currency-usd" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                  <MaterialCommunityIcons name="diamond-stone" size={14} color={hexToRgba(colors.text, 0.6)} />
                                   <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
                                     {formatGold(item.cost)}
                                   </Text>
@@ -1501,7 +1501,7 @@ const ShopScreen = ({
                               </View>
                               <GoldPill
                                 colors={colors}
-                                icon="currency-usd"
+                                icon="diamond-stone"
                                 onPress={() => handleBuyEffect(item)}
                                 dim={gold < item.cost || active}
                               >
@@ -1559,7 +1559,7 @@ const ShopScreen = ({
                                 </Text>
                               </View>
                               <View style={styles.shopMetaItem}>
-                                <MaterialCommunityIcons name="currency-usd" size={14} color={hexToRgba(colors.text, 0.6)} />
+                                <MaterialCommunityIcons name="diamond-stone" size={14} color={hexToRgba(colors.text, 0.6)} />
                                 <Text style={[styles.shopMetaText, { color: hexToRgba(colors.text, 0.6) }]}>
                                   {formatGold(cost)}
                                 </Text>
@@ -1567,7 +1567,7 @@ const ShopScreen = ({
                             </View>
                             <GoldPill
                               colors={colors}
-                              icon="currency-usd"
+                              icon="diamond-stone"
                               onPress={() => setConfirmReward(item)}
                               dim={gold < cost}
                             >
@@ -1632,7 +1632,7 @@ const ShopScreen = ({
                             </View>
                             <GoldPill
                               colors={colors}
-                              icon="currency-usd"
+                              icon="diamond-stone"
                               onPress={() => handlePremiumAction(item)}
                               dim={!completed && gold <= 0}
                               style={styles.shopPremiumButton}
@@ -2407,7 +2407,7 @@ export default function App() {
   const quickActions = useMemo(
     () => [
       { key: 'Log application', icon: 'file-document-edit-outline', onPress: handleLogPress, hint: 'Open log form' },
-      { key: 'Easy apply', icon: 'lightning-bolt-outline', onPress: handleEasyApply, hint: 'Log easy apply' },
+      { key: 'Easy apply', icon: 'flash-outline', onPress: handleEasyApply, hint: 'Log easy apply' },
       { key: 'Networking', icon: 'account-group-outline', onPress: handleNetworking, hint: 'Add networking' },
       { key: 'Skill', icon: 'school-outline', onPress: handleSkill, hint: 'Add skill block' },
       { key: 'Interview', icon: 'account-tie-voice', onPress: handleInterview, hint: 'Add interview prep' },
@@ -2653,7 +2653,7 @@ export default function App() {
         <View style={styles.headerLeft}>
           <IconButton
             onPress={cycle}
-            icon={mode === 'light' ? 'white-balance-sunny' : mode === 'dark' ? 'moon-waning-crescent' : 'monitor-dashboard'}
+            icon={mode === 'light' ? 'white-balance-sunny' : mode === 'dark' ? 'moon-waning-crescent' : 'theme-light-dark'}
             colors={colors}
             accessibilityLabel="Cycle theme"
           />
@@ -2695,7 +2695,7 @@ export default function App() {
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <View style={styles.progressLabel}>
-                <MaterialCommunityIcons name="lightning-bolt-outline" size={14} color="rgba(148,163,184,.95)" />
+                <MaterialCommunityIcons name="flash-outline" size={14} color="rgba(148,163,184,.95)" />
                 <Text style={styles.progressLabelText}>XP to next</Text>
               </View>
               <Text style={styles.progressValue}>{Math.floor(rem)} / {need}</Text>
@@ -2706,7 +2706,7 @@ export default function App() {
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <View style={styles.progressLabel}>
-                <MaterialCommunityIcons name="lightbulb-on-outline" size={14} color="rgba(148,163,184,.95)" />
+                <MaterialCommunityIcons name="brain" size={14} color="rgba(148,163,184,.95)" />
                 <Text style={styles.progressLabelText}>Focus</Text>
               </View>
               <Text style={styles.progressValue}>{focus.toFixed(1)} / {FOCUS_BASELINE}</Text>
@@ -2995,11 +2995,11 @@ export default function App() {
                     </View>
                     <View style={styles.questRewardMeta}>
                       <View style={styles.questRewardPill}>
-                        <MaterialCommunityIcons name="lightning-bolt-outline" size={14} color={colors.sky} />
+                        <MaterialCommunityIcons name="flash-outline" size={14} color={colors.sky} />
                         <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.xp}</Text>
                       </View>
                       <View style={styles.questRewardPill}>
-                        <MaterialCommunityIcons name="currency-usd" size={14} color={colors.emerald} />
+                        <MaterialCommunityIcons name="diamond-stone" size={14} color={colors.emerald} />
                         <Text style={[styles.questRewardText, { color: colors.text }]}>{quest.gold}</Text>
                       </View>
                     </View>
@@ -3135,7 +3135,7 @@ export default function App() {
                   ) : null}
                 </View>
                 <View style={styles.rewardsSummaryStat}>
-                  <MaterialCommunityIcons name="currency-usd" size={14} color={summaryMuted} />
+                  <MaterialCommunityIcons name="diamond-stone" size={14} color={summaryMuted} />
                   <Text style={[styles.rewardsSummaryStatText, { color: summaryMuted }]}>Potential</Text>
                   <Text style={[styles.rewardsSummaryRange, { color: summaryStrong }]}>{viewRange}</Text>
                 </View>
@@ -3252,8 +3252,8 @@ export default function App() {
                   Opened {openAllSummary?.opened} chest{openAllSummary?.opened === 1 ? '' : 's'}
                 </Text>
                 <View style={styles.rewardsModalGold}>
-                  <MaterialCommunityIcons name="currency-usd" size={18} color={colors.emerald} />
-                  <Text style={[styles.rewardsModalGoldText, { color: colors.text }]}> 
+                  <MaterialCommunityIcons name="diamond-stone" size={18} color={colors.emerald} />
+                  <Text style={[styles.rewardsModalGoldText, { color: colors.text }]}>
                     {openAllSummary?.gold}g
                   </Text>
                 </View>
@@ -3298,7 +3298,7 @@ export default function App() {
                   Fresh loot
                 </Text>
                 <View style={styles.rewardsToastValue}>
-                  <MaterialCommunityIcons name="currency-usd" size={18} color={eff === 'light' ? '#0f172a' : colors.emerald} />
+                  <MaterialCommunityIcons name="diamond-stone" size={18} color={eff === 'light' ? '#0f172a' : colors.emerald} />
                   <Text style={[styles.rewardsToastText, { color: eff === 'light' ? '#0f172a' : colors.text }]}>
                     {openResult.gold}g
                   </Text>
