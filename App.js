@@ -655,59 +655,43 @@ const AutoCompleteField = ({
 
 const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors }) => {
   const iconName = value && activeIcon ? activeIcon : icon;
+  const glassColors = getGlassGradientColors(colors);
+  const glassBorder = getGlassBorderColor(colors);
   const inactiveBorder = colors.surfaceBorder;
   const inactiveBackground = colors.chipBg;
   const activeContentColor = '#0f172a';
   const inactiveContentColor = hexToRgba(colors.text, 0.75);
-
-  const iconWrapStyle = value
-    ? [styles.iconToggleIconWrap, styles.iconToggleIconWrapActive]
-    : [
-        styles.iconToggleIconWrap,
-        { backgroundColor: inactiveBackground, borderColor: inactiveBorder },
-      ];
-
-  const iconElement = (
-    <View style={iconWrapStyle}>
-      <Ionicons
-        name={iconName}
-        size={20}
-        color={value ? activeContentColor : inactiveContentColor}
-      />
-    </View>
-  );
-
-  const labelElement = (
-    <Text
-      style={[styles.iconToggleLabel, { color: value ? activeContentColor : inactiveContentColor }]}
-    >
-      {label}
-    </Text>
-  );
+  const contentColor = value ? activeContentColor : inactiveContentColor;
 
   return (
     <TouchableOpacity onPress={() => onToggle(!value)} activeOpacity={0.9} style={styles.iconToggle}>
-      {value ? (
-        <LinearGradient
-          colors={[colors.sky, colors.emerald]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.iconToggleInner, styles.iconToggleInnerActive]}
-        >
-          {iconElement}
-          {labelElement}
-        </LinearGradient>
-      ) : (
-        <View
-          style={[
-            styles.iconToggleInner,
-            { borderColor: inactiveBorder, backgroundColor: inactiveBackground },
-          ]}
-        >
-          {iconElement}
-          {labelElement}
-        </View>
-      )}
+      <View
+        style={[
+          styles.iconToggleInner,
+          { borderColor: 'transparent', backgroundColor: 'transparent', borderWidth: 0 },
+        ]}
+      >
+        {value ? (
+          <LinearGradient
+            colors={glassColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.iconToggleIconWrap, { borderColor: glassBorder }]}
+          >
+            <Ionicons name={iconName} size={20} color={contentColor} />
+          </LinearGradient>
+        ) : (
+          <View
+            style={[
+              styles.iconToggleIconWrap,
+              { backgroundColor: colors.chipBg, borderColor: inactiveBorder },
+            ]}
+          >
+            <Ionicons name={iconName} size={20} color={contentColor} />
+          </View>
+        )}
+        <Text style={[styles.iconToggleLabel, { color: contentColor }]}>{label}</Text>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -4250,7 +4234,6 @@ const styles = StyleSheet.create({
   },
   iconToggleInner: {
     flex: 1,
-    borderWidth: 1,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
@@ -4267,10 +4250,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconToggleIconWrapActive: {
-    backgroundColor: 'rgba(255,255,255,0.35)',
-    borderColor: 'rgba(255,255,255,0.55)',
   },
   iconToggleLabel: {
     fontSize: 11,
