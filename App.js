@@ -3506,7 +3506,13 @@ export default function App() {
         <View style={styles.bottomNavInner}>
           {BOTTOM_TABS.map((tab) => {
             const isActive = activeTab === tab.key;
-            const badge = tab.key === 'Quests' && unclaimedQuestsTotal ? String(unclaimedQuestsTotal) : undefined;
+            const badgeCount =
+              tab.key === 'Quests'
+                ? unclaimedQuestsTotal
+                : tab.key === 'Rewards'
+                ? chests.length
+                : 0;
+            const badge = badgeCount ? String(badgeCount) : undefined;
             return (
               <TouchableOpacity
                 key={tab.key}
@@ -3514,11 +3520,18 @@ export default function App() {
                 activeOpacity={0.9}
                 style={styles.bottomNavButton}
               >
-                <MaterialCommunityIcons
-                  name={tab.icon}
-                  size={22}
-                  color={isActive ? colors.text : 'rgba(148,163,184,.65)'}
-                />
+                <View style={styles.bottomNavIconWrapper}>
+                  <MaterialCommunityIcons
+                    name={tab.icon}
+                    size={22}
+                    color={isActive ? colors.text : 'rgba(148,163,184,.65)'}
+                  />
+                  {badge ? (
+                    <View style={[styles.bottomNavBadge, questBadgeShadow]}>
+                      <Text style={styles.bottomNavBadgeText}>{badge}</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text
                   style={[
                     styles.bottomNavLabel,
@@ -3535,11 +3548,6 @@ export default function App() {
                     style={styles.bottomNavIndicator}
                   />
                 )}
-                {badge ? (
-                  <View style={[styles.bottomNavBadge, questBadgeShadow]}>
-                    <Text style={styles.bottomNavBadgeText}>{badge}</Text>
-                  </View>
-                ) : null}
               </TouchableOpacity>
             );
           })}
@@ -4129,10 +4137,15 @@ const styles = StyleSheet.create({
     gap: 6,
     position: 'relative',
   },
+  bottomNavIconWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   bottomNavBadge: {
     position: 'absolute',
-    top: 2,
-    right: 22,
+    top: -6,
+    right: -12,
     minWidth: 18,
     height: 18,
     paddingHorizontal: 5,
