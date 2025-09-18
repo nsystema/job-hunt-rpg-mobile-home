@@ -2688,7 +2688,7 @@ export default function App() {
             onPress={cyclePal}
             style={[styles.paletteButton, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
           >
-            <MaterialCommunityIcons name="palette-swatch" size={20} color={colors.text} />
+            <MaterialCommunityIcons name="palette-outline" size={20} color={colors.text} />
             <Text style={[styles.paletteText, { color: colors.text }]}>{pal.name}</Text>
           </TouchableOpacity>
         </View>
