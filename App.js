@@ -2452,12 +2452,11 @@ export default function App() {
     [handleLogPress, handleEasyApply, handleNetworking, handleSkill, handleInterview, handlePrestige, l]
   );
 
-  const viewRange = filteredPotential ? `${formatRange(filteredPotential)}g` : '0g';
+  const totalPotential = useMemo(() => computePotential(chests), [chests]);
+  const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
   const hasChests = chests.length > 0;
   const summaryMuted = eff === 'light' ? 'rgba(15,23,42,0.66)' : 'rgba(226,232,240,0.76)';
   const summaryStrong = eff === 'light' ? '#0f172a' : colors.text;
-  const pillBg = eff === 'light' ? 'rgba(255,255,255,0.55)' : 'rgba(15,23,42,0.38)';
-  const filterHintColor = eff === 'light' ? 'rgba(15,23,42,0.5)' : 'rgba(226,232,240,0.6)';
   const headlineColor = hexToRgba(colors.text, 0.85);
 
   const statusIcons = useMemo(() => {
@@ -2633,8 +2632,6 @@ export default function App() {
       ),
     [chests, chestFilter],
   );
-
-  const filteredPotential = useMemo(() => computePotential(visibleChests), [visibleChests]);
 
   const goldMultiplier = useMemo(
     () => (activeEffects.some((effect) => effect.id === 2) ? 2 : 1),
@@ -3153,17 +3150,6 @@ export default function App() {
               </View>
 
               <View style={styles.rewardsSummaryRow}>
-                <View style={styles.rewardsSummaryStat}>
-                  <Text style={[styles.rewardsSummaryStatText, { color: summaryMuted }]}>In view</Text>
-                  <View style={[styles.rewardsSummaryChip, { backgroundColor: pillBg }]}>
-                    <Text style={[styles.rewardsSummaryChipText, { color: summaryStrong }]}>
-                      {visibleChests.length}
-                    </Text>
-                  </View>
-                  {chestFilter !== 'All' ? (
-                    <Text style={[styles.rewardsSummaryHint, { color: filterHintColor }]}>({chestFilter.toLowerCase()})</Text>
-                  ) : null}
-                </View>
                 <View style={styles.rewardsSummaryStat}>
                   <MaterialCommunityIcons name="diamond-stone" size={14} color={summaryMuted} />
                   <Text style={[styles.rewardsSummaryStatText, { color: summaryMuted }]}>Potential</Text>
@@ -4545,19 +4531,6 @@ const styles = StyleSheet.create({
   rewardsSummaryStatText: {
     fontSize: 12,
     fontWeight: '600',
-  },
-  rewardsSummaryChip: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  rewardsSummaryChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  rewardsSummaryHint: {
-    fontSize: 11,
-    fontWeight: '500',
   },
   rewardsSummaryRange: {
     fontSize: 13,
