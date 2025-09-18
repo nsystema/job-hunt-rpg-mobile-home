@@ -19,7 +19,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Defs, Rect, Path, Circle, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
-import { LineChart } from 'react-native-gifted-charts';
 import { usePalette, cur } from './hooks/usePalette';
 import { useTheme } from './hooks/useTheme';
 import {
@@ -84,8 +83,6 @@ const countUnclaimedQuests = (claimed) =>
 
 const countUnclaimedQuestsByTab = (tabKey, claimed) =>
   (QUESTS[tabKey] || []).filter((quest) => quest.progress >= quest.goal && !claimed.has(quest.id)).length;
-
-const FALLBACK_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const BOTTOM_TABS = [
   { key: 'Home', label: 'Home', icon: 'home-variant' },
@@ -2257,18 +2254,6 @@ export default function App() {
     () => (eff === 'light' ? ensureOpaque(colors.surface) : colors.surface),
     [eff, colors.surface],
   );
-  const chartAxisColor = useMemo(
-    () => hexToRgba(colors.text, eff === 'light' ? 0.45 : 0.65),
-    [colors.text, eff],
-  );
-  const chartRuleColor = useMemo(
-    () => hexToRgba(colors.text, eff === 'light' ? 0.12 : 0.28),
-    [colors.text, eff],
-  );
-  const chartEmptyTextColor = useMemo(
-    () => hexToRgba(colors.text, eff === 'light' ? 0.55 : 0.7),
-    [colors.text, eff],
-  );
 
   // Game state
   const [xp, setXp] = useState(520);
@@ -2585,95 +2570,6 @@ export default function App() {
     [editingApp, activeEffects],
   );
 
-  const {
-    data: applicationsTrendData,
-    total: applicationsTrendTotal,
-    maxValue: applicationsTrendMaxValue,
-    sections: applicationsTrendSections,
-  } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const days = Array.from({ length: 7 }, (_, index) => {
-      const day = new Date(today);
-      day.setDate(today.getDate() - (6 - index));
-      return day;
-    });
-
-    const counts = Object.fromEntries(days.map((day) => [day.getTime(), 0]));
-
-    applications.forEach((app) => {
-      if (!app || !app.date) {
-        return;
-      }
-      const parsed = new Date(app.date);
-      if (Number.isNaN(parsed.getTime())) {
-        return;
-      }
-      parsed.setHours(0, 0, 0, 0);
-      const key = parsed.getTime();
-      if (!(key in counts)) {
-        return;
-      }
-      counts[key] += 1;
-    });
-
-    let maxValue = 0;
-    const data = days.map((day, index) => {
-      const key = day.getTime();
-      const value = counts[key] || 0;
-      if (value > maxValue) {
-        maxValue = value;
-      }
-      let label = '';
-      try {
-        label = day.toLocaleDateString(undefined, { weekday: 'short' });
-      } catch (error) {
-        label = FALLBACK_WEEKDAYS[day.getDay()] || '';
-      }
-      if (!label) {
-        label = FALLBACK_WEEKDAYS[day.getDay()] || '';
-      }
-      const isToday = index === days.length - 1;
-
-      return {
-        value,
-        label,
-        dataPointColor: isToday ? colors.emerald : colors.sky,
-        dataPointLabelComponent:
-          value > 0
-            ? () => (
-                <Text style={[styles.chartTopLabel, { color: colors.text }]}>{value}</Text>
-              )
-            : undefined,
-        dataPointLabelShiftY: -10,
-        customDataPoint: () => (
-          <View
-            style={[
-              styles.chartDataPoint,
-              {
-                borderColor: isToday ? colors.emerald : colors.sky,
-                backgroundColor: filledSurface,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.chartDataPointInner,
-                { backgroundColor: isToday ? colors.emerald : colors.sky },
-              ]}
-            />
-          </View>
-        ),
-      };
-    });
-
-    const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
-    const safeMax = maxValue > 0 ? maxValue + 1 : 4;
-    const sections = Math.min(4, Math.max(1, safeMax));
-
-    return { data, total, maxValue: safeMax, sections };
-  }, [applications, colors, filledSurface]);
-
   const quests = useMemo(() => QUESTS[questTab] || [], [questTab]);
 
   const unclaimedQuestsTotal = useMemo(() => countUnclaimedQuests(claimedQuests), [claimedQuests]);
@@ -2859,57 +2755,6 @@ export default function App() {
             <Text style={styles.progressValue}>{into.toFixed(1)} / {step}</Text>
           </View>
           <ProgressBar value={into} max={step} fromColor={colors.sky} toColor={colors.emerald} colors={colors} />
-        </Panel>
-
-        {/* Applications Trend */}
-        <Panel colors={colors}>
-          <View style={styles.progressHeader}>
-            <View style={styles.progressLabel}>
-              <MaterialCommunityIcons name="chart-areaspline" size={14} color="rgba(148,163,184,.95)" />
-              <Text style={styles.progressLabelText}>Last 7 days</Text>
-            </View>
-            <Text style={[styles.trendTotal, { color: colors.text }]}>
-              {applicationsTrendTotal} {applicationsTrendTotal === 1 ? 'application' : 'applications'}
-            </Text>
-          </View>
-          {applicationsTrendTotal ? (
-            <View style={styles.chartContainer}>
-              <LineChart
-                data={applicationsTrendData}
-                height={120}
-                spacing={28}
-                initialSpacing={16}
-                endSpacing={16}
-                curved
-                areaChart
-                startFillColor={colors.sky}
-                endFillColor={colors.emerald}
-                startOpacity={eff === 'light' ? 0.28 : 0.22}
-                endOpacity={eff === 'light' ? 0.08 : 0.16}
-                color={colors.sky}
-                thickness={2.5}
-                hideYAxisText
-                yAxisThickness={0}
-                yAxisLabelWidth={0}
-                xAxisThickness={0}
-                rulesColor={chartRuleColor}
-                noOfSections={applicationsTrendSections}
-                maxValue={applicationsTrendMaxValue}
-                xAxisLabelTextStyle={[styles.chartLabel, { color: chartAxisColor }]}
-                dataPointsColor={colors.sky}
-                dataPointsWidth={12}
-                dataPointsHeight={12}
-                dataPointsRadius={6}
-                isAnimated
-                animationDuration={600}
-                adjustToWidth
-              />
-            </View>
-          ) : (
-            <Text style={[styles.chartEmptyText, { color: chartEmptyTextColor }]}>
-              Log applications to see your weekly trend.
-            </Text>
-          )}
         </Panel>
 
         {/* Quick Actions */}
@@ -3918,45 +3763,6 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     borderRadius: 6,
-  },
-  chartContainer: {
-    marginTop: 12,
-    height: 140,
-    justifyContent: 'flex-end',
-    width: '100%',
-  },
-  chartTopLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  chartLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  chartEmptyText: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  chartDataPoint: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chartDataPointInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  trendTotal: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   quickActions: {
     flexDirection: 'row',
