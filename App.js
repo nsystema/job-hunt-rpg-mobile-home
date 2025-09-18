@@ -2260,7 +2260,6 @@ export default function App() {
   const [apps, setApps] = useState(48);
   const [weighted, setWeighted] = useState(46.5);
   const [gold, setGold] = useState(260);
-  const [skillPoints, setSkillPoints] = useState(0);
   const [streak, setStreak] = useState(0);
   const [activeEffects, setActiveEffects] = useState([]);
   const [focus, setFocus] = useState(FOCUS_BASELINE);
@@ -2694,7 +2693,6 @@ export default function App() {
         </View>
         
         <View style={styles.headerRight}>
-          <StatBadge icon="school-outline" count={skillPoints} colors={colors} />
           <StatBadge icon="fire" count={streak} colors={colors} />
           <GoldPill colors={colors}>{gold}</GoldPill>
         </View>
