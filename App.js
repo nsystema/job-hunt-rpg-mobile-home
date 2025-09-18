@@ -2680,7 +2680,7 @@ export default function App() {
         <View style={styles.headerLeft}>
           <IconButton
             onPress={cycle}
-            icon={mode === 'light' ? 'white-balance-sunny' : mode === 'dark' ? 'moon-waning-crescent' : 'theme-light-dark'}
+            icon={mode === 'light' ? 'weather-sunny' : mode === 'dark' ? 'weather-night' : 'theme-light-dark'}
             colors={colors}
             accessibilityLabel="Cycle theme"
           />
