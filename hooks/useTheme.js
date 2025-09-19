@@ -1,29 +1,45 @@
 import { useEffect, useState } from 'react';
 import { Appearance } from 'react-native';
 
+const resolveSystemScheme = (scheme) => (scheme === 'dark' ? 'dark' : 'light');
+
 export function useTheme() {
   const getInitial = () => 'system';
-  const [mode, setMode] = useState(getInitial());
-  
-  const getSystemTheme = () => {
-    const colorScheme = Appearance.getColorScheme();
-    return colorScheme === 'dark' ? 'dark' : 'light';
-  };
-  
-  const effective = mode !== 'system' ? mode : getSystemTheme();
+  const [mode, setMode] = useState(getInitial);
+  const [systemScheme, setSystemScheme] = useState(() =>
+    resolveSystemScheme(Appearance.getColorScheme()),
+  );
 
   useEffect(() => {
-    if (mode === 'system') {
-      const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-        // This will trigger a re-render when system theme changes
-      });
-      return () => subscription?.remove();
+    if (mode !== 'system') {
+      return undefined;
     }
+
+    const handleAppearanceChange = ({ colorScheme }) => {
+      setSystemScheme(resolveSystemScheme(colorScheme));
+    };
+
+    setSystemScheme(resolveSystemScheme(Appearance.getColorScheme()));
+
+    const subscription =
+      typeof Appearance.addChangeListener === 'function'
+        ? Appearance.addChangeListener(handleAppearanceChange)
+        : null;
+
+    return () => {
+      if (subscription && typeof subscription.remove === 'function') {
+        subscription.remove();
+      } else if (typeof Appearance.removeChangeListener === 'function') {
+        Appearance.removeChangeListener(handleAppearanceChange);
+      }
+    };
   }, [mode]);
+
+  const effective = mode === 'system' ? systemScheme : mode;
 
   return {
     mode,
     eff: effective,
-    cycle: () => setMode(m => m === 'light' ? 'dark' : m === 'dark' ? 'system' : 'light'),
+    cycle: () => setMode((m) => (m === 'light' ? 'dark' : m === 'dark' ? 'system' : 'light')),
   };
 }
