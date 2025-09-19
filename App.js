@@ -36,6 +36,7 @@ import {
 } from './gameMechanics';
 import { STATUSES, PLATFORMS, COUNTRIES, getCitiesForCountry } from './data';
 import { QUESTS } from './quests';
+import { computeQuestMetrics, buildQuestTabs } from './questUtils';
 
 const buildInitialFormValues = () => ({
   company: '',
@@ -60,26 +61,9 @@ const QUEST_TABS = [
   { key: 'Events', icon: 'party-popper' },
 ];
 
-const isQuestTrackable = (quest) =>
-  quest && quest.trackable && typeof quest.goalValue === 'number' && quest.goalValue > 0;
+const isQuestTrackable = (quest) => quest?.trackable === true;
 
-const isQuestClaimable = (quest, claimed) =>
-  Boolean(
-    quest &&
-      quest.id &&
-      isQuestTrackable(quest) &&
-      typeof quest.progress === 'number' &&
-      quest.progress >= quest.goalValue &&
-      !claimed.has(quest.id),
-  );
-
-const countUnclaimedQuests = (claimed) =>
-  Object.values(QUESTS)
-    .flat()
-    .filter((quest) => isQuestClaimable(quest, claimed)).length;
-
-const countUnclaimedQuestsByTab = (tabKey, claimed) =>
-  (QUESTS[tabKey] || []).filter((quest) => isQuestClaimable(quest, claimed)).length;
+const isQuestClaimable = (quest) => quest?.claimable === true;
 
 const BOTTOM_TABS = [
   { key: 'Home', label: 'Home', icon: 'home-variant' },
@@ -2272,6 +2256,7 @@ export default function App() {
   const [editingApp, setEditingApp] = useState(null);
   const [questTab, setQuestTab] = useState('Daily');
   const [claimedQuests, setClaimedQuests] = useState(() => new Set());
+  const [manualLogs, setManualLogs] = useState(() => ({}));
   const [chests, setChests] = useState(PLACEHOLDER_CHESTS);
   const [chestFilter, setChestFilter] = useState('All');
   const [focusedChestId, setFocusedChestId] = useState(null);
@@ -2393,6 +2378,32 @@ export default function App() {
   }, [gainXp]);
 
   const handlePrestige = useCallback(() => {}, []);
+
+  const handleManualLog = useCallback(
+    (key, payload = {}) => {
+      if (!key) {
+        return;
+      }
+      setManualLogs((prev) => {
+        const entries = Array.isArray(prev[key]) ? [...prev[key]] : [];
+        entries.push({ id: Math.random().toString(36).slice(2), timestamp: Date.now(), ...payload });
+        return { ...prev, [key]: entries };
+      });
+    },
+    [],
+  );
+
+  const handleQuestAction = useCallback(
+    (action, quest) => {
+      if (!action) {
+        return;
+      }
+      if (action.type === 'log' && action.key) {
+        handleManualLog(action.key, { questId: quest?.id, actionKey: action.key });
+      }
+    },
+    [handleManualLog],
+  );
 
   const openChest = useCallback(
     (chest) => {
@@ -2565,9 +2576,22 @@ export default function App() {
     [editingApp, activeEffects],
   );
 
-  const quests = useMemo(() => QUESTS[questTab] || [], [questTab]);
+  const questMetrics = useMemo(
+    () => computeQuestMetrics({ applications, manualLogs, now }),
+    [applications, manualLogs, now],
+  );
 
-  const unclaimedQuestsTotal = useMemo(() => countUnclaimedQuests(claimedQuests), [claimedQuests]);
+  const { questsByTab, unclaimedByTab } = useMemo(
+    () => buildQuestTabs({ base: QUESTS, metrics: questMetrics, claimed: claimedQuests }),
+    [questMetrics, claimedQuests],
+  );
+
+  const quests = questsByTab[questTab] || [];
+
+  const unclaimedQuestsTotal = useMemo(
+    () => Object.values(unclaimedByTab).reduce((sum, value) => sum + value, 0),
+    [unclaimedByTab],
+  );
 
   const questCardShadow = useMemo(
     () =>
@@ -2661,6 +2685,63 @@ export default function App() {
     [colors],
   );
 
+  const renderSummaryCard = useCallback(
+    (quest) => {
+      if (!quest || !quest.summaryKey) {
+        return null;
+      }
+      const summary = quest.summary || {};
+      const asNumber = (val) => (typeof val === 'number' && Number.isFinite(val) ? val : 0);
+      if (quest.summaryKey === 'dailyTotals') {
+        return (
+          <View style={styles.summaryRows}>
+            <Text style={[styles.summaryRow, { color: colors.text }]}>
+              Gold: {formatGold(asNumber(summary.goldEarned))} / {formatGold(asNumber(summary.goldTotal))}
+            </Text>
+            <Text style={[styles.summaryRow, { color: colors.text }]}>
+              XP: {asNumber(summary.xpEarned)} / {asNumber(summary.xpTotal)}
+            </Text>
+            <Text style={[styles.summaryRow, { color: colors.text }]}>
+              Core complete: {asNumber(summary.coreCompleted)} / {asNumber(summary.coreTotal)}
+            </Text>
+            <Text style={[styles.summaryRow, { color: colors.text }]}>
+              Daily 100%: {summary.masteryComplete ? 'Ready' : 'In progress'}
+            </Text>
+          </View>
+        );
+      }
+      if (quest.summaryKey === 'weeklyTotals') {
+        return (
+          <View style={styles.summaryRows}>
+            <Text style={[styles.summaryRow, { color: colors.text }]}>
+              Gold: {formatGold(asNumber(summary.goldEarned))} / {formatGold(asNumber(summary.goldTotal))}
+            </Text>
+            <Text style={[styles.summaryRow, { color: colors.text }]}>
+              XP: {asNumber(summary.xpEarned)} / {asNumber(summary.xpTotal)}
+            </Text>
+          </View>
+        );
+      }
+      if (quest.summaryKey === 'weeklyProgress') {
+        return (
+          <View style={styles.summaryRows}>
+            <Text style={[styles.summaryRow, { color: colors.text }]}>
+              Core complete: {asNumber(summary.coreCompleted)} / {asNumber(summary.coreTotal)}
+            </Text>
+            <Text style={[styles.summaryRow, { color: colors.text }]}>
+              Cyclable slots: {asNumber(summary.slotsUsed)} / {asNumber(summary.slotsTotal)}
+            </Text>
+            <Text style={[styles.summaryRow, { color: colors.text }]}>
+              Weekly 100%: {summary.weeklyPerfectComplete ? 'Ready' : 'In progress'}
+            </Text>
+          </View>
+        );
+      }
+      return null;
+    },
+    [colors],
+  );
+
   const renderMetaRow = useCallback(
     (icon, label, value, key) => {
       if (!value) {
@@ -2678,7 +2759,7 @@ export default function App() {
   );
 
   const renderStages = useCallback(
-    (stages, label, keyPrefix) => {
+    (stages, label, keyPrefix, quest) => {
       if (!stages || !stages.length) {
         return null;
       }
@@ -2686,18 +2767,37 @@ export default function App() {
         <View style={styles.questStageList}>
           {stages.map((stage, stageIndex) => {
             const stageRewards = makeRewardEntries(stage.reward);
+            const isCompleted = stage.completed === true;
+            const showProgress =
+              typeof stage.progress === 'number' && typeof stage.goalValue === 'number' && stage.goalValue > 0;
+            const progressValue = showProgress
+              ? `${Math.min(stage.progress, stage.goalValue)} / ${stage.goalValue}`
+              : null;
             return (
               <View
                 key={`${keyPrefix}-${stageIndex}`}
                 style={[
                   styles.questStageRow,
-                  { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
+                  {
+                    backgroundColor: isCompleted ? hexToRgba(colors.emerald, 0.12) : colors.chipBg,
+                    borderColor: isCompleted ? hexToRgba(colors.emerald, 0.45) : colors.surfaceBorder,
+                  },
                 ]}
               >
                 <View style={styles.questStageHeader}>
-                  <Text style={[styles.questStageTitle, { color: colors.text }]}>
-                    {`${label} ${stageIndex + 1}`}
-                  </Text>
+                  <View style={styles.questStageTitleRow}>
+                    <Text style={[styles.questStageTitle, { color: colors.text }]}>
+                      {`${label} ${stageIndex + 1}`}
+                    </Text>
+                    {isCompleted ? (
+                      <MaterialCommunityIcons
+                        name="check-circle"
+                        size={16}
+                        color={colors.emerald}
+                        style={styles.questStageStatusIcon}
+                      />
+                    ) : null}
+                  </View>
                   {stageRewards.length ? (
                     <View style={styles.questRewardMeta}>
                       {stageRewards.map((entry, rewardIndex) => (
@@ -2713,13 +2813,29 @@ export default function App() {
                   ) : null}
                 </View>
                 <Text style={[styles.questStageGoal, { color: hexToRgba(colors.text, 0.75) }]}>{stage.goal}</Text>
+                {progressValue ? (
+                  <Text style={[styles.questStageProgress, { color: hexToRgba(colors.text, 0.68) }]}>{progressValue}</Text>
+                ) : null}
+                {stage.manualKey ? (
+                  <TouchableOpacity
+                    onPress={() => handleManualLog(stage.manualKey, { questId: quest?.id, stageId: stage.id || stage.index })}
+                    style={[
+                      styles.questStageButton,
+                      { borderColor: colors.surfaceBorder, backgroundColor: colors.chipBg },
+                    ]}
+                    activeOpacity={0.85}
+                  >
+                    <MaterialCommunityIcons name="plus-circle-outline" size={14} color={colors.sky} />
+                    <Text style={[styles.questStageButtonText, { color: colors.text }]}>Log progress</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             );
           })}
         </View>
       );
     },
-    [colors, makeRewardEntries],
+    [colors, handleManualLog, makeRewardEntries],
   );
 
   const rarityKeys = useMemo(() => ['All', ...RARITIES.map((r) => r.key)], []);
@@ -2747,9 +2863,35 @@ export default function App() {
     [activeEffects],
   );
 
+  const applyRewardEffect = useCallback(
+    (label) => {
+      if (!label || typeof label !== 'string') {
+        return;
+      }
+      const normalized = label.toLowerCase();
+      const match = GAME_EFFECTS.find((effect) => normalized.includes(effect.name.toLowerCase()));
+      if (!match) {
+        return;
+      }
+      setActiveEffects((list) => {
+        if (list.some((item) => item.id === match.id)) {
+          return list;
+        }
+        return [
+          ...list,
+          {
+            ...match,
+            expiresAt: match.duration ? Date.now() + match.duration * 1000 : undefined,
+          },
+        ];
+      });
+    },
+    [setActiveEffects],
+  );
+
   const handleClaimQuest = useCallback(
     (quest) => {
-      if (!isQuestTrackable(quest) || quest.progress < quest.goalValue) {
+      if (!quest || !quest.claimable) {
         return;
       }
       setClaimedQuests((prev) => {
@@ -2765,10 +2907,13 @@ export default function App() {
         if (typeof reward.gold === 'number' && reward.gold > 0) {
           setGold((value) => value + reward.gold);
         }
+        if (reward.effect) {
+          applyRewardEffect(reward.effect);
+        }
         return next;
       });
     },
-    [gainXp, setGold],
+    [gainXp, setGold, applyRewardEffect],
   );
 
   useEffect(() => {
@@ -3071,7 +3216,7 @@ export default function App() {
           >
             {QUEST_TABS.map((tab) => {
               const isActive = questTab === tab.key;
-              const badge = countUnclaimedQuestsByTab(tab.key, claimedQuests);
+              const badge = unclaimedByTab[tab.key] || 0;
               return (
                 <TouchableOpacity
                   key={tab.key}
@@ -3113,6 +3258,38 @@ export default function App() {
           <View style={styles.questList}>
             {quests.map((quest, index) => {
               const isLast = index === quests.length - 1;
+              if (quest.type === 'summary') {
+                return (
+                  <View
+                    key={quest.id}
+                    style={[
+                      styles.questCard,
+                      {
+                        marginBottom: isLast ? 0 : 16,
+                        borderColor: colors.surfaceBorder,
+                        backgroundColor: colors.chipBg,
+                      },
+                      questCardShadow,
+                    ]}
+                  >
+                    <View style={styles.questCardHeader}>
+                      <View style={styles.questTitleGroup}>
+                        {quest.category ? (
+                          <View style={styles.questTag}>
+                            <MaterialCommunityIcons name="star-outline" size={12} color={colors.sky} />
+                            <Text style={[styles.questTagText, { color: colors.sky }]}>{quest.category}</Text>
+                          </View>
+                        ) : null}
+                        <Text style={[styles.questTitle, { color: colors.text }]}>{quest.title}</Text>
+                        {quest.desc ? (
+                          <Text style={[styles.questDescription, { color: hexToRgba(colors.text, 0.72) }]}>{quest.desc}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    {renderSummaryCard(quest)}
+                  </View>
+                );
+              }
 
               if (quest.type === 'section') {
                 return (
@@ -3164,9 +3341,11 @@ export default function App() {
               const trackable = quest.trackable === true;
               const progress = trackable ? quest.progress ?? 0 : 0;
               const goalValue = trackable ? quest.goalValue ?? 0 : 0;
-              const claimed = trackable ? claimedQuests.has(quest.id) : false;
-              const claimable = trackable && goalValue > 0 && progress >= goalValue && !claimed;
-              const percent = trackable && goalValue > 0 ? Math.min(100, (progress / goalValue) * 100) : 0;
+              const claimed = quest.claimed === true;
+              const claimable = quest.claimable === true;
+              const percent = trackable
+                ? quest.percent ?? (goalValue > 0 ? Math.min(100, (progress / goalValue) * 100) : 0)
+                : 0;
               const rewardEntries = makeRewardEntries(quest.reward);
 
               return (
@@ -3217,6 +3396,29 @@ export default function App() {
                     ) : null}
                   </View>
 
+                  {quest.actions?.length ? (
+                    <View style={styles.questActionsRow}>
+                      {quest.actions.map((action, actionIndex) => (
+                        <TouchableOpacity
+                          key={`${quest.id}-action-${actionIndex}`}
+                          onPress={() => handleQuestAction(action, quest)}
+                          style={[
+                          styles.questActionButton,
+                          { borderColor: colors.surfaceBorder, backgroundColor: colors.chipBg },
+                        ]}
+                          activeOpacity={0.85}
+                        >
+                          <MaterialCommunityIcons
+                            name={action.icon || 'plus-circle-outline'}
+                            size={14}
+                            color={colors.sky}
+                          />
+                          <Text style={[styles.questActionText, { color: colors.text }]}>{action.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : null}
+
                   {quest.goals?.length ? (
                     <View style={styles.questInfoSection}>
                       <Text style={[styles.questInfoLabel, { color: colors.text }]}>Goals</Text>
@@ -3227,14 +3429,14 @@ export default function App() {
                   {quest.tasks?.length ? (
                     <View style={styles.questInfoSection}>
                       <Text style={[styles.questInfoLabel, { color: colors.text }]}>Tasks</Text>
-                      {renderBulletList(quest.tasks, `${quest.id}-task`, 'task')}
+                      {renderStages(quest.tasks, quest.stageLabel || 'Task', `${quest.id}-task`, quest)}
                     </View>
                   ) : null}
 
                   {quest.tiers?.length ? (
                     <View style={styles.questInfoSection}>
                       <Text style={[styles.questInfoLabel, { color: colors.text }]}>Tiered goals</Text>
-                      {renderStages(quest.tiers, quest.stageLabel || 'Tier', `${quest.id}-tier`)}
+                      {renderStages(quest.tiers, quest.stageLabel || 'Tier', `${quest.id}-tier`, quest)}
                     </View>
                   ) : null}
 
@@ -3243,7 +3445,7 @@ export default function App() {
                       <Text style={[styles.questInfoLabel, { color: colors.text }]}>
                         {quest.stageLabel ? `${quest.stageLabel}s` : 'Steps'}
                       </Text>
-                      {renderStages(quest.steps, quest.stageLabel || 'Step', `${quest.id}-step`)}
+                      {renderStages(quest.steps, quest.stageLabel || 'Step', `${quest.id}-step`, quest)}
                     </View>
                   ) : null}
 
@@ -4129,6 +4331,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
+  questActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  questActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginRight: 8,
+    marginBottom: 8,
+    backgroundColor: 'transparent',
+  },
+  questActionText: {
+    marginLeft: 6,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   questRewardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -4170,6 +4394,13 @@ const styles = StyleSheet.create({
   questNoteText: {
     fontStyle: 'italic',
   },
+  summaryRows: {
+    marginTop: 8,
+  },
+  summaryRow: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
   questStageList: {
     gap: 10,
   },
@@ -4177,6 +4408,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     padding: 12,
+  },
+  questStageTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  questStageProgress: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  questStageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+  },
+  questStageButtonText: {
+    marginLeft: 6,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  questStageStatusIcon: {
+    marginLeft: 6,
   },
   questStageHeader: {
     flexDirection: 'row',
