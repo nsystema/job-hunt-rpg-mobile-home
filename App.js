@@ -2257,6 +2257,7 @@ export default function App() {
   const [questTab, setQuestTab] = useState('Daily');
   const [claimedQuests, setClaimedQuests] = useState(() => new Set());
   const [manualLogs, setManualLogs] = useState(() => ({}));
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [chests, setChests] = useState(PLACEHOLDER_CHESTS);
   const [chestFilter, setChestFilter] = useState('All');
   const [focusedChestId, setFocusedChestId] = useState(null);
@@ -2267,6 +2268,13 @@ export default function App() {
   const [shopCategoryTab, setShopCategoryTab] = useState('effects');
 
   const openResultTimer = useRef(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const hasTimedEffects = useMemo(
     () => activeEffects.some((effect) => effect.expiresAt),
@@ -2577,8 +2585,8 @@ export default function App() {
   );
 
   const questMetrics = useMemo(
-    () => computeQuestMetrics({ applications, manualLogs, now }),
-    [applications, manualLogs, now],
+    () => computeQuestMetrics({ applications, manualLogs, now: currentTime }),
+    [applications, manualLogs, currentTime],
   );
 
   const { questsByTab, unclaimedByTab } = useMemo(
