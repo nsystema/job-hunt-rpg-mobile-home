@@ -2594,7 +2594,10 @@ export default function App() {
     [questMetrics, claimedQuests],
   );
 
-  const quests = questsByTab[questTab] || [];
+  const quests = useMemo(() => {
+    const list = questsByTab[questTab] || [];
+    return list.filter((quest) => quest.type !== 'note' && quest.type !== 'summary');
+  }, [questTab, questsByTab]);
 
   const unclaimedQuestsTotal = useMemo(
     () => Object.values(unclaimedByTab).reduce((sum, value) => sum + value, 0),
@@ -2693,63 +2696,6 @@ export default function App() {
     [colors],
   );
 
-  const renderSummaryCard = useCallback(
-    (quest) => {
-      if (!quest || !quest.summaryKey) {
-        return null;
-      }
-      const summary = quest.summary || {};
-      const asNumber = (val) => (typeof val === 'number' && Number.isFinite(val) ? val : 0);
-      if (quest.summaryKey === 'dailyTotals') {
-        return (
-          <View style={styles.summaryRows}>
-            <Text style={[styles.summaryRow, { color: colors.text }]}>
-              Gold: {formatGold(asNumber(summary.goldEarned))} / {formatGold(asNumber(summary.goldTotal))}
-            </Text>
-            <Text style={[styles.summaryRow, { color: colors.text }]}>
-              XP: {asNumber(summary.xpEarned)} / {asNumber(summary.xpTotal)}
-            </Text>
-            <Text style={[styles.summaryRow, { color: colors.text }]}>
-              Core complete: {asNumber(summary.coreCompleted)} / {asNumber(summary.coreTotal)}
-            </Text>
-            <Text style={[styles.summaryRow, { color: colors.text }]}>
-              Daily 100%: {summary.masteryComplete ? 'Ready' : 'In progress'}
-            </Text>
-          </View>
-        );
-      }
-      if (quest.summaryKey === 'weeklyTotals') {
-        return (
-          <View style={styles.summaryRows}>
-            <Text style={[styles.summaryRow, { color: colors.text }]}>
-              Gold: {formatGold(asNumber(summary.goldEarned))} / {formatGold(asNumber(summary.goldTotal))}
-            </Text>
-            <Text style={[styles.summaryRow, { color: colors.text }]}>
-              XP: {asNumber(summary.xpEarned)} / {asNumber(summary.xpTotal)}
-            </Text>
-          </View>
-        );
-      }
-      if (quest.summaryKey === 'weeklyProgress') {
-        return (
-          <View style={styles.summaryRows}>
-            <Text style={[styles.summaryRow, { color: colors.text }]}>
-              Core complete: {asNumber(summary.coreCompleted)} / {asNumber(summary.coreTotal)}
-            </Text>
-            <Text style={[styles.summaryRow, { color: colors.text }]}>
-              Cyclable slots: {asNumber(summary.slotsUsed)} / {asNumber(summary.slotsTotal)}
-            </Text>
-            <Text style={[styles.summaryRow, { color: colors.text }]}>
-              Weekly 100%: {summary.weeklyPerfectComplete ? 'Ready' : 'In progress'}
-            </Text>
-          </View>
-        );
-      }
-      return null;
-    },
-    [colors],
-  );
-
   const renderMetaRow = useCallback(
     (icon, label, value, key) => {
       if (!value) {
@@ -2767,13 +2713,35 @@ export default function App() {
   );
 
   const renderStages = useCallback(
-    (stages, label, keyPrefix, quest) => {
+    (stages, label, keyPrefix, quest, options = {}) => {
       if (!stages || !stages.length) {
         return null;
       }
+
+      const { sequential = false } = options;
+      const visibleStages = [];
+      let allowNext = true;
+
+      stages.forEach((stage, stageIndex) => {
+        if (!sequential) {
+          visibleStages.push({ stage, stageIndex });
+          return;
+        }
+
+        if (stage.completed === true) {
+          visibleStages.push({ stage, stageIndex });
+          return;
+        }
+
+        if (allowNext) {
+          visibleStages.push({ stage, stageIndex });
+          allowNext = false;
+        }
+      });
+
       return (
         <View style={styles.questStageList}>
-          {stages.map((stage, stageIndex) => {
+          {visibleStages.map(({ stage, stageIndex }) => {
             const stageRewards = makeRewardEntries(stage.reward);
             const isCompleted = stage.completed === true;
             const showProgress =
@@ -2826,7 +2794,9 @@ export default function App() {
                 ) : null}
                 {stage.manualKey ? (
                   <TouchableOpacity
-                    onPress={() => handleManualLog(stage.manualKey, { questId: quest?.id, stageId: stage.id || stage.index })}
+                    onPress={() =>
+                      handleManualLog(stage.manualKey, { questId: quest?.id, stageId: stage.id || stage.index })
+                    }
                     style={[
                       styles.questStageButton,
                       { borderColor: colors.surfaceBorder, backgroundColor: colors.chipBg },
@@ -3266,39 +3236,6 @@ export default function App() {
           <View style={styles.questList}>
             {quests.map((quest, index) => {
               const isLast = index === quests.length - 1;
-              if (quest.type === 'summary') {
-                return (
-                  <View
-                    key={quest.id}
-                    style={[
-                      styles.questCard,
-                      {
-                        marginBottom: isLast ? 0 : 16,
-                        borderColor: colors.surfaceBorder,
-                        backgroundColor: colors.chipBg,
-                      },
-                      questCardShadow,
-                    ]}
-                  >
-                    <View style={styles.questCardHeader}>
-                      <View style={styles.questTitleGroup}>
-                        {quest.category ? (
-                          <View style={styles.questTag}>
-                            <MaterialCommunityIcons name="star-outline" size={12} color={colors.sky} />
-                            <Text style={[styles.questTagText, { color: colors.sky }]}>{quest.category}</Text>
-                          </View>
-                        ) : null}
-                        <Text style={[styles.questTitle, { color: colors.text }]}>{quest.title}</Text>
-                        {quest.desc ? (
-                          <Text style={[styles.questDescription, { color: hexToRgba(colors.text, 0.72) }]}>{quest.desc}</Text>
-                        ) : null}
-                      </View>
-                    </View>
-                    {renderSummaryCard(quest)}
-                  </View>
-                );
-              }
-
               if (quest.type === 'section') {
                 return (
                   <View
@@ -3319,29 +3256,6 @@ export default function App() {
                         {quest.subtitle}
                       </Text>
                     ) : null}
-                  </View>
-                );
-              }
-
-              if (quest.type === 'note') {
-                return (
-                  <View
-                    key={quest.id}
-                    style={[
-                      styles.questInfoCard,
-                      {
-                        backgroundColor: filledSurface,
-                        borderColor: colors.surfaceBorder,
-                        marginBottom: isLast ? 0 : 12,
-                      },
-                      questCardShadow,
-                    ]}
-                  >
-                    <Text style={[styles.questInfoTitle, { color: colors.text }]}>{quest.title}</Text>
-                    {quest.desc ? (
-                      <Text style={[styles.questDescription, { color: hexToRgba(colors.text, 0.72) }]}>{quest.desc}</Text>
-                    ) : null}
-                    {renderBulletList(quest.notes, `${quest.id}-note`, 'note')}
                   </View>
                 );
               }
@@ -3371,19 +3285,6 @@ export default function App() {
                 >
                   <View style={styles.questCardHeader}>
                     <View style={styles.questTitleGroup}>
-                      {quest.category ? (
-                        <View
-                          style={[
-                            styles.questTag,
-                            {
-                              borderColor: hexToRgba(colors.sky, 0.4),
-                              backgroundColor: hexToRgba(colors.sky, eff === 'light' ? 0.18 : 0.28),
-                            },
-                          ]}
-                        >
-                          <Text style={[styles.questTagText, { color: colors.sky }]}>{quest.category}</Text>
-                        </View>
-                      ) : null}
                       <Text style={[styles.questTitle, { color: colors.text }]}>{quest.title}</Text>
                       {quest.subtitle ? (
                         <Text style={[styles.questSubtitle, { color: hexToRgba(colors.text, 0.72) }]}>{quest.subtitle}</Text>
@@ -3444,7 +3345,7 @@ export default function App() {
                   {quest.tiers?.length ? (
                     <View style={styles.questInfoSection}>
                       <Text style={[styles.questInfoLabel, { color: colors.text }]}>Tiered goals</Text>
-                      {renderStages(quest.tiers, quest.stageLabel || 'Tier', `${quest.id}-tier`, quest)}
+                      {renderStages(quest.tiers, quest.stageLabel || 'Tier', `${quest.id}-tier`, quest, { sequential: true })}
                     </View>
                   ) : null}
 
@@ -3453,7 +3354,7 @@ export default function App() {
                       <Text style={[styles.questInfoLabel, { color: colors.text }]}>
                         {quest.stageLabel ? `${quest.stageLabel}s` : 'Steps'}
                       </Text>
-                      {renderStages(quest.steps, quest.stageLabel || 'Step', `${quest.id}-step`, quest)}
+                      {renderStages(quest.steps, quest.stageLabel || 'Step', `${quest.id}-step`, quest, { sequential: true })}
                     </View>
                   ) : null}
 
@@ -3461,13 +3362,6 @@ export default function App() {
                   {quest.duration ? renderMetaRow('clock-time-four-outline', 'Duration', quest.duration, `${quest.id}-duration`) : null}
                   {quest.lock ? renderMetaRow('lock-outline', 'Lock', quest.lock, `${quest.id}-lock`) : null}
                   {quest.requires ? renderMetaRow('link-variant', 'Requires', quest.requires, `${quest.id}-requires`) : null}
-
-                  {quest.notes?.length ? (
-                    <View style={styles.questInfoSection}>
-                      <Text style={[styles.questInfoLabel, { color: colors.text }]}>Notes</Text>
-                      {renderBulletList(quest.notes, `${quest.id}-note`, 'note')}
-                    </View>
-                  ) : null}
 
                   {trackable ? (
                     <>
