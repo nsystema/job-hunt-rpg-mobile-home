@@ -2725,20 +2725,33 @@ export default function App() {
         <View style={styles.questStageList}>
           {visibleStages.map(({ stage, stageIndex }) => {
             const stageRewards = makeRewardEntries(stage.reward);
+            const isClaimed = stage.claimed === true;
             const isCompleted = stage.completed === true;
+            const isReady = !isClaimed && isCompleted;
             const showProgress =
               typeof stage.progress === 'number' && typeof stage.goalValue === 'number' && stage.goalValue > 0;
             const progressValue = showProgress
               ? `${Math.min(stage.progress, stage.goalValue)} / ${stage.goalValue}`
               : null;
+            const backgroundColor = isClaimed
+              ? hexToRgba(colors.emerald, 0.12)
+              : isReady
+              ? hexToRgba(colors.amber, 0.12)
+              : colors.chipBg;
+            const borderColor = isClaimed
+              ? hexToRgba(colors.emerald, 0.45)
+              : isReady
+              ? hexToRgba(colors.amber, 0.45)
+              : colors.surfaceBorder;
+            const statusColor = isClaimed ? colors.emerald : isReady ? colors.amber : null;
             return (
               <View
                 key={`${keyPrefix}-${stageIndex}`}
                 style={[
                   styles.questStageRow,
                   {
-                    backgroundColor: isCompleted ? hexToRgba(colors.emerald, 0.12) : colors.chipBg,
-                    borderColor: isCompleted ? hexToRgba(colors.emerald, 0.45) : colors.surfaceBorder,
+                    backgroundColor,
+                    borderColor,
                   },
                 ]}
               >
@@ -2747,11 +2760,11 @@ export default function App() {
                     <Text style={[styles.questStageTitle, { color: colors.text }]}>
                       {`${label} ${stageIndex + 1}`}
                     </Text>
-                    {isCompleted ? (
+                    {statusColor ? (
                       <MaterialCommunityIcons
                         name="check-circle"
                         size={16}
-                        color={colors.emerald}
+                        color={statusColor}
                         style={styles.questStageStatusIcon}
                       />
                     ) : null}
@@ -2803,7 +2816,15 @@ export default function App() {
       return null;
     }
     const total = stages.length;
-    const completed = stages.reduce((count, stage) => (stage?.completed ? count + 1 : count), 0);
+    const completed = stages.reduce((count, stage) => {
+      if (stage?.claimed === true) {
+        return count + 1;
+      }
+      if (stage?.claimed === false) {
+        return count;
+      }
+      return stage?.completed ? count + 1 : count;
+    }, 0);
     const current = Math.min(completed + 1, total);
     return `${current}/${total}`;
   }, []);
@@ -2864,13 +2885,20 @@ export default function App() {
       if (!quest || !quest.claimable) {
         return;
       }
+      const reward = quest.claimReward || quest.reward || {};
+      const targetId = quest.activeStageId || quest.id;
+      const shouldCompleteQuest = quest.activeStageId
+        ? quest.activeStageIsFinal === true && !quest.reward
+        : true;
       setClaimedQuests((prev) => {
-        if (prev.has(quest.id)) {
+        if (prev.has(targetId)) {
           return prev;
         }
         const next = new Set(prev);
-        next.add(quest.id);
-        const reward = quest.reward || {};
+        next.add(targetId);
+        if (shouldCompleteQuest && !next.has(quest.id)) {
+          next.add(quest.id);
+        }
         if (typeof reward.xp === 'number' && reward.xp > 0) {
           gainXp(reward.xp);
         }
@@ -3260,7 +3288,7 @@ export default function App() {
               const percent = trackable
                 ? quest.percent ?? (goalValue > 0 ? Math.min(100, (progress / goalValue) * 100) : 0)
                 : 0;
-              const rewardEntries = makeRewardEntries(quest.reward);
+              const rewardEntries = makeRewardEntries(quest.claimReward || quest.reward);
               const tierSummary = Array.isArray(quest.tiers)
                 ? getStageProgressSummary(quest.tiers)
                 : null;

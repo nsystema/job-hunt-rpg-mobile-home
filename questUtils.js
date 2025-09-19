@@ -415,6 +415,12 @@ const getQuestRewardTotals = (quest) => {
       xp += safeNumber(tier?.reward?.xp);
     });
   }
+  if (Array.isArray(quest.steps)) {
+    quest.steps.forEach((step) => {
+      gold += safeNumber(step?.reward?.gold);
+      xp += safeNumber(step?.reward?.xp);
+    });
+  }
   gold += safeNumber(quest?.reward?.gold);
   xp += safeNumber(quest?.reward?.xp);
   return { gold, xp };
@@ -425,13 +431,25 @@ const getQuestRewardEarned = (quest) => {
   let xp = 0;
   if (Array.isArray(quest.tiers)) {
     quest.tiers.forEach((tier) => {
-      if (tier.completed) {
+      const claimed = tier?.claimed;
+      const completed = tier?.completed;
+      if (claimed === true || (claimed == null && completed)) {
         gold += safeNumber(tier?.reward?.gold);
         xp += safeNumber(tier?.reward?.xp);
       }
     });
   }
-  if (quest.completed) {
+  if (Array.isArray(quest.steps)) {
+    quest.steps.forEach((step) => {
+      const claimed = step?.claimed;
+      const completed = step?.completed;
+      if (claimed === true || (claimed == null && completed)) {
+        gold += safeNumber(step?.reward?.gold);
+        xp += safeNumber(step?.reward?.xp);
+      }
+    });
+  }
+  if (quest.claimed) {
     gold += safeNumber(quest?.reward?.gold);
     xp += safeNumber(quest?.reward?.xp);
   }
@@ -517,21 +535,12 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
         }
 
         if (Array.isArray(quest.tracking.thresholds) && quest.tracking.thresholds.length) {
-          clone.tiers = (clone.tiers || quest.tracking.thresholds.map((value) => ({ value }))).map((tier) => ({
-            ...tier,
-            completed: progress >= safeNumber(tier?.value),
-            goalValue: safeNumber(tier?.value),
-            progress,
-          }));
-        }
-
-        if (Array.isArray(clone.tiers)) {
-          clone.tiers = clone.tiers.map((tier) => ({
-            ...tier,
-            completed: progress >= safeNumber(tier?.value),
-            goalValue: safeNumber(tier?.value),
-            progress,
-          }));
+          if (!Array.isArray(clone.tiers) || !clone.tiers.length) {
+            clone.tiers = quest.tracking.thresholds.map((value, index) => ({
+              value,
+              id: `${quest.id}-tier-${index}`,
+            }));
+          }
         }
 
         completed = trackable && progress >= goalValue;
@@ -541,6 +550,8 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
         }
       }
 
+      const questStatus = { progress, goalValue, completed };
+
       clone.trackable = trackable;
       clone.progress = progress;
       clone.goalValue = goalValue;
@@ -548,39 +559,93 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
       clone.locked = locked;
       clone.percent = goalValue > 0 ? Math.min(100, (progress / goalValue) * 100) : 0;
 
-      statusMap.set(clone.id, { progress, goalValue, completed });
+      statusMap.set(clone.id, questStatus);
 
+      let tierStage = null;
+      if (Array.isArray(clone.tiers)) {
+        clone.tiers = clone.tiers.map((tier, tierIndex) => {
+          const tierGoal = safeNumber(tier?.value ?? tier?.goalValue);
+          const tierProgress = progress;
+          const tierCompleted = tierGoal > 0 && tierProgress >= tierGoal;
+          const tierId = tier.id || `${clone.id}-tier-${tierIndex}`;
+          const tierClaimed = claimedSet.has(tierId);
+          if (!tierClaimed && !tierStage && tierGoal > 0) {
+            tierStage = {
+              id: tierId,
+              index: tierIndex,
+              goalValue: tierGoal,
+              progress: tierProgress,
+              reward: tier.reward,
+              completed: tierCompleted,
+            };
+          }
+          return {
+            ...tier,
+            id: tierId,
+            index: tierIndex,
+            completed: tierCompleted,
+            goalValue: tierGoal > 0 ? tierGoal : undefined,
+            progress: tierProgress,
+            claimed: tierClaimed,
+          };
+        });
+        if (tierStage) {
+          const hasRemaining = clone.tiers.slice(tierStage.index + 1).some((tier) => !tier.claimed);
+          tierStage.isFinal = !hasRemaining;
+        }
+      }
+
+      let stepStage = null;
       if (Array.isArray(clone.steps)) {
         const questProgress = progress;
         clone.steps = clone.steps.map((step, index) => {
+          let stepProgress = questProgress;
+          let stepGoal = safeNumber(step?.value);
+          let manualKey;
+          let stepCompleted = false;
+          let percent = 0;
+
           if (step?.tracking) {
             const stepStatus = getMetricValue(step.tracking, context);
-            const stepCompleted = stepStatus.goalValue > 0 && stepStatus.progress >= stepStatus.goalValue;
-            return {
-              ...step,
+            stepProgress = stepStatus.progress;
+            stepGoal = stepStatus.goalValue;
+            manualKey = step.tracking.manualKey;
+            stepCompleted = stepGoal > 0 && stepStatus.progress >= stepStatus.goalValue;
+            percent = stepGoal > 0 ? Math.min(100, (stepStatus.progress / stepStatus.goalValue) * 100) : 0;
+          } else {
+            stepCompleted = stepGoal > 0 && questProgress >= stepGoal;
+            percent = stepGoal > 0 ? Math.min(100, (questProgress / stepGoal) * 100) : 0;
+          }
+
+          const stepId = step.id || `${clone.id}-step-${index}`;
+          const stepClaimed = claimedSet.has(stepId);
+          if (!stepClaimed && !stepStage && stepGoal > 0) {
+            stepStage = {
+              id: stepId,
               index,
-              manualKey: step.tracking.manualKey,
-              progress: stepStatus.progress,
-              goalValue: stepStatus.goalValue,
+              goalValue: stepGoal,
+              progress: stepProgress,
+              reward: step.reward,
               completed: stepCompleted,
-              percent:
-                stepStatus.goalValue > 0
-                  ? Math.min(100, (stepStatus.progress / stepStatus.goalValue) * 100)
-                  : 0,
             };
           }
 
-          const stageGoal = safeNumber(step?.value);
-          const stageCompleted = stageGoal > 0 && questProgress >= stageGoal;
           return {
             ...step,
+            id: stepId,
             index,
-            progress: questProgress,
-            goalValue: stageGoal > 0 ? stageGoal : undefined,
-            completed: stageCompleted,
-            percent: stageGoal > 0 ? Math.min(100, (questProgress / stageGoal) * 100) : 0,
+            manualKey,
+            progress: stepProgress,
+            goalValue: stepGoal > 0 ? stepGoal : undefined,
+            completed: stepCompleted,
+            percent,
+            claimed: stepClaimed,
           };
         });
+        if (stepStage) {
+          const hasRemaining = clone.steps.slice(stepStage.index + 1).some((step) => !step.claimed);
+          stepStage.isFinal = !hasRemaining;
+        }
       }
 
       if (Array.isArray(clone.tasks)) {
@@ -605,8 +670,38 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
         });
       }
 
-      clone.claimed = claimedSet.has(clone.id);
-      clone.claimable = clone.trackable && clone.completed && !clone.claimed && !clone.locked;
+      const questClaimed = claimedSet.has(clone.id);
+      const stageClaim = tierStage || stepStage;
+
+      let claimReward = clone.reward;
+      let claimable = clone.trackable && clone.completed && !questClaimed && !clone.locked;
+      let activeStageId;
+      let activeStageIsFinal = false;
+
+      if (stageClaim && !questClaimed) {
+        const stageGoalValue = safeNumber(stageClaim.goalValue);
+        const stageProgress = safeNumber(stageClaim.progress);
+        claimReward = stageClaim.reward || claimReward;
+        activeStageId = stageClaim.id;
+        activeStageIsFinal = stageClaim.isFinal === true;
+        clone.trackable = true;
+        if (stageGoalValue > 0) {
+          clone.goalValue = stageGoalValue;
+          clone.progress = stageProgress;
+          clone.percent = Math.min(100, stageGoalValue > 0 ? (stageProgress / stageGoalValue) * 100 : 0);
+        } else {
+          clone.progress = stageProgress;
+          clone.goalValue = stageGoalValue;
+          clone.percent = 0;
+        }
+        claimable = !clone.locked && stageGoalValue > 0 && stageProgress >= stageGoalValue;
+      }
+
+      clone.claimReward = claimReward;
+      clone.claimed = questClaimed;
+      clone.claimable = claimable && !questClaimed;
+      clone.activeStageId = activeStageId;
+      clone.activeStageIsFinal = activeStageIsFinal;
 
       const rewardTotals = getQuestRewardTotals(quest);
       aggregator.totalGold += rewardTotals.gold;
