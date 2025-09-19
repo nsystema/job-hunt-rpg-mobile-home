@@ -133,7 +133,6 @@ export const QUESTS = {
         requires: DAILY_CORE_IDS,
       },
       reward: { gold: 10, xp: 100 },
-      lock: 'Auto completes only when every other Daily quest is finished.',
       notes: ['Completing this quest increments the Daily streak counter.'],
     },
   ],
@@ -278,7 +277,6 @@ export const QUESTS = {
         requires: WEEKLY_CORE_IDS,
       },
       reward: { gold: 30, xp: 150, chest: 'Rare' },
-      lock: 'Auto completes only when every Weekly core quest is finished.',
       notes: ['Completing this quest increments the Weekly 100% streak counter.'],
     },
     {

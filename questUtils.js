@@ -504,6 +504,18 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
         goalValue = baseStatus.goalValue;
         trackable = goalValue > 0;
 
+        const requires = Array.isArray(quest.tracking.requires) ? quest.tracking.requires : null;
+        if (requires?.length) {
+          const completedDeps = requires.reduce((count, depId) => {
+            const depStatus = statusMap.get(depId);
+            return depStatus?.completed ? count + 1 : count;
+          }, 0);
+          progress = completedDeps;
+          goalValue = requires.length;
+          trackable = goalValue > 0;
+          locked = completedDeps < requires.length;
+        }
+
         if (Array.isArray(quest.tracking.thresholds) && quest.tracking.thresholds.length) {
           clone.tiers = (clone.tiers || quest.tracking.thresholds.map((value) => ({ value }))).map((tier) => ({
             ...tier,
@@ -524,12 +536,8 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
 
         completed = trackable && progress >= goalValue;
 
-        if (Array.isArray(quest.tracking.requires) && quest.tracking.requires.length) {
-          const depsComplete = quest.tracking.requires.every((depId) => statusMap.get(depId)?.completed);
-          if (!depsComplete) {
-            locked = true;
-            completed = false;
-          }
+        if (requires?.length) {
+          locked = progress < goalValue;
         }
       }
 
@@ -543,23 +551,34 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
       statusMap.set(clone.id, { progress, goalValue, completed });
 
       if (Array.isArray(clone.steps)) {
+        const questProgress = progress;
         clone.steps = clone.steps.map((step, index) => {
-          if (!step?.tracking) {
-            return { ...step, index };
+          if (step?.tracking) {
+            const stepStatus = getMetricValue(step.tracking, context);
+            const stepCompleted = stepStatus.goalValue > 0 && stepStatus.progress >= stepStatus.goalValue;
+            return {
+              ...step,
+              index,
+              manualKey: step.tracking.manualKey,
+              progress: stepStatus.progress,
+              goalValue: stepStatus.goalValue,
+              completed: stepCompleted,
+              percent:
+                stepStatus.goalValue > 0
+                  ? Math.min(100, (stepStatus.progress / stepStatus.goalValue) * 100)
+                  : 0,
+            };
           }
-          const stepStatus = getMetricValue(step.tracking, context);
-          const stepCompleted = stepStatus.goalValue > 0 && stepStatus.progress >= stepStatus.goalValue;
+
+          const stageGoal = safeNumber(step?.value);
+          const stageCompleted = stageGoal > 0 && questProgress >= stageGoal;
           return {
             ...step,
             index,
-            manualKey: step.tracking.manualKey,
-            progress: stepStatus.progress,
-            goalValue: stepStatus.goalValue,
-            completed: stepCompleted,
-            percent:
-              stepStatus.goalValue > 0
-                ? Math.min(100, (stepStatus.progress / stepStatus.goalValue) * 100)
-                : 0,
+            progress: questProgress,
+            goalValue: stageGoal > 0 ? stageGoal : undefined,
+            completed: stageCompleted,
+            percent: stageGoal > 0 ? Math.min(100, (questProgress / stageGoal) * 100) : 0,
           };
         });
       }

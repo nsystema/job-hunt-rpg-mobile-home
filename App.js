@@ -2596,7 +2596,15 @@ export default function App() {
 
   const quests = useMemo(() => {
     const list = questsByTab[questTab] || [];
-    return list.filter((quest) => quest.type !== 'note' && quest.type !== 'summary');
+    return list.filter((quest) => {
+      if (quest.type === 'note' || quest.type === 'summary') {
+        return false;
+      }
+      if (quest.claimed) {
+        return false;
+      }
+      return true;
+    });
   }, [questTab, questsByTab]);
 
   const unclaimedQuestsTotal = useMemo(
@@ -2666,32 +2674,6 @@ export default function App() {
         entries.push({ icon: 'sparkles', color: colors.lilac, label: `Cleanse: ${reward.cleanse}` });
       }
       return entries;
-    },
-    [colors],
-  );
-
-  const renderBulletList = useCallback(
-    (items, keyPrefix, variant = 'default') => {
-      if (!items || !items.length) {
-        return null;
-      }
-      const dotColor =
-        variant === 'task'
-          ? colors.emerald
-          : variant === 'note'
-          ? colors.lilac
-          : colors.sky;
-      const textStyles =
-        variant === 'note'
-          ? [styles.questBulletText, styles.questNoteText]
-          : [styles.questBulletText];
-      const textColor = variant === 'note' ? hexToRgba(colors.text, 0.7) : colors.text;
-      return items.map((item, index) => (
-        <View key={`${keyPrefix}-${index}`} style={styles.questBulletRow}>
-          <View style={[styles.questBulletDot, { backgroundColor: dotColor }]} />
-          <Text style={[...textStyles, { color: textColor }]}>{item}</Text>
-        </View>
-      ));
     },
     [colors],
   );
@@ -2815,6 +2797,16 @@ export default function App() {
     },
     [colors, handleManualLog, makeRewardEntries],
   );
+
+  const getStageProgressSummary = useCallback((stages) => {
+    if (!Array.isArray(stages) || !stages.length) {
+      return null;
+    }
+    const total = stages.length;
+    const completed = stages.reduce((count, stage) => (stage?.completed ? count + 1 : count), 0);
+    const current = Math.min(completed + 1, total);
+    return `${current}/${total}`;
+  }, []);
 
   const rarityKeys = useMemo(() => ['All', ...RARITIES.map((r) => r.key)], []);
 
@@ -3269,6 +3261,16 @@ export default function App() {
                 ? quest.percent ?? (goalValue > 0 ? Math.min(100, (progress / goalValue) * 100) : 0)
                 : 0;
               const rewardEntries = makeRewardEntries(quest.reward);
+              const tierSummary = Array.isArray(quest.tiers)
+                ? getStageProgressSummary(quest.tiers)
+                : null;
+              const isMilestoneChain = quest.stageLabel === 'Milestone';
+              const milestoneSummary =
+                isMilestoneChain && Array.isArray(quest.steps)
+                  ? getStageProgressSummary(quest.steps)
+                  : null;
+              const showTaskStages =
+                Array.isArray(quest.steps) && quest.steps.length > 0 && !isMilestoneChain;
 
               return (
                 <View
@@ -3288,9 +3290,6 @@ export default function App() {
                       <Text style={[styles.questTitle, { color: colors.text }]}>{quest.title}</Text>
                       {quest.subtitle ? (
                         <Text style={[styles.questSubtitle, { color: hexToRgba(colors.text, 0.72) }]}>{quest.subtitle}</Text>
-                      ) : null}
-                      {quest.desc ? (
-                        <Text style={[styles.questDescription, { color: hexToRgba(colors.text, 0.72) }]}>{quest.desc}</Text>
                       ) : null}
                     </View>
                     {rewardEntries.length ? (
@@ -3330,8 +3329,14 @@ export default function App() {
 
                   {quest.goals?.length ? (
                     <View style={styles.questInfoSection}>
-                      <Text style={[styles.questInfoLabel, { color: colors.text }]}>Goals</Text>
-                      {renderBulletList(quest.goals, `${quest.id}-goal`)}
+                      {quest.goals.map((goal, goalIndex) => (
+                        <Text
+                          key={`${quest.id}-goal-${goalIndex}`}
+                          style={[styles.questGoalText, { color: colors.text }]}
+                        >
+                          {goal}
+                        </Text>
+                      ))}
                     </View>
                   ) : null}
 
@@ -3342,14 +3347,22 @@ export default function App() {
                     </View>
                   ) : null}
 
-                  {quest.tiers?.length ? (
+                  {tierSummary ? (
                     <View style={styles.questInfoSection}>
-                      <Text style={[styles.questInfoLabel, { color: colors.text }]}>Tiered goals</Text>
-                      {renderStages(quest.tiers, quest.stageLabel || 'Tier', `${quest.id}-tier`, quest, { sequential: true })}
+                      <Text style={[styles.questStageSummaryText, { color: colors.text }]}>
+                        {`Tier progress (${tierSummary})`}
+                      </Text>
                     </View>
                   ) : null}
 
-                  {quest.steps?.length ? (
+                  {milestoneSummary ? (
+                    <View style={styles.questInfoSection}>
+                      <Text style={[styles.questStageSummaryText, { color: colors.text }]}>
+                        {`Milestone progress (${milestoneSummary})`}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {showTaskStages ? (
                     <View style={styles.questInfoSection}>
                       <Text style={[styles.questInfoLabel, { color: colors.text }]}>
                         {quest.stageLabel ? `${quest.stageLabel}s` : 'Steps'}
@@ -4229,10 +4242,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  questDescription: {
-    fontSize: 12,
-    marginTop: 4,
-  },
   questActionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -4273,7 +4282,15 @@ const styles = StyleSheet.create({
     marginTop: 16,
     gap: 6,
   },
+  questGoalText: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
   questInfoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  questStageSummaryText: {
     fontSize: 12,
     fontWeight: '600',
   },
