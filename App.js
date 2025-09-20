@@ -5078,8 +5078,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   statValue: {
-    fontSize: 13,
-    fontWeight: '400',
+    fontSize: 15,
+    fontWeight: '600',
     letterSpacing: 0.2,
     textAlign: 'center',
   },
