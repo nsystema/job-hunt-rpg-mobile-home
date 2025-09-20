@@ -490,29 +490,6 @@ const createChestFromRarity = (rarityInput) => {
   };
 };
 
-function pickRarity() {
-  const r = Math.random();
-  let acc = 0;
-  for (const entry of RARITIES) {
-    acc += entry.weight;
-    if (r <= acc) {
-      return entry;
-    }
-  }
-  return RARITIES[0];
-}
-
-const PLACEHOLDER_CHESTS = Array.from({ length: 12 }, () => {
-  const rarity = pickRarity();
-  return (
-    createChestFromRarity(rarity.key) || {
-      id: createChestId(),
-      rarity: rarity.key,
-      gold: Array.isArray(rarity.gold) ? [...rarity.gold] : rarity.gold,
-    }
-  );
-});
-
 const rand = ([min, max]) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const computePotential = (list = []) => {
@@ -2376,8 +2353,7 @@ export default function App() {
   const [eventStates, setEventStates] = useState(() => ({}));
   const [eventNotifications, setEventNotifications] = useState(() => ({}));
   const [currentTime, setCurrentTime] = useState(() => Date.now());
-  const shouldSeedChests = typeof __DEV__ !== 'undefined' && __DEV__;
-  const [chests, setChests] = useState(shouldSeedChests ? PLACEHOLDER_CHESTS : []);
+  const [chests, setChests] = useState([]);
   const [chestFilter, setChestFilter] = useState('All');
   const [focusedChestId, setFocusedChestId] = useState(null);
   const [openAllSummary, setOpenAllSummary] = useState(null);
