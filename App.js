@@ -175,6 +175,24 @@ const formatEffectDuration = (seconds) => {
   return `${rounded} second${rounded === 1 ? '' : 's'}`;
 };
 
+const toTimestamp = (value) => {
+  if (value == null) {
+    return NaN;
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : NaN;
+  }
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isFinite(time) ? time : NaN;
+  }
+  if (typeof value === 'string' && value.trim().length) {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? NaN : parsed;
+  }
+  return NaN;
+};
+
 const createChestArt = ({
   baseGradient,
   lidGradient,
@@ -2336,6 +2354,16 @@ export default function App() {
   const eventSeenRef = useRef(new Map());
   const previousEventStatesRef = useRef({});
 
+  const updateCurrentTime = useCallback(
+    (hint) => {
+      const now = Date.now();
+      const parsed = toTimestamp(hint);
+      const candidate = Number.isFinite(parsed) ? Math.max(now, parsed) : now;
+      setCurrentTime((prev) => (candidate > prev ? candidate : prev));
+    },
+    [setCurrentTime],
+  );
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
@@ -2644,13 +2672,17 @@ export default function App() {
       if (!key) {
         return;
       }
+      const providedTime = toTimestamp(payload?.timestamp);
+      const timestamp = Number.isFinite(providedTime) ? providedTime : Date.now();
+      updateCurrentTime(timestamp);
+      const entry = { id: Math.random().toString(36).slice(2), ...payload, timestamp };
       setManualLogs((prev) => {
         const entries = Array.isArray(prev[key]) ? [...prev[key]] : [];
-        entries.push({ id: Math.random().toString(36).slice(2), timestamp: Date.now(), ...payload });
+        entries.push(entry);
         return { ...prev, [key]: entries };
       });
     },
-    []
+    [updateCurrentTime]
   );
 
   const addApplication = useCallback(
@@ -2664,6 +2696,8 @@ export default function App() {
       if (!payload.date) {
         payload.date = new Date().toISOString();
       }
+
+      updateCurrentTime(payload.date);
 
       const id = Math.random().toString(36).slice(2, 9);
       const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(payload, {
@@ -2710,7 +2744,15 @@ export default function App() {
       }
       return true;
     },
-    [focus, activeEffects, gainXp, sprayMultiplier, sprayActive, handleManualLog]
+    [
+      focus,
+      activeEffects,
+      gainXp,
+      sprayMultiplier,
+      sprayActive,
+      handleManualLog,
+      updateCurrentTime,
+    ]
   );
 
   const handleLogPress = useCallback(() => {
@@ -3336,6 +3378,7 @@ export default function App() {
       });
       if (quest?.type === 'event') {
         const completionTime = Date.now();
+        updateCurrentTime(completionTime);
         setEventStates((prev) => {
           const map = prev && typeof prev === 'object' ? prev : {};
           const current = map[quest.id];
@@ -3356,7 +3399,7 @@ export default function App() {
         });
       }
     },
-    [gainXp, setGold, applyRewardEffect, setEventStates],
+    [gainXp, setGold, applyRewardEffect, setEventStates, updateCurrentTime],
   );
 
   useEffect(() => {
