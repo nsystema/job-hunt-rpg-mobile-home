@@ -33,6 +33,87 @@ export const getWeekKey = (value) => {
 
 const safeNumber = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 
+const WEEKLY_STATIC_CORE_IDS = ['W-APPS80', 'W-FULL35', 'W-PLATFORMS', 'W-STREAK', 'W-CVS', 'W-LETTERS', 'W-SKILL'];
+const WEEKLY_CYCLABLE_POOL_IDS = [
+  'WC-RECRUITERS',
+  'WC-AGENCIES',
+  'WC-NETWORK',
+  'WC-CITIES',
+  'WC-REFERRALS',
+  'WC-PORTFOLIO',
+];
+const WEEKLY_CYCLABLE_ACTIVE_COUNT = 3;
+
+const getCountValue = (value) => {
+  if (value instanceof Set) {
+    return value.size;
+  }
+  return safeNumber(value);
+};
+
+const WEEKLY_REQUIREMENTS = {
+  'W-APPS80': (metrics) => safeNumber(metrics?.applications) >= 80,
+  'W-FULL35': (metrics) => safeNumber(metrics?.fullApplications) >= 35,
+  'W-PLATFORMS': (metrics) => getCountValue(metrics?.platforms) >= 6,
+  'W-STREAK': (metrics) => safeNumber(metrics?.dailyPerfectDays) >= 4,
+  'W-CVS': (metrics) => safeNumber(metrics?.tailoredCVs) >= 25,
+  'W-LETTERS': (metrics) => safeNumber(metrics?.letters) >= 25,
+  'W-SKILL': (metrics) => safeNumber(metrics?.skillLearning) >= 1,
+  'WC-RECRUITERS': (metrics) => safeNumber(metrics?.recruiterOutreach) >= 10,
+  'WC-AGENCIES': (metrics) => safeNumber(metrics?.agencyContacts) >= 3,
+  'WC-NETWORK': (metrics) => safeNumber(metrics?.networkPings) >= 3,
+  'WC-CITIES': (metrics) => getCountValue(metrics?.cities) >= 4,
+  'WC-REFERRALS': (metrics) => safeNumber(metrics?.referralApplications) >= 2,
+  'WC-PORTFOLIO': (metrics) => safeNumber(metrics?.portfolioUpdate) >= 1,
+};
+
+const createSeededRandom = (seedValue) => {
+  const normalized = typeof seedValue === 'string' ? seedValue : String(seedValue ?? '');
+  let seed = 0;
+  for (let index = 0; index < normalized.length; index += 1) {
+    seed = (seed * 31 + normalized.charCodeAt(index)) % 2147483647;
+  }
+  if (seed <= 0) {
+    seed += 2147483646;
+  }
+  return () => {
+    seed = (seed * 48271) % 2147483647;
+    return seed / 2147483647;
+  };
+};
+
+const selectDeterministicSubset = (items, count, seedValue) => {
+  const source = Array.isArray(items) ? items.filter((item) => item != null) : [];
+  if (!source.length || count <= 0) {
+    return [];
+  }
+  const rng = createSeededRandom(seedValue);
+  const pool = [...new Set(source)];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    const temp = pool[i];
+    pool[i] = pool[j];
+    pool[j] = temp;
+  }
+  return pool.slice(0, Math.min(count, pool.length));
+};
+
+const getActiveWeeklyCyclableIds = (weekKey, availableIds = WEEKLY_CYCLABLE_POOL_IDS) => {
+  const key = weekKey || 'weekly-default';
+  return selectDeterministicSubset(availableIds, WEEKLY_CYCLABLE_ACTIVE_COUNT, `${key}|${availableIds.join('|')}`);
+};
+
+const getWeeklyCoreInfo = (weekKey, availableCyclableIds) => {
+  const activeCyclableIds = getActiveWeeklyCyclableIds(weekKey, availableCyclableIds);
+  const coreIds = [...WEEKLY_STATIC_CORE_IDS, ...activeCyclableIds];
+  return {
+    coreIds,
+    coreSet: new Set(coreIds),
+    cyclableIds: activeCyclableIds,
+    cyclableSet: new Set(activeCyclableIds),
+  };
+};
+
 const createEmptyDailyMetrics = () => ({
   applications: 0,
   fullApplications: 0,
@@ -311,14 +392,11 @@ export const computeQuestMetrics = ({ applications = [], manualLogs = {}, now = 
     metrics.networkPings += safeNumber(weekManual.networkPing);
     metrics.portfolioUpdate += safeNumber(weekManual.portfolioUpdate);
 
-    const weekComplete =
-      metrics.applications >= 80 &&
-      metrics.fullApplications >= 35 &&
-      metrics.platforms.size >= 6 &&
-      metrics.tailoredCVs >= 25 &&
-      metrics.letters >= 25 &&
-      metrics.dailyPerfectDays >= 4 &&
-      metrics.skillLearning >= 1;
+    const { coreIds } = getWeeklyCoreInfo(weekKey);
+    const weekComplete = coreIds.every((questId) => {
+      const requirement = WEEKLY_REQUIREMENTS[questId];
+      return requirement ? requirement(metrics) : true;
+    });
     weeklyCompletionMap.set(weekKey, weekComplete);
   });
 
@@ -482,6 +560,22 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
       cyclableTotal: 0,
     };
 
+    const isWeeklyTab = tabKey === 'Weekly';
+    let weeklyCoreInfo = null;
+    let weeklyPerfectClone = null;
+    let weeklySlotsTotal = 0;
+
+    if (isWeeklyTab) {
+      const weeklyCyclableIds = (quests || [])
+        .filter((quest) => quest?.category === 'Weekly cyclable quest')
+        .map((quest) => quest.id);
+      weeklyCoreInfo = getWeeklyCoreInfo(context.currentWeekKey, weeklyCyclableIds);
+      weeklySlotsTotal = weeklyCoreInfo?.cyclableIds?.length || 0;
+    }
+
+    const weeklyActiveCoreSet = weeklyCoreInfo?.coreSet;
+    const weeklyActiveCyclableSet = weeklyCoreInfo?.cyclableSet;
+
     (quests || []).forEach((quest) => {
       if (quest?.type === 'summary') {
         const clone = { ...quest };
@@ -490,8 +584,19 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
         return;
       }
 
-      if (quest?.type === 'note' || quest?.type === 'section') {
+      if (quest?.type === 'note') {
         enriched.push({ ...quest });
+        return;
+      }
+
+      if (quest?.type === 'section') {
+        if (!isWeeklyTab) {
+          enriched.push({ ...quest });
+        }
+        return;
+      }
+
+      if (isWeeklyTab && quest?.category === 'Weekly cyclable quest' && !weeklyActiveCyclableSet?.has(quest.id)) {
         return;
       }
 
@@ -499,6 +604,14 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
         ...quest,
         actions: Array.isArray(quest?.actions) ? quest.actions.map((action) => ({ ...action })) : undefined,
       };
+
+      if (isWeeklyTab && quest?.category === 'Weekly cyclable quest' && weeklyActiveCyclableSet?.has(quest.id)) {
+        clone.category = 'Weekly core quest';
+      }
+
+      if (isWeeklyTab && clone.id === 'W-PERFECT' && clone.tracking) {
+        clone.tracking = { ...clone.tracking, requires: weeklyCoreInfo?.coreIds || WEEKLY_STATIC_CORE_IDS };
+      }
 
       if (Array.isArray(quest?.tiers)) {
         clone.tiers = quest.tiers.map((tier) => ({ ...tier }));
@@ -560,6 +673,10 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
       clone.percent = goalValue > 0 ? Math.min(100, (progress / goalValue) * 100) : 0;
 
       statusMap.set(clone.id, questStatus);
+
+      if (isWeeklyTab && clone.id === 'W-PERFECT') {
+        weeklyPerfectClone = clone;
+      }
 
       let tierStage = null;
       if (Array.isArray(clone.tiers)) {
@@ -717,14 +834,16 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
         }
       }
 
-      if (tabKey === 'Weekly') {
-        if (quest?.category === 'Weekly core quest') {
+      if (isWeeklyTab) {
+        const isActiveCore = weeklyActiveCoreSet?.has(clone.id);
+        const isActiveCyclable = weeklyActiveCyclableSet?.has(clone.id);
+        if (isActiveCore) {
           aggregator.coreTotal += 1;
           if (clone.completed) {
             aggregator.coreCompleted += 1;
           }
         }
-        if (quest?.category === 'Weekly cyclable quest') {
+        if (isActiveCyclable) {
           aggregator.cyclableTotal += 1;
           if (clone.completed) {
             aggregator.cyclableCompleted += 1;
@@ -734,6 +853,30 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
 
       enriched.push(clone);
     });
+
+    if (isWeeklyTab && weeklyPerfectClone) {
+      const requires = Array.isArray(weeklyPerfectClone?.tracking?.requires)
+        ? weeklyPerfectClone.tracking.requires
+        : [];
+      const completedDeps = requires.reduce((count, depId) => {
+        const depStatus = statusMap.get(depId);
+        return depStatus?.completed ? count + 1 : count;
+      }, 0);
+      const goalValue = requires.length;
+      weeklyPerfectClone.progress = completedDeps;
+      weeklyPerfectClone.goalValue = goalValue;
+      weeklyPerfectClone.percent = goalValue > 0 ? Math.min(100, (completedDeps / goalValue) * 100) : 0;
+      weeklyPerfectClone.completed = goalValue > 0 && completedDeps >= goalValue;
+      weeklyPerfectClone.locked = completedDeps < goalValue;
+      weeklyPerfectClone.trackable = goalValue > 0;
+      weeklyPerfectClone.claimable =
+        weeklyPerfectClone.trackable && weeklyPerfectClone.completed && !weeklyPerfectClone.claimed;
+      statusMap.set(weeklyPerfectClone.id, {
+        progress: weeklyPerfectClone.progress,
+        goalValue: weeklyPerfectClone.goalValue,
+        completed: weeklyPerfectClone.completed,
+      });
+    }
 
     summaryRefs.forEach((summary) => {
       if (summary.summaryKey === 'dailyTotals') {
@@ -763,8 +906,8 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
           coreTotal: aggregator.coreTotal,
           cyclableCompleted: aggregator.cyclableCompleted,
           cyclableTotal: aggregator.cyclableTotal,
-          slotsUsed: Math.min(aggregator.cyclableCompleted, 2),
-          slotsTotal: 2,
+          slotsUsed: Math.min(aggregator.cyclableCompleted, weeklySlotsTotal),
+          slotsTotal: weeklySlotsTotal,
           weeklyPerfectComplete: Boolean(weeklyPerfect?.completed),
         };
       }

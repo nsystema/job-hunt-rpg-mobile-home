@@ -143,7 +143,7 @@ export const QUESTS = {
       title: 'Weekly structure',
       notes: [
         'Core quests reset each week. Finish them all to unlock Weekly 100%.',
-        'Cyclable slots per week: choose any two quests that fit your focus.',
+        'Weekly focus quests: the system assigns three rotating objectives each week.',
         WEEKLY_PLATFORM_NOTE,
       ],
     },
@@ -160,7 +160,7 @@ export const QUESTS = {
       type: 'summary',
       summaryKey: 'weeklyProgress',
       title: 'Weekly progress',
-      desc: 'Track Weekly 100% progress and optional slot usage.',
+      desc: "Track Weekly 100% progress across this week's core lineup.",
     },
     {
       id: 'weekly-core-section',
@@ -283,7 +283,7 @@ export const QUESTS = {
       id: 'weekly-cyclables-section',
       type: 'section',
       title: 'Cyclable quests',
-      subtitle: 'Pick any two each week for additional rewards.',
+      subtitle: 'System-assigned focus quests that rotate weekly.',
     },
     {
       id: 'WC-RECRUITERS',
