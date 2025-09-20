@@ -2318,6 +2318,7 @@ export default function App() {
   const [claimedQuests, setClaimedQuests] = useState(() => new Set());
   const [manualLogs, setManualLogs] = useState(() => ({}));
   const [eventStates, setEventStates] = useState(() => ({}));
+  const [eventNotifications, setEventNotifications] = useState(() => ({}));
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [chests, setChests] = useState(PLACEHOLDER_CHESTS);
   const [chestFilter, setChestFilter] = useState('All');
@@ -2332,6 +2333,8 @@ export default function App() {
   const openResultTimer = useRef(null);
   const effectWarningTimers = useRef(new Map());
   const announcedEffectKeysRef = useRef(new Set());
+  const eventSeenRef = useRef(new Map());
+  const previousEventStatesRef = useRef({});
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -2354,6 +2357,79 @@ export default function App() {
       }),
     );
   }, [manualLogs, applications, currentTime]);
+
+  useEffect(() => {
+    const prevStates = previousEventStatesRef.current || {};
+    const currentStates = eventStates && typeof eventStates === 'object' ? eventStates : {};
+    previousEventStatesRef.current = currentStates;
+
+    setEventNotifications((currentNotifications) => {
+      const safeCurrent =
+        currentNotifications && typeof currentNotifications === 'object'
+          ? currentNotifications
+          : {};
+      let nextNotifications = safeCurrent;
+      let changed = false;
+
+      Object.entries(safeCurrent).forEach(([eventId, triggerAt]) => {
+        const state = currentStates[eventId];
+        if (
+          !state ||
+          state.active !== true ||
+          !Number.isFinite(state.triggeredAt) ||
+          state.triggeredAt !== triggerAt
+        ) {
+          if (!changed) {
+            nextNotifications = { ...nextNotifications };
+            changed = true;
+          }
+          delete nextNotifications[eventId];
+        }
+      });
+
+      Object.entries(currentStates).forEach(([eventId, state]) => {
+        if (!state || state.active !== true || !Number.isFinite(state.triggeredAt)) {
+          return;
+        }
+        const prevState = prevStates[eventId];
+        const prevActive = prevState?.active === true && Number.isFinite(prevState?.triggeredAt);
+        const seenTrigger = eventSeenRef.current.get(eventId);
+        const isNewTrigger = !prevActive || prevState.triggeredAt !== state.triggeredAt;
+        const alreadySeen = seenTrigger === state.triggeredAt;
+        const alreadyNotified = nextNotifications[eventId] === state.triggeredAt;
+
+        if (isNewTrigger && !alreadySeen && !alreadyNotified) {
+          if (!changed) {
+            nextNotifications = { ...nextNotifications };
+            changed = true;
+          }
+          nextNotifications[eventId] = state.triggeredAt;
+        }
+      });
+
+      return changed ? nextNotifications : safeCurrent;
+    });
+  }, [eventStates]);
+
+  useEffect(() => {
+    if (questTab !== 'Events') {
+      return;
+    }
+    setEventNotifications((current) => {
+      const safeCurrent = current && typeof current === 'object' ? current : {};
+      const entries = Object.entries(safeCurrent);
+      if (!entries.length) {
+        return current;
+      }
+      const seenMap = eventSeenRef.current;
+      entries.forEach(([eventId, triggeredAt]) => {
+        if (Number.isFinite(triggeredAt)) {
+          seenMap.set(eventId, triggeredAt);
+        }
+      });
+      return {};
+    });
+  }, [questTab, eventNotifications]);
 
   const pushEffectWarnings = useCallback(
     (messages = []) => {
@@ -2897,6 +2973,48 @@ export default function App() {
     [questMetrics, claimedQuests, eventStates, eventProgress],
   );
 
+  const eventNotificationIds = useMemo(
+    () =>
+      Object.keys(
+        eventNotifications && typeof eventNotifications === 'object'
+          ? eventNotifications
+          : {},
+      ),
+    [eventNotifications],
+  );
+
+  const eventNotificationCount = eventNotificationIds.length;
+
+  const eventClaimableIds = useMemo(() => {
+    const eventsList = questsByTab?.Events || [];
+    const ids = new Set();
+    eventsList.forEach((quest) => {
+      if (quest?.type === 'event' && quest.claimable) {
+        ids.add(quest.id);
+      }
+    });
+    return ids;
+  }, [questsByTab]);
+
+  const unseenClaimableEventCount = useMemo(
+    () =>
+      eventNotificationIds.reduce(
+        (count, id) => (eventClaimableIds.has(id) ? count + 1 : count),
+        0,
+      ),
+    [eventNotificationIds, eventClaimableIds],
+  );
+
+  const additionalEventNotifications = useMemo(
+    () => Math.max(0, eventNotificationCount - unseenClaimableEventCount),
+    [eventNotificationCount, unseenClaimableEventCount],
+  );
+
+  const eventTabBadgeCount = useMemo(
+    () => (unclaimedByTab.Events || 0) + additionalEventNotifications,
+    [unclaimedByTab, additionalEventNotifications],
+  );
+
   const quests = useMemo(() => {
     const list = questsByTab[questTab] || [];
     return list.filter((quest) => {
@@ -2911,8 +3029,10 @@ export default function App() {
   }, [questTab, questsByTab]);
 
   const unclaimedQuestsTotal = useMemo(
-    () => Object.values(unclaimedByTab).reduce((sum, value) => sum + value, 0),
-    [unclaimedByTab],
+    () =>
+      Object.values(unclaimedByTab).reduce((sum, value) => sum + value, 0) +
+      additionalEventNotifications,
+    [unclaimedByTab, additionalEventNotifications],
   );
 
   const questCardShadow = useMemo(
@@ -3631,7 +3751,8 @@ export default function App() {
           >
             {QUEST_TABS.map((tab) => {
               const isActive = questTab === tab.key;
-              const badge = unclaimedByTab[tab.key] || 0;
+              const badge =
+                tab.key === 'Events' ? eventTabBadgeCount : unclaimedByTab[tab.key] || 0;
               return (
                 <TouchableOpacity
                   key={tab.key}
