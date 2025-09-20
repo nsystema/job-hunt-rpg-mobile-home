@@ -3025,56 +3025,34 @@ export default function App() {
       {
         key: 'today',
         label: 'Today',
-        helper: 'Logged applications',
+        helper: 'apps',
         value: String(todayCount),
       },
       {
         key: 'weeklyAverage',
-        label: '7-day avg',
-        helper: 'Daily pace',
+        label: '7d pace',
+        helper: 'daily',
         value: formatAverage(weekCount, 7),
       },
       {
         key: 'weeklyTotal',
-        label: '7-day total',
-        helper: 'This week',
+        label: '7d total',
+        helper: 'apps',
         value: String(weekCount),
       },
       {
         key: 'monthlyAverage',
-        label: '30-day avg',
-        helper: 'Daily pace',
+        label: '30d pace',
+        helper: 'daily',
         value: formatAverage(monthCount, 30),
       },
     ];
   }, [applications, currentTime]);
-
-  const statGradients = useMemo(
-    () => [
-      [
-        hexToRgba(colors.sky, eff === 'light' ? 0.16 : 0.32),
-        hexToRgba(colors.emerald, eff === 'light' ? 0.12 : 0.26),
-      ],
-      [
-        hexToRgba(colors.amber, eff === 'light' ? 0.16 : 0.32),
-        hexToRgba(colors.rose, eff === 'light' ? 0.12 : 0.26),
-      ],
-      [
-        hexToRgba(colors.lilac, eff === 'light' ? 0.18 : 0.34),
-        hexToRgba(colors.sky, eff === 'light' ? 0.12 : 0.24),
-      ],
-      [
-        hexToRgba(colors.emerald, eff === 'light' ? 0.16 : 0.3),
-        hexToRgba(colors.amber, eff === 'light' ? 0.12 : 0.22),
-      ],
-    ],
-    [colors, eff],
-  );
-
-  const statPrimaryColor = eff === 'light' ? '#0f172a' : colors.text;
-  const statLabelColor = hexToRgba(statPrimaryColor, eff === 'light' ? 0.68 : 0.78);
-  const statHelperColor = hexToRgba(statPrimaryColor, eff === 'light' ? 0.54 : 0.7);
-  const statBorderColor = hexToRgba(statPrimaryColor, eff === 'light' ? 0.16 : 0.34);
+  const statPrimaryColor = colors.text;
+  const statLabelColor = hexToRgba(colors.text, eff === 'light' ? 0.72 : 0.82);
+  const statHelperColor = hexToRgba(colors.text, eff === 'light' ? 0.5 : 0.68);
+  const statDividerColor = hexToRgba(colors.text, eff === 'light' ? 0.18 : 0.4);
+  const statBorderColor = statDividerColor;
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -3829,33 +3807,25 @@ export default function App() {
         {/* Activity Snapshot */}
         <Panel colors={colors} style={styles.statPanel}>
           <View style={styles.statSectionHeader}>
-            <Text style={[styles.statSectionTitle, { color: statLabelColor }]}>Activity snapshot</Text>
-            <Text style={[styles.statSectionSubtitle, { color: statHelperColor }]}>Rolling averages</Text>
+            <Text style={[styles.statSectionTitle, { color: statPrimaryColor }]}>Activity</Text>
+            <Text style={[styles.statSectionSubtitle, { color: statHelperColor }]}>Trends</Text>
           </View>
           <View style={styles.statGrid}>
             {statsSnapshot.map((stat, index) => {
-              const gradient = statGradients[index % statGradients.length];
+              const itemStyles = [styles.statItem];
+              if (index >= 2) {
+                itemStyles.push(styles.statItemTopBorder, { borderTopColor: statDividerColor });
+              }
+              if (index % 2 === 1) {
+                itemStyles.push(styles.statItemLeftBorder, { borderLeftColor: statDividerColor });
+              }
               return (
-                <View
-                  key={stat.key}
-                  style={[
-                    styles.statCard,
-                    eff === 'light' ? styles.statCardShadowLight : styles.statCardShadowDark,
-                    { borderColor: statBorderColor },
-                  ]}
-                >
-                  <LinearGradient
-                    colors={gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.statCardInner}
-                  >
-                    <Text style={[styles.statValue, { color: statPrimaryColor }]}>{stat.value}</Text>
-                    <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
-                    {stat.helper ? (
-                      <Text style={[styles.statHelper, { color: statHelperColor }]}>{stat.helper}</Text>
-                    ) : null}
-                  </LinearGradient>
+                <View key={stat.key} style={itemStyles}>
+                  <Text style={[styles.statValue, { color: statPrimaryColor }]}>{stat.value}</Text>
+                  <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
+                  {stat.helper ? (
+                    <Text style={[styles.statHelper, { color: statHelperColor }]}>{stat.helper}</Text>
+                  ) : null}
                 </View>
               );
             })}
@@ -5036,63 +5006,47 @@ const styles = StyleSheet.create({
   },
   statSectionHeader: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   statSectionTitle: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
   },
   statSectionSubtitle: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   statGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 12,
   },
-  statCard: {
-    width: '48%',
-    borderWidth: 1,
-    borderRadius: 18,
-    overflow: 'hidden',
-    marginBottom: 14,
+  statItem: {
+    width: '50%',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
   },
-  statCardInner: {
-    paddingVertical: 18,
-    paddingHorizontal: 16,
+  statItemTopBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  statItemLeftBorder: {
+    borderLeftWidth: StyleSheet.hairlineWidth,
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
   },
   statLabel: {
     fontSize: 12,
     fontWeight: '600',
-    marginTop: 6,
+    marginTop: 4,
   },
   statHelper: {
     fontSize: 11,
+    fontWeight: '500',
     marginTop: 2,
-  },
-  statCardShadowLight: {
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 4,
-  },
-  statCardShadowDark: {
-    shadowColor: '#000',
-    shadowOpacity: 0.38,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
   },
   logApplicationButton: {
     borderRadius: 18,
