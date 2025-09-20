@@ -2995,7 +2995,6 @@ export default function App() {
     let weekCount = 0;
     let pipelineCount = 0;
     let respondedCount = 0;
-    let interviewCount = 0;
 
     const pipelineStatuses = new Set(['Applied', 'Applied with referral', 'Interview']);
     const respondedStatuses = new Set(['Applied with referral', 'Interview']);
@@ -3008,10 +3007,6 @@ export default function App() {
       if (respondedStatuses.has(statusKey)) {
         respondedCount += 1;
       }
-      if (statusKey === 'Interview') {
-        interviewCount += 1;
-      }
-
       const timestamp = toTimestamp(app?.date ?? app?.timestamp ?? app?.createdAt);
       if (!Number.isFinite(timestamp)) {
         return;
@@ -3037,31 +3032,25 @@ export default function App() {
     const sevenDayAverage = formatAverage(weekCount, 7);
     const replyRate = totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0;
 
-    const interviewLabel = `${interviewCount} interview${interviewCount === 1 ? '' : 's'}`;
-
     return [
       {
         key: 'today',
-        label: 'Today',
-        helper: 'Logged today',
+        label: 'Logged Today',
         value: String(todayCount),
       },
       {
         key: 'sevenDayAverage',
-        label: '7-day avg',
-        helper: 'Per day',
+        label: 'Per day',
         value: sevenDayAverage,
       },
       {
         key: 'pipeline',
-        label: 'Pipeline',
-        helper: 'Active apps',
+        label: 'Active apps',
         value: String(pipelineCount),
       },
       {
         key: 'responseRate',
         label: 'Reply rate',
-        helper: interviewLabel,
         value: `${replyRate}%`,
       },
     ];
@@ -3838,7 +3827,6 @@ export default function App() {
               </View>
               <View>
                 <Text style={[styles.statHeaderTitle, { color: statPrimaryColor }]}>Activity</Text>
-                <Text style={[styles.statHeaderSubtitle, { color: statHelperColor }]}>Live snapshot</Text>
               </View>
             </View>
             <View style={styles.statHeaderMeta}>
@@ -5091,7 +5079,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: '400',
     letterSpacing: 0.2,
     textAlign: 'center',
   },
