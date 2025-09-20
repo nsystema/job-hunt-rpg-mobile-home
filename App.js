@@ -63,37 +63,6 @@ const QUEST_TABS = [
 
 const EVENT_DEFINITIONS = (QUESTS.Events || []).filter((quest) => quest?.type === 'event');
 
-const collectStageIds = (quest) => {
-  if (!quest?.id) {
-    return [];
-  }
-  const stageIds = [];
-  if (Array.isArray(quest?.tiers)) {
-    quest.tiers.forEach((tier, index) => {
-      const tierId = tier?.id || `${quest.id}-tier-${index}`;
-      if (tierId) {
-        stageIds.push(tierId);
-      }
-    });
-  }
-  if (Array.isArray(quest?.steps)) {
-    quest.steps.forEach((step, index) => {
-      const stepId = step?.id || `${quest.id}-step-${index}`;
-      if (stepId) {
-        stageIds.push(stepId);
-      }
-    });
-  }
-  return stageIds;
-};
-
-const EVENT_STAGE_IDS = EVENT_DEFINITIONS.reduce((acc, quest) => {
-  if (quest?.id) {
-    acc[quest.id] = collectStageIds(quest);
-  }
-  return acc;
-}, {});
-
 const isQuestTrackable = (quest) => quest?.trackable === true;
 
 const isQuestClaimable = (quest) => quest?.claimable === true;
@@ -2436,37 +2405,6 @@ export default function App() {
     const prevStates = previousEventStatesRef.current || {};
     const currentStates = eventStates && typeof eventStates === 'object' ? eventStates : {};
     previousEventStatesRef.current = currentStates;
-
-    const resetTargets = [];
-
-    Object.entries(currentStates).forEach(([eventId, state]) => {
-      if (!state || state.active !== true || !Number.isFinite(state.triggeredAt)) {
-        return;
-      }
-      const prevState = prevStates[eventId];
-      const prevActive = prevState?.active === true && Number.isFinite(prevState?.triggeredAt);
-      if (!prevActive || prevState.triggeredAt !== state.triggeredAt) {
-        resetTargets.push({ eventId, stageIds: EVENT_STAGE_IDS[eventId] || [] });
-      }
-    });
-
-    if (resetTargets.length) {
-      setClaimedQuests((currentSet) => {
-        let mutated = false;
-        const nextSet = new Set(currentSet);
-        resetTargets.forEach(({ eventId, stageIds }) => {
-          if (nextSet.delete(eventId)) {
-            mutated = true;
-          }
-          stageIds.forEach((stageId) => {
-            if (stageId && nextSet.delete(stageId)) {
-              mutated = true;
-            }
-          });
-        });
-        return mutated ? nextSet : currentSet;
-      });
-    }
 
     setEventNotifications((currentNotifications) => {
       const safeCurrent =
