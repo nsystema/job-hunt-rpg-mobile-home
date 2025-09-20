@@ -3831,7 +3831,7 @@ export default function App() {
             </View>
             <View style={styles.statHeaderMeta}>
               <MaterialCommunityIcons name="calendar-clock" size={16} color={statLabelColor} />
-              <Text style={[styles.statHeaderMetaText, { color: statLabelColor }]}>THIS WEEK</Text>
+              <Text style={[styles.statHeaderMetaText, { color: statLabelColor }]}>This Week</Text>
             </View>
           </View>
           <View style={styles.statGrid}>
