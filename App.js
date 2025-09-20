@@ -36,7 +36,7 @@ import {
 } from './gameMechanics';
 import { STATUSES, PLATFORMS, COUNTRIES, getCitiesForCountry } from './data';
 import { QUESTS } from './quests';
-import { computeQuestMetrics, buildQuestTabs } from './questUtils';
+import { computeQuestMetrics, buildQuestTabs, evaluateEventStates, computeEventProgressMap } from './questUtils';
 
 const buildInitialFormValues = () => ({
   company: '',
@@ -60,6 +60,8 @@ const QUEST_TABS = [
   { key: 'Growth', icon: 'chart-line' },
   { key: 'Events', icon: 'party-popper' },
 ];
+
+const EVENT_DEFINITIONS = (QUESTS.Events || []).filter((quest) => quest?.type === 'event');
 
 const isQuestTrackable = (quest) => quest?.trackable === true;
 
@@ -2298,6 +2300,7 @@ export default function App() {
   const [questTab, setQuestTab] = useState('Daily');
   const [claimedQuests, setClaimedQuests] = useState(() => new Set());
   const [manualLogs, setManualLogs] = useState(() => ({}));
+  const [eventStates, setEventStates] = useState(() => ({}));
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [chests, setChests] = useState(PLACEHOLDER_CHESTS);
   const [chestFilter, setChestFilter] = useState('All');
@@ -2317,6 +2320,21 @@ export default function App() {
     }, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!EVENT_DEFINITIONS.length) {
+      return;
+    }
+    setEventStates((prev) =>
+      evaluateEventStates({
+        definitions: EVENT_DEFINITIONS,
+        previousStates: prev,
+        manualLogs,
+        applications,
+        now: currentTime,
+      }),
+    );
+  }, [manualLogs, applications, currentTime]);
 
   const hasTimedEffects = useMemo(
     () => activeEffects.some((effect) => effect.expiresAt),
@@ -2459,6 +2477,17 @@ export default function App() {
         const activatedAt = Date.now();
         setSprayDebuff({ activatedAt, expiresAt: activatedAt + SPRAY_DEBUFF_DURATION_MS });
         handleManualLog('sprayAndPray', { timestamp: activatedAt, streak: 5 });
+      }
+      if (app.favorite) {
+        handleManualLog('favoriteMarked', { applicationId: id });
+      }
+      if (app.status) {
+        handleManualLog('statusChange', {
+          applicationId: id,
+          from: null,
+          to: app.status,
+          status: app.status,
+        });
       }
       return true;
     },
@@ -2673,21 +2702,28 @@ export default function App() {
       if (!editingApp) {
         return false;
       }
-      setApplications((list) =>
-        list.map((app) => {
-          if (app.id !== editingApp.id) {
-            return app;
-          }
-          const next = { ...app, ...fields };
-          const { qs, au } = computeRewards(next, { effects: activeEffects, spray: sprayMultiplier });
-          setWeighted((value) => value - (app.au || 0) + au);
-          return { ...next, qs, au };
-        }),
-      );
+      const previous = editingApp;
+      const updated = { ...previous, ...fields };
+      const { qs, au } = computeRewards(updated, { effects: activeEffects, spray: sprayMultiplier });
+      updated.qs = qs;
+      updated.au = au;
+      setApplications((list) => list.map((app) => (app.id === previous.id ? updated : app)));
+      setWeighted((value) => value - (previous.au || 0) + au);
       setEditingApp(null);
+      if (!previous.favorite && updated.favorite) {
+        handleManualLog('favoriteMarked', { applicationId: previous.id });
+      }
+      if (previous.status !== updated.status) {
+        handleManualLog('statusChange', {
+          applicationId: previous.id,
+          from: previous.status,
+          to: updated.status,
+          status: updated.status,
+        });
+      }
       return true;
     },
-    [editingApp, activeEffects, sprayMultiplier],
+    [editingApp, activeEffects, sprayMultiplier, handleManualLog],
   );
 
   const questMetrics = useMemo(
@@ -2695,9 +2731,27 @@ export default function App() {
     [applications, manualLogs, currentTime],
   );
 
+  const eventProgress = useMemo(
+    () =>
+      computeEventProgressMap({
+        events: eventStates,
+        applications,
+        manualLogs,
+        now: currentTime,
+      }),
+    [eventStates, applications, manualLogs, currentTime],
+  );
+
   const { questsByTab, unclaimedByTab } = useMemo(
-    () => buildQuestTabs({ base: QUESTS, metrics: questMetrics, claimed: claimedQuests }),
-    [questMetrics, claimedQuests],
+    () =>
+      buildQuestTabs({
+        base: QUESTS,
+        metrics: questMetrics,
+        claimed: claimedQuests,
+        events: eventStates,
+        eventProgress,
+      }),
+    [questMetrics, claimedQuests, eventStates, eventProgress],
   );
 
   const quests = useMemo(() => {
@@ -3017,8 +3071,29 @@ export default function App() {
         }
         return next;
       });
+      if (quest?.type === 'event') {
+        const completionTime = Date.now();
+        setEventStates((prev) => {
+          const map = prev && typeof prev === 'object' ? prev : {};
+          const current = map[quest.id];
+          if (!current) {
+            return prev;
+          }
+          if (current.active === false && Number.isFinite(current.completedAt) && current.completedAt >= completionTime) {
+            return prev;
+          }
+          return {
+            ...map,
+            [quest.id]: {
+              ...current,
+              active: false,
+              completedAt: completionTime,
+            },
+          };
+        });
+      }
     },
-    [gainXp, setGold, applyRewardEffect],
+    [gainXp, setGold, applyRewardEffect, setEventStates],
   );
 
   useEffect(() => {

@@ -1,4 +1,5 @@
 export const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
 const toDate = (value) => {
   if (value instanceof Date) {
@@ -210,6 +211,12 @@ const addManualCount = (target, key, amount = 1) => {
     return;
   }
   target[key] = (target[key] || 0) + amount;
+};
+
+const toTimestamp = (value) => {
+  const date = toDate(value);
+  const time = date.getTime();
+  return Number.isNaN(time) ? NaN : time;
 };
 export const computeQuestMetrics = ({ applications = [], manualLogs = {}, now = Date.now() }) => {
   const nowDate = toDate(now);
@@ -434,17 +441,359 @@ export const computeQuestMetrics = ({ applications = [], manualLogs = {}, now = 
     },
   };
 };
+
+const compareEventStates = (a, b) => {
+  if (a === b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
+  return (
+    a.id === b.id &&
+    a.active === b.active &&
+    (a.triggeredAt ?? null) === (b.triggeredAt ?? null) &&
+    (a.expiresAt ?? null) === (b.expiresAt ?? null) &&
+    (a.cooldownUntil ?? null) === (b.cooldownUntil ?? null) &&
+    (a.lastTriggerAt ?? null) === (b.lastTriggerAt ?? null) &&
+    (a.completedAt ?? null) === (b.completedAt ?? null)
+  );
+};
+
+const getManualEntries = (manualLogs, key) => {
+  const entries = ensureObject(manualLogs)[key];
+  return Array.isArray(entries) ? entries : [];
+};
+
+const evaluateStatusTrigger = (manualLogs, status, threshold, minTime) => {
+  const entries = getManualEntries(manualLogs, 'statusChange');
+  if (!entries.length || !status || !threshold) {
+    return null;
+  }
+  const sorted = entries
+    .map((entry) => ({
+      time: toTimestamp(entry?.timestamp ?? entry?.date ?? entry?.createdAt),
+      status: entry?.status,
+    }))
+    .filter((entry) => Number.isFinite(entry.time) && entry.status === status)
+    .sort((a, b) => a.time - b.time);
+
+  let currentDay = '';
+  let count = 0;
+
+  for (let index = 0; index < sorted.length; index += 1) {
+    const item = sorted[index];
+    const dayKey = getDayKey(item.time);
+    if (!dayKey) {
+      continue;
+    }
+    if (dayKey !== currentDay) {
+      currentDay = dayKey;
+      count = 0;
+    }
+    if (item.time < minTime) {
+      continue;
+    }
+    count += 1;
+    if (count >= threshold) {
+      return item.time;
+    }
+  }
+  return null;
+};
+
+const evaluateManualTrigger = (entries, threshold, minTime) => {
+  if (!Array.isArray(entries) || !entries.length || threshold <= 0) {
+    return null;
+  }
+  const sorted = entries
+    .map((entry) => toTimestamp(entry?.timestamp ?? entry?.date ?? entry?.createdAt))
+    .filter((time) => Number.isFinite(time))
+    .sort((a, b) => a - b);
+
+  let count = 0;
+  for (let index = 0; index < sorted.length; index += 1) {
+    const time = sorted[index];
+    if (time < minTime) {
+      continue;
+    }
+    count += 1;
+    if (count >= threshold) {
+      return time;
+    }
+  }
+  return null;
+};
+
+const findMomentumThawTrigger = (applications, minTime, requiredGapHours = 48) => {
+  const list = Array.isArray(applications) ? applications : [];
+  if (!list.length) {
+    return null;
+  }
+  const gapMs = requiredGapHours * HOUR_MS;
+  const dayMap = new Map();
+
+  list.forEach((app) => {
+    const stamp = toTimestamp(app?.date ?? app?.createdAt ?? app?.timestamp);
+    if (!Number.isFinite(stamp)) {
+      return;
+    }
+    const day = new Date(stamp);
+    day.setHours(0, 0, 0, 0);
+    const dayStart = day.getTime();
+    if (!dayMap.has(dayStart) || dayMap.get(dayStart) > stamp) {
+      dayMap.set(dayStart, stamp);
+    }
+  });
+
+  if (!dayMap.size) {
+    return null;
+  }
+
+  const days = Array.from(dayMap.entries())
+    .map(([dayStart, firstTime]) => ({ dayStart, firstTime }))
+    .sort((a, b) => a.dayStart - b.dayStart);
+
+  for (let index = 3; index < days.length; index += 1) {
+    const current = days[index];
+    const prev1 = days[index - 1];
+    const prev2 = days[index - 2];
+    const prev3 = days[index - 3];
+    if (!prev1 || !prev2 || !prev3) {
+      continue;
+    }
+    const consecutiveStreak =
+      prev1.dayStart - prev2.dayStart === DAY_MS && prev2.dayStart - prev3.dayStart === DAY_MS;
+    if (!consecutiveStreak) {
+      continue;
+    }
+    const gap = current.dayStart - prev1.dayStart;
+    if (gap >= gapMs && current.firstTime >= minTime) {
+      return current.firstTime;
+    }
+  }
+
+  return null;
+};
+
+const evaluateTriggerForEvent = (definition, state, context, minTime) => {
+  const { triggerMeta } = definition || {};
+  if (!triggerMeta) {
+    return null;
+  }
+  const threshold = triggerMeta.threshold || 1;
+  const scope = triggerMeta.scope || 'lifetime';
+  const metric = triggerMeta.metric;
+
+  if (scope === 'daily' && metric === 'statusChanges' && triggerMeta.status) {
+    return evaluateStatusTrigger(context.manualLogs, triggerMeta.status, threshold, minTime);
+  }
+
+  if (scope === 'lifetime') {
+    if (metric === 'favorites') {
+      return evaluateManualTrigger(getManualEntries(context.manualLogs, 'favoriteMarked'), threshold, minTime);
+    }
+    if (metric === 'sprayAndPray') {
+      return evaluateManualTrigger(getManualEntries(context.manualLogs, 'sprayAndPray'), threshold, minTime);
+    }
+    if (metric === 'interviews') {
+      return evaluateStatusTrigger(context.manualLogs, 'Interview', threshold, minTime);
+    }
+    if (metric === 'hiatus') {
+      return findMomentumThawTrigger(context.applications, minTime, threshold || 48);
+    }
+  }
+
+  if (scope === 'event' && metric) {
+    const source = context.states?.[metric];
+    if (source && Number.isFinite(source.completedAt) && source.completedAt >= minTime) {
+      return source.completedAt;
+    }
+  }
+
+  return null;
+};
+
+const evaluateSingleEvent = (definition, prevState, context) => {
+  const baseState = prevState ? { ...prevState } : { id: definition.id, active: false };
+  const durationMs = (definition?.durationHours || 0) * HOUR_MS;
+  const cooldownMs = (definition?.cooldownHours || 0) * HOUR_MS;
+  const now = context.now;
+
+  if (baseState.active && Number.isFinite(baseState.expiresAt) && now >= baseState.expiresAt) {
+    baseState.active = false;
+  }
+
+  if (baseState.active) {
+    return baseState;
+  }
+
+  const cooldownUntil = Number.isFinite(baseState.cooldownUntil) ? baseState.cooldownUntil : undefined;
+  const lastTriggerAt = Number.isFinite(baseState.lastTriggerAt) ? baseState.lastTriggerAt : undefined;
+  const minTime = Math.max(cooldownUntil ?? -Infinity, lastTriggerAt != null ? lastTriggerAt + 1 : -Infinity);
+  const triggerAt = evaluateTriggerForEvent(definition, baseState, context, minTime);
+
+  if (Number.isFinite(triggerAt) && triggerAt <= now) {
+    baseState.active = true;
+    baseState.triggeredAt = triggerAt;
+    baseState.lastTriggerAt = triggerAt;
+    baseState.expiresAt = durationMs > 0 ? triggerAt + durationMs : undefined;
+    baseState.cooldownUntil = cooldownMs > 0 ? triggerAt + cooldownMs : undefined;
+    baseState.completedAt = undefined;
+  } else if (cooldownMs > 0 && !Number.isFinite(baseState.cooldownUntil) && Number.isFinite(baseState.lastTriggerAt)) {
+    baseState.cooldownUntil = baseState.lastTriggerAt + cooldownMs;
+  }
+
+  return baseState;
+};
+
+export const evaluateEventStates = ({
+  definitions = [],
+  previousStates = {},
+  manualLogs = {},
+  applications = [],
+  now = Date.now(),
+}) => {
+  if (!definitions.length) {
+    return previousStates && typeof previousStates === 'object' ? previousStates : {};
+  }
+
+  const prev = previousStates && typeof previousStates === 'object' ? previousStates : {};
+  const next = {};
+  const working = { ...prev };
+  let changed = false;
+
+  definitions.forEach((definition) => {
+    if (!definition?.id) {
+      return;
+    }
+    const currentState = working[definition.id];
+    const updated = evaluateSingleEvent(definition, currentState, {
+      manualLogs,
+      applications,
+      now,
+      states: working,
+    });
+    next[definition.id] = updated;
+    working[definition.id] = updated;
+    if (!changed && !compareEventStates(currentState, updated)) {
+      changed = true;
+    }
+  });
+
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
+  if (!changed && prevKeys.length !== nextKeys.length) {
+    changed = true;
+  }
+
+  return changed ? next : prev;
+};
+
+export const computeEventProgressMap = ({
+  events = {},
+  applications = [],
+  manualLogs = {},
+  now = Date.now(),
+}) => {
+  const result = {};
+  const appList = Array.isArray(applications) ? applications : [];
+  const manual = ensureObject(manualLogs);
+
+  Object.entries(events || {}).forEach(([eventId, state]) => {
+    if (!state || state.active !== true || !Number.isFinite(state.triggeredAt)) {
+      return;
+    }
+    const start = state.triggeredAt;
+    const endLimit = Number.isFinite(state.expiresAt) ? Math.min(state.expiresAt, now) : now;
+    if (!Number.isFinite(start) || endLimit <= start) {
+      return;
+    }
+
+    const metrics = {
+      applications: 0,
+      fullApplications: 0,
+      qualityApplications: 0,
+      applicationsBurst: 0,
+    };
+    const manualCounts = {};
+    const burstWindowEnd = start + 2 * HOUR_MS;
+
+    appList.forEach((app) => {
+      const stamp = toTimestamp(app?.date ?? app?.createdAt ?? app?.timestamp);
+      if (!Number.isFinite(stamp) || stamp < start || stamp > endLimit) {
+        return;
+      }
+      metrics.applications += 1;
+      if (app?.type === 'Full') {
+        metrics.fullApplications += 1;
+      }
+      if (safeNumber(app?.qs) >= 2) {
+        metrics.qualityApplications += 1;
+      }
+      if (stamp <= burstWindowEnd) {
+        metrics.applicationsBurst += 1;
+      }
+    });
+
+    Object.entries(manual).forEach(([key, entries]) => {
+      if (!Array.isArray(entries) || !entries.length) {
+        return;
+      }
+      let count = 0;
+      entries.forEach((entry) => {
+        const stamp = toTimestamp(entry?.timestamp ?? entry?.date ?? entry?.createdAt);
+        if (!Number.isFinite(stamp)) {
+          return;
+        }
+        if (stamp >= start && stamp <= endLimit) {
+          count += 1;
+        }
+      });
+      if (count > 0) {
+        manualCounts[key] = count;
+      }
+    });
+
+    result[eventId] = {
+      start,
+      end: endLimit,
+      metrics,
+      manualCounts,
+    };
+  });
+
+  return result;
+};
 const getMetricValue = (tracking, context) => {
   if (!tracking) {
     return { progress: 0, goalValue: 0 };
   }
-  const { metrics, manual, totals, todayKey, currentWeekKey } = context;
+  const { metrics, manual, totals, todayKey, currentWeekKey, events, eventProgress } = context;
   const scope = tracking.scope || 'lifetime';
   const manualKey = tracking.manualKey;
   const metricKey = tracking.metric;
   let progress = 0;
 
-  if (manualKey) {
+  if (scope === 'event') {
+    const referenceId =
+      typeof tracking.reference === 'string' && tracking.reference
+        ? tracking.reference
+        : typeof metricKey === 'string'
+        ? metricKey
+        : undefined;
+    const eventState = referenceId ? events?.[referenceId] : undefined;
+    const progressEntry = referenceId ? eventProgress?.[referenceId] : undefined;
+    if (eventState?.active && progressEntry) {
+      if (manualKey) {
+        progress = safeNumber(progressEntry?.manualCounts?.[manualKey]);
+      } else if (metricKey) {
+        progress = safeNumber(progressEntry?.metrics?.[metricKey]);
+      }
+    } else {
+      progress = 0;
+    }
+  } else if (manualKey) {
     if (scope === 'daily') {
       progress = safeNumber(manual.daily[manualKey]);
     } else if (scope === 'weekly') {
@@ -533,7 +882,7 @@ const getQuestRewardEarned = (quest) => {
   }
   return { gold, xp };
 };
-export const buildQuestTabs = ({ base, metrics, claimed }) => {
+export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }) => {
   const questsByTab = {};
   const unclaimedByTab = {};
   const claimedSet = claimed instanceof Set ? claimed : new Set(claimed);
@@ -543,6 +892,8 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
     totals: metrics?.totals || {},
     todayKey: metrics?.todayKey || '',
     currentWeekKey: metrics?.currentWeekKey || '',
+    events: events || {},
+    eventProgress: eventProgress || {},
   };
 
   Object.entries(base || {}).forEach(([tabKey, quests]) => {
@@ -600,6 +951,13 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
         return;
       }
 
+      if (quest?.type === 'event') {
+        const eventState = context.events?.[quest.id];
+        if (!eventState || eventState.active !== true || !Number.isFinite(eventState.triggeredAt)) {
+          return;
+        }
+      }
+
       const clone = {
         ...quest,
         actions: Array.isArray(quest?.actions) ? quest.actions.map((action) => ({ ...action })) : undefined,
@@ -611,6 +969,16 @@ export const buildQuestTabs = ({ base, metrics, claimed }) => {
 
       if (isWeeklyTab && clone.id === 'W-PERFECT' && clone.tracking) {
         clone.tracking = { ...clone.tracking, requires: weeklyCoreInfo?.coreIds || WEEKLY_STATIC_CORE_IDS };
+      }
+
+      if (quest?.type === 'event') {
+        const eventState = context.events?.[quest.id];
+        if (eventState) {
+          clone.eventState = eventState;
+          clone.startedAt = eventState.triggeredAt;
+          clone.expiresAt = eventState.expiresAt;
+          clone.cooldownUntil = eventState.cooldownUntil;
+        }
       }
 
       if (Array.isArray(quest?.tiers)) {
