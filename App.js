@@ -36,7 +36,13 @@ import {
 } from './gameMechanics';
 import { STATUSES, PLATFORMS, COUNTRIES, getCitiesForCountry } from './data';
 import { QUESTS } from './quests';
-import { computeQuestMetrics, buildQuestTabs, evaluateEventStates, computeEventProgressMap } from './questUtils';
+import {
+  computeQuestMetrics,
+  buildQuestTabs,
+  evaluateEventStates,
+  computeEventProgressMap,
+  composeQuestClaimKey,
+} from './questUtils';
 
 const buildInitialFormValues = () => ({
   company: '',
@@ -62,6 +68,37 @@ const QUEST_TABS = [
 ];
 
 const EVENT_DEFINITIONS = (QUESTS.Events || []).filter((quest) => quest?.type === 'event');
+
+const collectStageIds = (quest) => {
+  if (!quest?.id) {
+    return [];
+  }
+  const stageIds = [];
+  if (Array.isArray(quest?.tiers)) {
+    quest.tiers.forEach((tier, index) => {
+      const tierId = tier?.id || `${quest.id}-tier-${index}`;
+      if (tierId) {
+        stageIds.push(tierId);
+      }
+    });
+  }
+  if (Array.isArray(quest?.steps)) {
+    quest.steps.forEach((step, index) => {
+      const stepId = step?.id || `${quest.id}-step-${index}`;
+      if (stepId) {
+        stageIds.push(stepId);
+      }
+    });
+  }
+  return stageIds;
+};
+
+const EVENT_STAGE_IDS = EVENT_DEFINITIONS.reduce((acc, quest) => {
+  if (quest?.id) {
+    acc[quest.id] = collectStageIds(quest);
+  }
+  return acc;
+}, {});
 
 const isQuestTrackable = (quest) => quest?.trackable === true;
 
@@ -2406,6 +2443,50 @@ export default function App() {
     const currentStates = eventStates && typeof eventStates === 'object' ? eventStates : {};
     previousEventStatesRef.current = currentStates;
 
+    const cleanupTargets = [];
+
+    Object.entries(currentStates).forEach(([eventId, state]) => {
+      if (!state || state.active !== true || !Number.isFinite(state.triggeredAt)) {
+        return;
+      }
+      const prevState = prevStates[eventId];
+      const prevActive = prevState?.active === true && Number.isFinite(prevState?.triggeredAt);
+      if (!prevActive || prevState.triggeredAt === state.triggeredAt) {
+        return;
+      }
+      const previousTrigger = prevState.triggeredAt;
+      const stageIds = EVENT_STAGE_IDS[eventId] || [];
+      cleanupTargets.push({
+        ids: [eventId, ...stageIds],
+        triggeredAt: previousTrigger,
+      });
+    });
+
+    if (cleanupTargets.length) {
+      setClaimedQuests((currentSet) => {
+        if (!(currentSet instanceof Set) || currentSet.size === 0) {
+          return currentSet;
+        }
+        let mutated = false;
+        const nextSet = new Set(currentSet);
+        cleanupTargets.forEach(({ ids, triggeredAt }) => {
+          ids.forEach((id) => {
+            if (!id) {
+              return;
+            }
+            const compositeKey = composeQuestClaimKey(id, triggeredAt);
+            if (compositeKey && nextSet.delete(compositeKey)) {
+              mutated = true;
+            }
+            if (nextSet.delete(id)) {
+              mutated = true;
+            }
+          });
+        });
+        return mutated ? nextSet : currentSet;
+      });
+    }
+
     setEventNotifications((currentNotifications) => {
       const safeCurrent =
         currentNotifications && typeof currentNotifications === 'object'
@@ -3363,19 +3444,45 @@ export default function App() {
         return;
       }
       const reward = quest.claimReward || quest.reward || {};
+      const eventTriggerAt = Number.isFinite(quest?.eventTriggerAt)
+        ? quest.eventTriggerAt
+        : Number.isFinite(quest?.startedAt)
+        ? quest.startedAt
+        : Number.isFinite(quest?.eventState?.triggeredAt)
+        ? quest.eventState.triggeredAt
+        : undefined;
       const targetId = quest.activeStageId || quest.id;
+      const claimKey =
+        quest.claimKey || quest.activeStageClaimKey || composeQuestClaimKey(targetId, eventTriggerAt);
+      const questClaimKey = quest.questClaimKey || composeQuestClaimKey(quest.id, eventTriggerAt);
       const shouldCompleteQuest = quest.activeStageId
         ? quest.activeStageIsFinal === true && !quest.reward
         : true;
       let rewardGranted = false;
       setClaimedQuests((prev) => {
-        if (prev.has(targetId)) {
+        if (!claimKey || prev.has(claimKey)) {
           return prev;
         }
         const next = new Set(prev);
-        next.add(targetId);
-        if (shouldCompleteQuest && !next.has(quest.id)) {
-          next.add(quest.id);
+        next.add(claimKey);
+        if (quest.type === 'event') {
+          if (targetId) {
+            next.delete(targetId);
+          }
+          if (quest.id) {
+            next.delete(quest.id);
+          }
+        } else if (targetId && targetId !== claimKey) {
+          next.add(targetId);
+        }
+        if (shouldCompleteQuest && questClaimKey) {
+          next.add(questClaimKey);
+          if (quest.type !== 'event' && quest.id && questClaimKey !== quest.id) {
+            next.add(quest.id);
+          }
+          if (quest.type === 'event' && quest.id) {
+            next.delete(quest.id);
+          }
         }
         if (typeof reward.xp === 'number' && reward.xp > 0) {
           gainXp(reward.xp);

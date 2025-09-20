@@ -68,6 +68,18 @@ const WEEKLY_REQUIREMENTS = {
   'WC-PORTFOLIO': (metrics) => safeNumber(metrics?.portfolioUpdate) >= 1,
 };
 
+const CLAIM_KEY_SEPARATOR = '::';
+
+export const composeQuestClaimKey = (id, triggeredAt) => {
+  if (!id) {
+    return '';
+  }
+  if (!Number.isFinite(triggeredAt)) {
+    return id;
+  }
+  return `${id}${CLAIM_KEY_SEPARATOR}${triggeredAt}`;
+};
+
 const createSeededRandom = (seedValue) => {
   const normalized = typeof seedValue === 'string' ? seedValue : String(seedValue ?? '');
   let seed = 0;
@@ -981,6 +993,9 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
         }
       }
 
+      const eventTriggerAt =
+        quest?.type === 'event' && Number.isFinite(clone.startedAt) ? clone.startedAt : undefined;
+
       if (Array.isArray(quest?.tiers)) {
         clone.tiers = quest.tiers.map((tier) => ({ ...tier }));
       }
@@ -1053,7 +1068,8 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
           const tierProgress = progress;
           const tierCompleted = tierGoal > 0 && tierProgress >= tierGoal;
           const tierId = tier.id || `${clone.id}-tier-${tierIndex}`;
-          const tierClaimed = claimedSet.has(tierId);
+          const tierClaimKey = composeQuestClaimKey(tierId, eventTriggerAt);
+          const tierClaimed = claimedSet.has(tierClaimKey);
           if (!tierClaimed && !tierStage && tierGoal > 0) {
             tierStage = {
               id: tierId,
@@ -1062,6 +1078,7 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
               progress: tierProgress,
               reward: tier.reward,
               completed: tierCompleted,
+              claimKey: tierClaimKey,
             };
           }
           return {
@@ -1071,6 +1088,7 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
             completed: tierCompleted,
             goalValue: tierGoal > 0 ? tierGoal : undefined,
             progress: tierProgress,
+            claimKey: tierClaimKey,
             claimed: tierClaimed,
           };
         });
@@ -1103,7 +1121,8 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
           }
 
           const stepId = step.id || `${clone.id}-step-${index}`;
-          const stepClaimed = claimedSet.has(stepId);
+          const stepClaimKey = composeQuestClaimKey(stepId, eventTriggerAt);
+          const stepClaimed = claimedSet.has(stepClaimKey);
           if (!stepClaimed && !stepStage && stepGoal > 0) {
             stepStage = {
               id: stepId,
@@ -1112,6 +1131,7 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
               progress: stepProgress,
               reward: step.reward,
               completed: stepCompleted,
+              claimKey: stepClaimKey,
             };
           }
 
@@ -1124,6 +1144,7 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
             goalValue: stepGoal > 0 ? stepGoal : undefined,
             completed: stepCompleted,
             percent,
+            claimKey: stepClaimKey,
             claimed: stepClaimed,
           };
         });
@@ -1189,8 +1210,12 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
         }
       }
 
-      const questClaimed = claimedSet.has(clone.id);
       const stageClaim = tierStage || stepStage;
+
+      const claimBaseId = stageClaim ? stageClaim.id : clone.id;
+      const claimKey = composeQuestClaimKey(claimBaseId, eventTriggerAt);
+      const questClaimKey = composeQuestClaimKey(clone.id, eventTriggerAt);
+      const questClaimed = claimedSet.has(questClaimKey);
 
       let claimReward = clone.reward;
       let claimable = clone.trackable && clone.completed && !questClaimed && !clone.locked;
@@ -1204,6 +1229,7 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
         activeStageId = stageClaim.id;
         activeStageIsFinal = stageClaim.isFinal === true;
         clone.trackable = true;
+        clone.eventTriggerAt = eventTriggerAt;
         if (stageGoalValue > 0) {
           clone.goalValue = stageGoalValue;
           clone.progress = stageProgress;
@@ -1217,10 +1243,14 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
       }
 
       clone.claimReward = claimReward;
+      clone.claimKey = claimKey;
+      clone.questClaimKey = questClaimKey;
+      clone.eventTriggerAt = eventTriggerAt;
       clone.claimed = questClaimed;
       clone.claimable = claimable && !questClaimed;
       clone.activeStageId = activeStageId;
       clone.activeStageIsFinal = activeStageIsFinal;
+      clone.activeStageClaimKey = stageClaim?.claimKey;
 
       const rewardTotals = getQuestRewardTotals(quest);
       aggregator.totalGold += rewardTotals.gold;
