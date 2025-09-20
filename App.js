@@ -1345,31 +1345,21 @@ const ShopScreen = ({
                           ? Math.max(0, Math.min(1, remaining / effect.duration))
                           : null;
                       const isDebuff = effect.type === 'debuff';
-                      const cardBackgroundColor = isDebuff
-                        ? hexToRgba(colors.rose, eff === 'light' ? 0.12 : 0.2)
-                        : filledSurface;
-                      const cardBorderColor = isDebuff
-                        ? hexToRgba(colors.rose, eff === 'light' ? 0.45 : 0.58)
-                        : colors.surfaceBorder;
-                      const iconShellStyle = isDebuff
-                        ? {
-                            borderColor: hexToRgba(colors.rose, eff === 'light' ? 0.45 : 0.6),
-                            backgroundColor: hexToRgba(colors.rose, eff === 'light' ? 0.24 : 0.34),
-                          }
-                        : { borderColor: colors.surfaceBorder, backgroundColor: colors.surface };
-                      const iconGradient = isDebuff
-                        ? [
-                            hexToRgba(colors.rose, eff === 'light' ? 0.85 : 0.7),
-                            hexToRgba(colors.rose, eff === 'light' ? 0.62 : 0.5),
-                          ]
-                        : [hexToRgba(colors.surface, 0.98), hexToRgba(colors.chipBg, 0.85)];
-                      const iconColor = isDebuff ? '#fff' : '#0f172a';
-                      const timerColor = isDebuff ? hexToRgba(colors.rose, 0.75) : hexToRgba(colors.text, 0.6);
-                      const passiveColor = isDebuff ? hexToRgba(colors.rose, 0.75) : hexToRgba(colors.text, 0.6);
-                      const descriptionColor = isDebuff
-                        ? hexToRgba(colors.rose, 0.78)
-                        : hexToRgba(colors.text, 0.65);
-                      const nameColor = isDebuff ? colors.rose : colors.text;
+                      const cardBackgroundColor = filledSurface;
+                      const cardBorderColor = colors.surfaceBorder;
+                      const iconShellStyle = {
+                        borderColor: colors.surfaceBorder,
+                        backgroundColor: colors.surface,
+                      };
+                      const iconGradient = [
+                        hexToRgba(colors.surface, 0.98),
+                        hexToRgba(colors.chipBg, 0.85),
+                      ];
+                      const iconColor = '#0f172a';
+                      const timerColor = hexToRgba(colors.text, 0.6);
+                      const passiveColor = hexToRgba(colors.text, 0.6);
+                      const descriptionColor = hexToRgba(colors.text, 0.65);
+                      const nameColor = colors.text;
 
                       return (
                         <View
@@ -1377,7 +1367,6 @@ const ShopScreen = ({
                           style={[
                             styles.shopActiveCard,
                             { backgroundColor: cardBackgroundColor, borderColor: cardBorderColor },
-                            isDebuff && styles.shopActiveCardDebuff,
                             cardShadow,
                           ]}
                         >
@@ -1395,7 +1384,7 @@ const ShopScreen = ({
                                 style={styles.shopActiveIconInner}
                               >
                                 <MaterialCommunityIcons
-                                  name={effect.icon || (isDebuff ? 'alert-octagram-outline' : 'flash-outline')}
+                                  name={effect.icon || 'flash-outline'}
                                   size={22}
                                   color={iconColor}
                                 />
@@ -1405,19 +1394,6 @@ const ShopScreen = ({
                           <View style={styles.shopActiveInfo}>
                             <View style={styles.shopActiveNameRow}>
                               <Text style={[styles.shopActiveName, { color: nameColor }]}>{effect.name}</Text>
-                              {isDebuff ? (
-                                <View
-                                  style={[
-                                    styles.shopActiveBadge,
-                                    {
-                                      backgroundColor: hexToRgba(colors.rose, eff === 'light' ? 0.18 : 0.34),
-                                      borderColor: hexToRgba(colors.rose, eff === 'light' ? 0.38 : 0.55),
-                                    },
-                                  ]}
-                                >
-                                  <Text style={[styles.shopActiveBadgeText, { color: colors.rose }]}>Debuff</Text>
-                                </View>
-                              ) : null}
                             </View>
                             {remaining != null && effect.duration ? (
                               <View style={styles.shopActiveTimerRow}>
@@ -5480,8 +5456,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   shopActiveList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: 12,
   },
   shopActiveCard: {
@@ -5491,13 +5466,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 14,
     gap: 12,
-    flexGrow: 1,
-    flexBasis: '48%',
-    maxWidth: '48%',
-    minWidth: 150,
-  },
-  shopActiveCardDebuff: {
-    borderWidth: 1.25,
+    width: '100%',
   },
   shopActiveIconShell: {
     width: 56,
@@ -5525,19 +5494,6 @@ const styles = StyleSheet.create({
   shopActiveName: {
     fontSize: 13,
     fontWeight: '600',
-  },
-  shopActiveBadge: {
-    marginLeft: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  shopActiveBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
   },
   shopActiveTimerRow: {
     flexDirection: 'row',
