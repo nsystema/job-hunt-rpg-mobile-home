@@ -3056,7 +3056,7 @@ export default function App() {
     ];
   }, [applications, currentTime]);
   const statPrimaryColor = colors.text;
-  const statLabelColor = hexToRgba(colors.text, eff === 'light' ? 0.62 : 0.8);
+  const statLabelColor = 'rgba(148,163,184,.95)';
   const statHelperColor = hexToRgba(colors.text, eff === 'light' ? 0.48 : 0.68);
   const statPanelBorderColor = colors.surfaceBorder;
   const statBorderColor = hexToRgba(colors.sky, eff === 'light' ? 0.4 : 0.6);
@@ -3831,13 +3831,13 @@ export default function App() {
             </View>
             <View style={styles.statHeaderMeta}>
               <MaterialCommunityIcons name="calendar-clock" size={16} color={statLabelColor} />
-              <Text style={[styles.statHeaderMetaText, { color: statLabelColor }]}>This week</Text>
+              <Text style={[styles.statHeaderMetaText, { color: statLabelColor }]}>THIS WEEK</Text>
             </View>
           </View>
           <View style={styles.statGrid}>
             {statsSnapshot.map((stat) => (
               <View key={stat.key} style={styles.statItem}>
-                <Text style={[styles.statValue, { color: statPrimaryColor }]}>{stat.value}</Text>
+                <Text style={[styles.statValue, { color: statLabelColor }]}>{stat.value}</Text>
                 <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
                 {stat.helper ? (
                   <Text style={[styles.statHelper, { color: statHelperColor }]}>{stat.helper}</Text>
@@ -5060,7 +5060,7 @@ const styles = StyleSheet.create({
   },
   statHeaderMetaText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   statGrid: {
     flexDirection: 'row',
@@ -5078,20 +5078,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   statValue: {
-    fontSize: 26,
+    fontSize: 13,
     fontWeight: '400',
     letterSpacing: 0.2,
     textAlign: 'center',
   },
   statLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '400',
     letterSpacing: 0.2,
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
   statHelper: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '400',
     letterSpacing: 0.2,
     textAlign: 'center',
   },
