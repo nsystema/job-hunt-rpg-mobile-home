@@ -944,6 +944,118 @@ const GoldPill = ({ children, colors, onPress, dim = false, style = {}, icon = '
   return <View style={style}>{content}</View>;
 };
 
+const EffectBanner = ({ colors, eff, effects }) => {
+  if (!Array.isArray(effects) || effects.length === 0) {
+    return null;
+  }
+
+  const [primary, ...rest] = effects;
+  const isDebuff = primary.type === 'debuff';
+  const gradientOpacity = eff === 'light' ? 0.26 : 0.42;
+  const gradientColors = isDebuff
+    ? [hexToRgba(colors.rose, gradientOpacity), hexToRgba(colors.lilac, gradientOpacity)]
+    : [hexToRgba(colors.sky, gradientOpacity), hexToRgba(colors.emerald, gradientOpacity)];
+  const textColor = eff === 'light' ? '#0f172a' : colors.text;
+  const accentColor = isDebuff ? colors.rose : colors.sky;
+  const iconShellBackground = hexToRgba(accentColor, eff === 'light' ? 0.32 : 0.52);
+  const iconShellBorder = hexToRgba(accentColor, eff === 'light' ? 0.45 : 0.66);
+  const iconColor = eff === 'light' ? '#0f172a' : colors.text;
+
+  const metaParts = [];
+  metaParts.push(isDebuff ? 'Penalty active' : 'Boost active');
+  if (primary.remaining != null) {
+    metaParts.push(`${formatTime(primary.remaining)} left`);
+  } else if (primary.duration) {
+    metaParts.push('Ongoing');
+  } else {
+    metaParts.push('Passive effect');
+  }
+  if (rest.length) {
+    metaParts.push(`+${rest.length} more`);
+  }
+  const metaText = metaParts.join(' · ');
+
+  return (
+    <View style={styles.effectBannerWrapper}>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.effectBanner, { borderColor: hexToRgba(colors.text, eff === 'light' ? 0.12 : 0.28) }]}
+      >
+        <View
+          style={[
+            styles.effectBannerIconShell,
+            { backgroundColor: iconShellBackground, borderColor: iconShellBorder },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={primary.icon || 'flash-outline'}
+            size={24}
+            color={iconColor}
+          />
+        </View>
+        <View style={styles.effectBannerBody}>
+          <Text style={[styles.effectBannerTitle, { color: textColor }]}>
+            {primary.name || 'Effect active'}
+          </Text>
+          {metaText ? (
+            <Text style={[styles.effectBannerMeta, { color: hexToRgba(textColor, 0.75) }]}>
+              {metaText}
+            </Text>
+          ) : null}
+          {primary.description ? (
+            <Text
+              style={[styles.effectBannerDescription, { color: hexToRgba(textColor, 0.68) }]}
+              numberOfLines={1}
+            >
+              {primary.description}
+            </Text>
+          ) : null}
+        </View>
+        {rest.length ? (
+          <View style={styles.effectBannerAside}>
+            {rest.slice(0, 3).map((effect) => {
+              const otherDebuff = effect.type === 'debuff';
+              const otherAccent = otherDebuff ? colors.rose : colors.sky;
+              const miniBackground = hexToRgba(otherAccent, eff === 'light' ? 0.26 : 0.44);
+              const miniBorder = hexToRgba(otherAccent, eff === 'light' ? 0.36 : 0.58);
+              return (
+                <View
+                  key={effect.id}
+                  style={[
+                    styles.effectBannerMiniIcon,
+                    { backgroundColor: miniBackground, borderColor: miniBorder },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={effect.icon || 'flash-outline'}
+                    size={16}
+                    color={iconColor}
+                  />
+                </View>
+              );
+            })}
+            {rest.length > 3 ? (
+              <View
+                style={[
+                  styles.effectBannerMiniIcon,
+                  {
+                    backgroundColor: hexToRgba(textColor, eff === 'light' ? 0.12 : 0.24),
+                    borderColor: hexToRgba(textColor, eff === 'light' ? 0.18 : 0.36),
+                  },
+                ]}
+              >
+                <Text style={[styles.effectBannerMoreText, { color: textColor }]}>+{rest.length - 3}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </LinearGradient>
+    </View>
+  );
+};
+
 const Panel = ({ children, colors, style = {} }) => (
   <View style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }, style]}>
     {children}
@@ -2407,6 +2519,60 @@ export default function App() {
     ];
   }, [sprayActive, sprayDebuff, activeEffects]);
 
+  const [effectNow, setEffectNow] = useState(() => Date.now());
+
+  const bannerHasTimers = useMemo(
+    () => shopEffects.some((effect) => effect.expiresAt),
+    [shopEffects],
+  );
+
+  useEffect(() => {
+    if (!bannerHasTimers) {
+      return;
+    }
+    setEffectNow(Date.now());
+    const interval = setInterval(() => {
+      setEffectNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [bannerHasTimers]);
+
+  const effectAnnouncements = useMemo(() => {
+    if (!shopEffects.length) {
+      return [];
+    }
+    return shopEffects
+      .map((effect) => {
+        const expiresAt = typeof effect.expiresAt === 'number' ? effect.expiresAt : undefined;
+        const remaining =
+          expiresAt != null ? Math.max(0, Math.floor((expiresAt - effectNow) / 1000)) : null;
+        return {
+          id: effect.id,
+          name: effect.name,
+          icon: effect.icon,
+          description: effect.description,
+          type: effect.type === 'debuff' ? 'debuff' : 'buff',
+          remaining,
+          duration: effect.duration,
+        };
+      })
+      .sort((a, b) => {
+        if (a.type !== b.type) {
+          return a.type === 'debuff' ? -1 : 1;
+        }
+        if (a.remaining != null && b.remaining != null) {
+          return a.remaining - b.remaining;
+        }
+        if (a.remaining != null) {
+          return -1;
+        }
+        if (b.remaining != null) {
+          return 1;
+        }
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      });
+  }, [shopEffects, effectNow]);
+
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25;
   const into = weighted % step;
@@ -3137,6 +3303,8 @@ export default function App() {
           <GoldPill colors={colors}>{gold}</GoldPill>
         </View>
       </View>
+
+      <EffectBanner colors={colors} eff={eff} effects={effectAnnouncements} />
 
       {activeTab === 'Home' && (
         <ScrollView
@@ -4204,6 +4372,60 @@ const styles = StyleSheet.create({
   },
   paletteText: {
     fontSize: 14,
+    fontWeight: '600',
+  },
+  effectBannerWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  effectBanner: {
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  effectBannerIconShell: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  effectBannerBody: {
+    flex: 1,
+  },
+  effectBannerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  effectBannerMeta: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  effectBannerDescription: {
+    fontSize: 11,
+    marginTop: 4,
+  },
+  effectBannerAside: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 12,
+  },
+  effectBannerMiniIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  effectBannerMoreText: {
+    fontSize: 11,
     fontWeight: '600',
   },
   statBadge: {
