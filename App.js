@@ -2351,10 +2351,10 @@ export default function App() {
   );
 
   // Game state
-  const [xp, setXp] = useState(520);
-  const [apps, setApps] = useState(48);
-  const [weighted, setWeighted] = useState(46.5);
-  const [gold, setGold] = useState(260);
+  const [xp, setXp] = useState(0);
+  const [apps, setApps] = useState(0);
+  const [weighted, setWeighted] = useState(0);
+  const [gold, setGold] = useState(0);
   const [streak, setStreak] = useState(0);
   const [activeEffects, setActiveEffects] = useState([]);
   const [effectWarnings, setEffectWarnings] = useState([]);
@@ -2376,7 +2376,8 @@ export default function App() {
   const [eventStates, setEventStates] = useState(() => ({}));
   const [eventNotifications, setEventNotifications] = useState(() => ({}));
   const [currentTime, setCurrentTime] = useState(() => Date.now());
-  const [chests, setChests] = useState(PLACEHOLDER_CHESTS);
+  const shouldSeedChests = typeof __DEV__ !== 'undefined' && __DEV__;
+  const [chests, setChests] = useState(shouldSeedChests ? PLACEHOLDER_CHESTS : []);
   const [chestFilter, setChestFilter] = useState('All');
   const [focusedChestId, setFocusedChestId] = useState(null);
   const [openAllSummary, setOpenAllSummary] = useState(null);
