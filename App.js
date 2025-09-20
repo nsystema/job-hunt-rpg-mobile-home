@@ -5078,7 +5078,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   statValue: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '600',
     letterSpacing: 0.2,
     textAlign: 'center',
