@@ -3066,9 +3066,12 @@ export default function App() {
       if (quest.claimed) {
         return false;
       }
+      if (quest.type === 'event' && Number.isFinite(quest.expiresAt) && quest.expiresAt <= currentTime) {
+        return false;
+      }
       return true;
     });
-  }, [questTab, questsByTab]);
+  }, [questTab, questsByTab, currentTime]);
 
   const unclaimedQuestsTotal = useMemo(
     () =>
@@ -3896,6 +3899,13 @@ export default function App() {
                   : null;
               const showTaskStages =
                 Array.isArray(quest.steps) && quest.steps.length > 0 && !isMilestoneChain;
+              const isEventQuest = quest.type === 'event';
+              const remainingSeconds =
+                isEventQuest && Number.isFinite(quest.expiresAt)
+                  ? Math.max(0, Math.ceil((quest.expiresAt - currentTime) / 1000))
+                  : null;
+              const timeRemainingLabel =
+                isEventQuest && remainingSeconds > 0 ? formatTime(remainingSeconds) : null;
 
               return (
                 <View
@@ -4017,7 +4027,12 @@ export default function App() {
                   ) : null}
 
                   {quest.trigger ? renderMetaRow('flag-outline', 'Trigger', quest.trigger, `${quest.id}-trigger`) : null}
-                  {quest.duration ? renderMetaRow('clock-time-four-outline', 'Duration', quest.duration, `${quest.id}-duration`) : null}
+                  {quest.duration
+                    ? renderMetaRow('clock-time-four-outline', 'Duration', quest.duration, `${quest.id}-duration`)
+                    : null}
+                  {timeRemainingLabel
+                    ? renderMetaRow('timer-sand', 'Time left', timeRemainingLabel, `${quest.id}-remaining`)
+                    : null}
                   {quest.lock ? renderMetaRow('lock-outline', 'Lock', quest.lock, `${quest.id}-lock`) : null}
                   {quest.requires ? renderMetaRow('link-variant', 'Requires', quest.requires, `${quest.id}-requires`) : null}
 

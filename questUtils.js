@@ -1155,6 +1155,40 @@ export const buildQuestTabs = ({ base, metrics, claimed, events, eventProgress }
         });
       }
 
+      if (quest?.type === 'event' && Array.isArray(clone.tasks) && clone.tasks.length) {
+        let aggregatedGoal = 0;
+        let aggregatedProgress = 0;
+        let aggregatedCompleted = true;
+
+        clone.tasks.forEach((task) => {
+          const taskGoal = safeNumber(task?.goalValue);
+          const taskProgress = safeNumber(task?.progress);
+
+          if (taskGoal > 0) {
+            aggregatedGoal += taskGoal;
+            aggregatedProgress += Math.min(taskGoal, taskProgress);
+            if (taskProgress < taskGoal) {
+              aggregatedCompleted = false;
+            }
+          } else {
+            aggregatedGoal += 1;
+            if (task.completed) {
+              aggregatedProgress += 1;
+            } else {
+              aggregatedCompleted = false;
+            }
+          }
+        });
+
+        if (aggregatedGoal > 0) {
+          clone.trackable = true;
+          clone.goalValue = aggregatedGoal;
+          clone.progress = aggregatedProgress;
+          clone.percent = Math.min(100, (aggregatedProgress / aggregatedGoal) * 100);
+          clone.completed = aggregatedCompleted;
+        }
+      }
+
       const questClaimed = claimedSet.has(clone.id);
       const stageClaim = tierStage || stepStage;
 
