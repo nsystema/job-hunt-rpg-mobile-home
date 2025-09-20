@@ -2444,22 +2444,23 @@ export default function App() {
     previousEventStatesRef.current = currentStates;
 
     const cleanupTargets = [];
+    const reactivatedEventIds = [];
 
     Object.entries(currentStates).forEach(([eventId, state]) => {
       if (!state || state.active !== true || !Number.isFinite(state.triggeredAt)) {
         return;
       }
       const prevState = prevStates[eventId];
-      const prevActive = prevState?.active === true && Number.isFinite(prevState?.triggeredAt);
-      if (!prevActive || prevState.triggeredAt === state.triggeredAt) {
+      const prevTrigger = Number.isFinite(prevState?.triggeredAt) ? prevState.triggeredAt : undefined;
+      if (prevTrigger == null || prevTrigger === state.triggeredAt) {
         return;
       }
-      const previousTrigger = prevState.triggeredAt;
       const stageIds = EVENT_STAGE_IDS[eventId] || [];
       cleanupTargets.push({
         ids: [eventId, ...stageIds],
-        triggeredAt: previousTrigger,
+        triggeredAt: prevTrigger,
       });
+      reactivatedEventIds.push(eventId);
     });
 
     if (cleanupTargets.length) {
@@ -2485,6 +2486,15 @@ export default function App() {
         });
         return mutated ? nextSet : currentSet;
       });
+    }
+
+    if (reactivatedEventIds.length) {
+      const seenMap = eventSeenRef.current;
+      if (seenMap && typeof seenMap.delete === 'function') {
+        reactivatedEventIds.forEach((eventId) => {
+          seenMap.delete(eventId);
+        });
+      }
     }
 
     setEventNotifications((currentNotifications) => {
