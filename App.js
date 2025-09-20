@@ -2990,19 +2990,31 @@ export default function App() {
     const dayMs = 24 * 60 * 60 * 1000;
     const todayStart = startOfToday.getTime();
     const weekStart = todayStart - dayMs * 6;
-    const monthStart = todayStart - dayMs * 29;
 
     let todayCount = 0;
     let weekCount = 0;
-    let monthCount = 0;
+    let pipelineCount = 0;
+    let respondedCount = 0;
+    let interviewCount = 0;
+
+    const pipelineStatuses = new Set(['Applied', 'Applied with referral', 'Interview']);
+    const respondedStatuses = new Set(['Applied with referral', 'Interview']);
 
     applications.forEach((app) => {
+      const statusKey = app?.status;
+      if (pipelineStatuses.has(statusKey)) {
+        pipelineCount += 1;
+      }
+      if (respondedStatuses.has(statusKey)) {
+        respondedCount += 1;
+      }
+      if (statusKey === 'Interview') {
+        interviewCount += 1;
+      }
+
       const timestamp = toTimestamp(app?.date ?? app?.timestamp ?? app?.createdAt);
       if (!Number.isFinite(timestamp)) {
         return;
-      }
-      if (timestamp >= monthStart) {
-        monthCount += 1;
       }
       if (timestamp >= weekStart) {
         weekCount += 1;
@@ -3021,30 +3033,34 @@ export default function App() {
       return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
     };
 
+    const totalCount = applications.length;
+    const sevenDayAverage = formatAverage(weekCount, 7);
+    const replyRate = totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0;
+
     return [
       {
         key: 'today',
-        label: 'Today',
-        helper: 'apps',
+        label: 'TODAY',
+        helper: 'LOGGED',
         value: String(todayCount),
       },
       {
-        key: 'weeklyAverage',
-        label: '7d pace',
-        helper: 'daily',
-        value: formatAverage(weekCount, 7),
+        key: 'sevenDayAverage',
+        label: '7 DAY AVG',
+        helper: 'PER DAY',
+        value: sevenDayAverage,
       },
       {
-        key: 'weeklyTotal',
-        label: '7d total',
-        helper: 'apps',
-        value: String(weekCount),
+        key: 'pipeline',
+        label: 'PIPELINE',
+        helper: 'ACTIVE',
+        value: String(pipelineCount),
       },
       {
-        key: 'monthlyAverage',
-        label: '30d pace',
-        helper: 'daily',
-        value: formatAverage(monthCount, 30),
+        key: 'responseRate',
+        label: 'REPLY RATE',
+        helper: `${interviewCount} INTERVIEWS`,
+        value: `${replyRate}%`,
       },
     ];
   }, [applications, currentTime]);
@@ -3052,7 +3068,8 @@ export default function App() {
   const statLabelColor = hexToRgba(colors.text, eff === 'light' ? 0.72 : 0.82);
   const statHelperColor = hexToRgba(colors.text, eff === 'light' ? 0.5 : 0.68);
   const statDividerColor = hexToRgba(colors.text, eff === 'light' ? 0.18 : 0.4);
-  const statBorderColor = statDividerColor;
+  const statPanelBorderColor = hexToRgba(colors.text, eff === 'light' ? 0.08 : 0.28);
+  const statBorderColor = hexToRgba(colors.text, eff === 'light' ? 0.12 : 0.32);
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -3805,12 +3822,18 @@ export default function App() {
         </Panel>
 
         {/* Activity Snapshot */}
-        <Panel colors={colors} style={styles.statPanel}>
+        <Panel
+          colors={colors}
+          style={[
+            styles.statPanel,
+            { backgroundColor: 'transparent', borderColor: statPanelBorderColor },
+          ]}
+        >
           <View style={styles.statSectionHeader}>
-            <Text style={[styles.statSectionTitle, { color: statPrimaryColor }]}>Activity</Text>
-            <Text style={[styles.statSectionSubtitle, { color: statHelperColor }]}>Trends</Text>
+            <Text style={[styles.statSectionTitle, { color: statPrimaryColor }]}>ACTIVITY</Text>
+            <Text style={[styles.statSectionSubtitle, { color: statHelperColor }]}>LIVE SNAPSHOT</Text>
           </View>
-          <View style={styles.statGrid}>
+          <View style={[styles.statGrid, { borderColor: statDividerColor }]}>
             {statsSnapshot.map((stat, index) => {
               const itemStyles = [styles.statItem];
               if (index >= 2) {
@@ -3833,18 +3856,23 @@ export default function App() {
           <TouchableOpacity
             onPress={handleLogPress}
             activeOpacity={0.88}
-            style={[styles.logApplicationButton, { borderColor: statBorderColor }]}
+            style={[
+              styles.logApplicationButton,
+              {
+                borderColor: statBorderColor,
+                backgroundColor: hexToRgba(statPrimaryColor, eff === 'light' ? 0.04 : 0.16),
+              },
+            ]}
             accessibilityLabel="Log a new job application"
           >
-            <LinearGradient
-              colors={[colors.sky, colors.emerald]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.logApplicationGradient}
-            >
-              <MaterialCommunityIcons name="file-document-edit-outline" size={16} color="#0f172a" />
-              <Text style={styles.logApplicationText}>Log application</Text>
-            </LinearGradient>
+            <View style={styles.logApplicationInner}>
+              <MaterialCommunityIcons
+                name="file-document-edit-outline"
+                size={16}
+                color={statPrimaryColor}
+              />
+              <Text style={[styles.logApplicationText, { color: statPrimaryColor }]}>LOG APPLICATION</Text>
+            </View>
           </TouchableOpacity>
         </Panel>
 
@@ -5001,32 +5029,41 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statPanel: {
-    paddingVertical: 22,
+    paddingVertical: 24,
     paddingHorizontal: 20,
   },
   statSectionHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    gap: 4,
+    marginBottom: 20,
   },
   statSectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
   statSectionSubtitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
   },
   statGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 12,
+    marginBottom: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   statItem: {
     width: '50%',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   statItemTopBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -5035,25 +5072,31 @@ const styles = StyleSheet.create({
     borderLeftWidth: StyleSheet.hairlineWidth,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '800',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
   statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    textAlign: 'center',
   },
   statHelper: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 2,
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    textAlign: 'center',
   },
   logApplicationButton: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    overflow: 'hidden',
+    marginTop: 12,
   },
-  logApplicationGradient: {
+  logApplicationInner: {
     paddingVertical: 16,
     paddingHorizontal: 18,
     flexDirection: 'row',
@@ -5062,9 +5105,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logApplicationText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#0f172a',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   appsToolbar: {
     flexDirection: 'row',
