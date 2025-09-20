@@ -2773,9 +2773,6 @@ export default function App() {
       if (reward.chest) {
         entries.push({ icon: 'treasure-chest', color: colors.amber, label: `${reward.chest} chest` });
       }
-      if (reward.cleanse) {
-        entries.push({ icon: 'sparkles', color: colors.lilac, label: `Cleanse: ${reward.cleanse}` });
-      }
       return entries;
     },
     [colors],
@@ -3400,7 +3397,21 @@ export default function App() {
                 : 0;
               const questReward = quest.claimReward || quest.reward;
               const rewardEntries = makeRewardEntries(questReward);
-              const rewardEffect = questReward?.effect;
+              const rewardBonuses = [];
+              if (questReward?.effect) {
+                rewardBonuses.push({
+                  icon: 'auto-fix',
+                  color: colors.lilac,
+                  label: questReward.effect,
+                });
+              }
+              if (questReward?.cleanse) {
+                rewardBonuses.push({
+                  icon: 'broom',
+                  color: colors.sky,
+                  label: `Cleanse: ${questReward.cleanse}`,
+                });
+              }
               const tierSummary = Array.isArray(quest.tiers)
                 ? getStageProgressSummary(quest.tiers)
                 : null;
@@ -3467,17 +3478,22 @@ export default function App() {
                     </View>
                   ) : null}
 
-                  {rewardEffect ? (
+                  {rewardBonuses.length ? (
                     <View style={styles.questInfoSection}>
                       <Text style={[styles.questInfoLabel, { color: colors.text }]}>Bonus</Text>
-                      <View
-                        style={[
-                          styles.questBonusPill,
-                          { borderColor: colors.surfaceBorder, backgroundColor: colors.chipBg },
-                        ]}
-                      >
-                        <MaterialCommunityIcons name="auto-fix" size={14} color={colors.lilac} />
-                        <Text style={[styles.questBonusText, { color: colors.text }]}>{rewardEffect}</Text>
+                      <View style={styles.questBonusList}>
+                        {rewardBonuses.map((bonus, bonusIndex) => (
+                          <View
+                            key={`${quest.id}-bonus-${bonusIndex}`}
+                            style={[
+                              styles.questBonusPill,
+                              { borderColor: colors.surfaceBorder, backgroundColor: colors.chipBg },
+                            ]}
+                          >
+                            <MaterialCommunityIcons name={bonus.icon} size={14} color={bonus.color} />
+                            <Text style={[styles.questBonusText, { color: colors.text }]}>{bonus.label}</Text>
+                          </View>
+                        ))}
                       </View>
                     </View>
                   ) : null}
@@ -4434,6 +4450,11 @@ const styles = StyleSheet.create({
   questRewardText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  questBonusList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   questBonusPill: {
     flexDirection: 'row',
