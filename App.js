@@ -2413,7 +2413,6 @@ export default function App() {
   // Game state
   const [xp, setXp] = useState(0);
   const [apps, setApps] = useState(0);
-  const [weighted, setWeighted] = useState(0);
   const [gold, setGold] = useState(0);
   const [streak, setStreak] = useState(0);
   const [activeEffects, setActiveEffects] = useState([]);
@@ -2808,8 +2807,6 @@ export default function App() {
   }, [activeEffects, sprayEffectDetails, pushEffectWarnings, createEffectWarningEntry]);
 
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
-  const step = 25;
-  const into = weighted % step;
 
   useEffect(() => {
     const prevLevel = previousLevelRef.current;
@@ -2884,7 +2881,6 @@ export default function App() {
 
       setApplications((list) => [app, ...list]);
       setApps((value) => value + 1);
-      setWeighted((value) => value + au);
       gainXp(xpReward, false);
       setGold((value) => value + goldReward);
       setFocus((value) => Math.max(0, value - cost));
@@ -2939,40 +2935,6 @@ export default function App() {
     setShowForm(true);
   }, [focus]);
 
-  const handleEasyApply = useCallback(() => {
-    const now = new Date();
-    addApplication({
-      company: 'New Company',
-      role: 'Easy Apply',
-      country: '',
-      city: '',
-      type: 'Easy',
-      status: 'Applied',
-      date: now.toISOString(),
-      note: '',
-      cvTailored: false,
-      motivation: false,
-      favorite: false,
-      platform: 'Company website',
-    });
-  }, [addApplication]);
-
-  const handleNetworking = useCallback(() => {
-    setGold((value) => value + 8);
-  }, []);
-
-  const handleSkill = useCallback(() => {
-    gainXp(14);
-    setGold((value) => value + 3);
-  }, [gainXp]);
-
-  const handleInterview = useCallback(() => {
-    gainXp(18);
-    setGold((value) => value + 4);
-  }, [gainXp]);
-
-  const handlePrestige = useCallback(() => {}, []);
-
   const handleQuestAction = useCallback(
     (action, quest) => {
       if (!action) {
@@ -3021,23 +2983,98 @@ export default function App() {
     setOpenAllSummary({ gold: totalGold, opened: chests.length });
   }, [chests, goldMultiplier]);
 
-  const quickActions = useMemo(
-    () => [
-      { key: 'Log application', icon: 'file-document-edit-outline', onPress: handleLogPress, hint: 'Open log form' },
-      { key: 'Easy apply', icon: 'flash-outline', onPress: handleEasyApply, hint: 'Log easy apply' },
-      { key: 'Networking', icon: 'account-group-outline', onPress: handleNetworking, hint: 'Add networking' },
-      { key: 'Skill', icon: 'school-outline', onPress: handleSkill, hint: 'Add skill block' },
-      { key: 'Interview', icon: 'account-tie-voice', onPress: handleInterview, hint: 'Add interview prep' },
+  const statsSnapshot = useMemo(() => {
+    const now = Number.isFinite(currentTime) ? currentTime : Date.now();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const todayStart = startOfToday.getTime();
+    const weekStart = todayStart - dayMs * 6;
+    const monthStart = todayStart - dayMs * 29;
+
+    let todayCount = 0;
+    let weekCount = 0;
+    let monthCount = 0;
+
+    applications.forEach((app) => {
+      const timestamp = toTimestamp(app?.date ?? app?.timestamp ?? app?.createdAt);
+      if (!Number.isFinite(timestamp)) {
+        return;
+      }
+      if (timestamp >= monthStart) {
+        monthCount += 1;
+      }
+      if (timestamp >= weekStart) {
+        weekCount += 1;
+      }
+      if (timestamp >= todayStart) {
+        todayCount += 1;
+      }
+    });
+
+    const formatAverage = (count, span) => {
+      if (span <= 0) {
+        return '0';
+      }
+      const average = count / span;
+      const rounded = Math.round(average * 10) / 10;
+      return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    };
+
+    return [
       {
-        key: 'Prestige',
-        icon: 'crown-outline',
-        onPress: handlePrestige,
-        hint: 'Prestige (requires Level 100)',
-        disabled: l < 100,
+        key: 'today',
+        label: 'Today',
+        helper: 'Logged applications',
+        value: String(todayCount),
       },
+      {
+        key: 'weeklyAverage',
+        label: '7-day avg',
+        helper: 'Daily pace',
+        value: formatAverage(weekCount, 7),
+      },
+      {
+        key: 'weeklyTotal',
+        label: '7-day total',
+        helper: 'This week',
+        value: String(weekCount),
+      },
+      {
+        key: 'monthlyAverage',
+        label: '30-day avg',
+        helper: 'Daily pace',
+        value: formatAverage(monthCount, 30),
+      },
+    ];
+  }, [applications, currentTime]);
+
+  const statGradients = useMemo(
+    () => [
+      [
+        hexToRgba(colors.sky, eff === 'light' ? 0.16 : 0.32),
+        hexToRgba(colors.emerald, eff === 'light' ? 0.12 : 0.26),
+      ],
+      [
+        hexToRgba(colors.amber, eff === 'light' ? 0.16 : 0.32),
+        hexToRgba(colors.rose, eff === 'light' ? 0.12 : 0.26),
+      ],
+      [
+        hexToRgba(colors.lilac, eff === 'light' ? 0.18 : 0.34),
+        hexToRgba(colors.sky, eff === 'light' ? 0.12 : 0.24),
+      ],
+      [
+        hexToRgba(colors.emerald, eff === 'light' ? 0.16 : 0.3),
+        hexToRgba(colors.amber, eff === 'light' ? 0.12 : 0.22),
+      ],
     ],
-    [handleLogPress, handleEasyApply, handleNetworking, handleSkill, handleInterview, handlePrestige, l]
+    [colors, eff],
   );
+
+  const statPrimaryColor = eff === 'light' ? '#0f172a' : colors.text;
+  const statLabelColor = hexToRgba(statPrimaryColor, eff === 'light' ? 0.68 : 0.78);
+  const statHelperColor = hexToRgba(statPrimaryColor, eff === 'light' ? 0.54 : 0.7);
+  const statBorderColor = hexToRgba(statPrimaryColor, eff === 'light' ? 0.16 : 0.34);
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -3129,7 +3166,6 @@ export default function App() {
         return list;
       }
       setApps((value) => Math.max(0, value - 1));
-      setWeighted((value) => Math.max(0, value - (target.au || 0)));
       return list.filter((item) => item.id !== id);
     });
   }, []);
@@ -3145,7 +3181,6 @@ export default function App() {
       updated.qs = qs;
       updated.au = au;
       setApplications((list) => list.map((app) => (app.id === previous.id ? updated : app)));
-      setWeighted((value) => value - (previous.au || 0) + au);
       setEditingApp(null);
       if (!previous.favorite && updated.favorite) {
         handleManualLog('favoriteMarked', { applicationId: previous.id });
@@ -3791,36 +3826,60 @@ export default function App() {
           </View>
         </Panel>
 
-        {/* Milestone Panel */}
-        <Panel colors={colors}>
-          <View style={styles.progressHeader}>
-            <View style={styles.progressLabel}>
-              <MaterialCommunityIcons name="flag-checkered" size={14} color="rgba(148,163,184,.95)" />
-              <Text style={styles.progressLabelText}>Milestone</Text>
-            </View>
-            <Text style={styles.progressValue}>{into.toFixed(1)} / {step}</Text>
+        {/* Activity Snapshot */}
+        <Panel colors={colors} style={styles.statPanel}>
+          <View style={styles.statSectionHeader}>
+            <Text style={[styles.statSectionTitle, { color: statLabelColor }]}>Activity snapshot</Text>
+            <Text style={[styles.statSectionSubtitle, { color: statHelperColor }]}>Rolling averages</Text>
           </View>
-          <ProgressBar value={into} max={step} fromColor={colors.sky} toColor={colors.emerald} colors={colors} />
+          <View style={styles.statGrid}>
+            {statsSnapshot.map((stat, index) => {
+              const gradient = statGradients[index % statGradients.length];
+              return (
+                <View
+                  key={stat.key}
+                  style={[
+                    styles.statCard,
+                    eff === 'light' ? styles.statCardShadowLight : styles.statCardShadowDark,
+                    { borderColor: statBorderColor },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.statCardInner}
+                  >
+                    <Text style={[styles.statValue, { color: statPrimaryColor }]}>{stat.value}</Text>
+                    <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
+                    {stat.helper ? (
+                      <Text style={[styles.statHelper, { color: statHelperColor }]}>{stat.helper}</Text>
+                    ) : null}
+                  </LinearGradient>
+                </View>
+              );
+            })}
+          </View>
+          <TouchableOpacity
+            onPress={handleLogPress}
+            activeOpacity={0.88}
+            style={[styles.logApplicationButton, { borderColor: statBorderColor }]}
+            accessibilityLabel="Log a new job application"
+          >
+            <LinearGradient
+              colors={[colors.sky, colors.emerald]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.logApplicationGradient}
+            >
+              <MaterialCommunityIcons name="file-document-edit-outline" size={16} color="#0f172a" />
+              <Text style={styles.logApplicationText}>Log application</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </Panel>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          {quickActions.map((action) => (
-            <TouchableOpacity
-              key={action.key}
-              onPress={action.onPress}
-              disabled={action.disabled}
-              style={[styles.quickAction, { opacity: action.disabled ? 0.5 : 1 }]}
-              accessibilityLabel={action.hint}
-            >
-              <MaterialCommunityIcons name={action.icon} size={20} color="rgba(148,163,184,.95)" />
-              <Text style={styles.quickActionText}>{action.key}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
         <Text style={styles.footerText}>
-          Mobile build. Use "Log application" to open the form.
+          Mobile build. Use the button above to log an application.
         </Text>
         </ScrollView>
       )}
@@ -4971,25 +5030,87 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 6,
   },
-  quickActions: {
+  statPanel: {
+    paddingVertical: 22,
+    paddingHorizontal: 20,
+  },
+  statSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  statSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  statSectionSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 24,
-    marginBottom: 16,
+    marginBottom: 18,
   },
-  quickAction: {
-    width: '30%',
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginBottom: 16,
+  statCard: {
+    width: '48%',
+    borderWidth: 1,
+    borderRadius: 18,
+    overflow: 'hidden',
+    marginBottom: 14,
   },
-  quickActionText: {
+  statCardInner: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  statLabel: {
     fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(148,163,184,.95)',
-    textAlign: 'center',
+    fontWeight: '600',
     marginTop: 6,
+  },
+  statHelper: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  statCardShadowLight: {
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
+  },
+  statCardShadowDark: {
+    shadowColor: '#000',
+    shadowOpacity: 0.38,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  logApplicationButton: {
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  logApplicationGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  logApplicationText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
   },
   appsToolbar: {
     flexDirection: 'row',
