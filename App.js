@@ -454,6 +454,42 @@ const RARITY_DETAILS = {
   },
 };
 
+const RARITY_LOOKUP = RARITIES.reduce((acc, entry) => {
+  acc[entry.key.toLowerCase()] = entry;
+  return acc;
+}, {});
+
+let chestIdCounter = 0;
+
+const createChestId = () => {
+  chestIdCounter += 1;
+  return `chest-${Date.now()}-${chestIdCounter}`;
+};
+
+const createChestFromRarity = (rarityInput) => {
+  if (!rarityInput) {
+    return null;
+  }
+  let key = null;
+  if (typeof rarityInput === 'string') {
+    key = rarityInput.trim();
+  } else if (typeof rarityInput === 'object') {
+    key = rarityInput.key || rarityInput.rarity || null;
+  }
+  if (!key) {
+    return null;
+  }
+  const match = RARITY_LOOKUP[key.toLowerCase()];
+  if (!match) {
+    return null;
+  }
+  return {
+    id: createChestId(),
+    rarity: match.key,
+    gold: Array.isArray(match.gold) ? [...match.gold] : match.gold,
+  };
+};
+
 function pickRarity() {
   const r = Math.random();
   let acc = 0;
@@ -466,13 +502,15 @@ function pickRarity() {
   return RARITIES[0];
 }
 
-const PLACEHOLDER_CHESTS = Array.from({ length: 12 }, (_, index) => {
+const PLACEHOLDER_CHESTS = Array.from({ length: 12 }, () => {
   const rarity = pickRarity();
-  return {
-    id: index,
-    rarity: rarity.key,
-    gold: rarity.gold,
-  };
+  return (
+    createChestFromRarity(rarity.key) || {
+      id: createChestId(),
+      rarity: rarity.key,
+      gold: Array.isArray(rarity.gold) ? [...rarity.gold] : rarity.gold,
+    }
+  );
 });
 
 const rand = ([min, max]) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -3352,6 +3390,7 @@ export default function App() {
       const shouldCompleteQuest = quest.activeStageId
         ? quest.activeStageIsFinal === true && !quest.reward
         : true;
+      let rewardGranted = false;
       setClaimedQuests((prev) => {
         if (prev.has(targetId)) {
           return prev;
@@ -3377,8 +3416,15 @@ export default function App() {
             lowQualityStreakRef.current = 0;
           }
         }
+        rewardGranted = true;
         return next;
       });
+      if (rewardGranted) {
+        const newChest = createChestFromRarity(reward.chest);
+        if (newChest) {
+          setChests((prev) => [...prev, newChest]);
+        }
+      }
       if (quest?.type === 'event') {
         const completionTime = Date.now();
         updateCurrentTime(completionTime);
