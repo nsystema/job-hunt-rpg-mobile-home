@@ -230,19 +230,6 @@ const toTimestamp = (value) => {
   return NaN;
 };
 
-const MS_IN_DAY = 24 * 60 * 60 * 1000;
-
-const startOfDay = (value) => {
-  const timestamp = toTimestamp(value);
-  if (!Number.isFinite(timestamp)) {
-    return null;
-  }
-  const date = new Date(timestamp);
-  date.setHours(0, 0, 0, 0);
-  const normalized = date.getTime();
-  return Number.isFinite(normalized) ? normalized : null;
-};
-
 const createChestArt = ({
   baseGradient,
   lidGradient,
@@ -2952,107 +2939,39 @@ export default function App() {
     setShowForm(true);
   }, [focus]);
 
-  const statsHighlights = useMemo(() => {
-    const totalLogged = Math.max(0, Number.isFinite(apps) ? apps : 0);
-    const todayStart = startOfDay(currentTime);
-    const fallbackStart = startOfDay(Date.now());
-    const referenceDay =
-      typeof todayStart === 'number' && Number.isFinite(todayStart)
-        ? todayStart
-        : typeof fallbackStart === 'number' && Number.isFinite(fallbackStart)
-        ? fallbackStart
-        : Date.now();
-
-    const countsByDay = new Map();
-    let earliestDay = null;
-
-    (applications || []).forEach((app) => {
-      const dayKey = startOfDay(app?.date);
-      if (dayKey == null) {
-        return;
-      }
-      countsByDay.set(dayKey, (countsByDay.get(dayKey) || 0) + 1);
-      if (earliestDay == null || dayKey < earliestDay) {
-        earliestDay = dayKey;
-      }
+  const handleEasyApply = useCallback(() => {
+    const now = new Date();
+    addApplication({
+      company: 'New Company',
+      role: 'Easy Apply',
+      country: '',
+      city: '',
+      type: 'Easy',
+      status: 'Applied',
+      date: now.toISOString(),
+      note: '',
+      cvTailored: false,
+      motivation: false,
+      favorite: false,
+      platform: 'Company website',
     });
+  }, [addApplication]);
 
-    const dailyWindowDays = 30;
-    const weeklyWindowWeeks = 12;
-    const lastSevenStart = referenceDay - 6 * MS_IN_DAY;
-    const dailyWindowStart = referenceDay - (dailyWindowDays - 1) * MS_IN_DAY;
-    const weeklyWindowStart = referenceDay - (weeklyWindowWeeks * 7 - 1) * MS_IN_DAY;
+  const handleNetworking = useCallback(() => {
+    setGold((value) => value + 8);
+  }, []);
 
-    let lastSevenTotal = 0;
-    let dailyWindowTotal = 0;
-    let weeklyWindowTotal = 0;
+  const handleSkill = useCallback(() => {
+    gainXp(14);
+    setGold((value) => value + 3);
+  }, [gainXp]);
 
-    countsByDay.forEach((count, day) => {
-      if (day >= lastSevenStart) {
-        lastSevenTotal += count;
-      }
-      if (day >= dailyWindowStart) {
-        dailyWindowTotal += count;
-      }
-      if (day >= weeklyWindowStart) {
-        weeklyWindowTotal += count;
-      }
-    });
+  const handleInterview = useCallback(() => {
+    gainXp(18);
+    setGold((value) => value + 4);
+  }, [gainXp]);
 
-    const dailyBaselineStart = earliestDay != null ? Math.max(dailyWindowStart, earliestDay) : dailyWindowStart;
-    const weeklyBaselineStart = earliestDay != null ? Math.max(weeklyWindowStart, earliestDay) : weeklyWindowStart;
-
-    const daysTracked = Math.max(1, Math.floor((referenceDay - dailyBaselineStart) / MS_IN_DAY) + 1);
-    const weeksTracked = Math.max(1, Math.floor((referenceDay - weeklyBaselineStart) / (MS_IN_DAY * 7)) + 1);
-
-    const dailyAverage = daysTracked > 0 ? dailyWindowTotal / daysTracked : 0;
-    const weeklyAverage = weeksTracked > 0 ? weeklyWindowTotal / weeksTracked : 0;
-
-    const formatAverage = (value) => {
-      if (!Number.isFinite(value)) {
-        return '0.0';
-      }
-      const normalized = Math.max(0, value);
-      const options =
-        normalized >= 100
-          ? { maximumFractionDigits: 0 }
-          : normalized >= 10
-          ? { maximumFractionDigits: 1 }
-          : { minimumFractionDigits: 1, maximumFractionDigits: 1 };
-      return normalized.toLocaleString(undefined, options);
-    };
-
-    return [
-      {
-        key: 'total',
-        label: 'Total applications',
-        value: totalLogged.toLocaleString(),
-        icon: 'briefcase-check-outline',
-        accent: 'sky',
-      },
-      {
-        key: 'lastSeven',
-        label: 'Logged in last 7 days',
-        value: Math.max(0, lastSevenTotal).toLocaleString(),
-        icon: 'calendar-week-begin',
-        accent: 'emerald',
-      },
-      {
-        key: 'dailyAvg',
-        label: 'Daily avg (last 30d)',
-        value: formatAverage(dailyAverage),
-        icon: 'speedometer',
-        accent: 'lilac',
-      },
-      {
-        key: 'weeklyAvg',
-        label: 'Weekly avg (last 12w)',
-        value: formatAverage(weeklyAverage),
-        icon: 'chart-bell-curve',
-        accent: 'amber',
-      },
-    ];
-  }, [apps, applications, currentTime]);
+  const handlePrestige = useCallback(() => {}, []);
 
   const handleQuestAction = useCallback(
     (action, quest) => {
@@ -3101,6 +3020,24 @@ export default function App() {
     setFocusedChestId(null);
     setOpenAllSummary({ gold: totalGold, opened: chests.length });
   }, [chests, goldMultiplier]);
+
+  const quickActions = useMemo(
+    () => [
+      { key: 'Log application', icon: 'file-document-edit-outline', onPress: handleLogPress, hint: 'Open log form' },
+      { key: 'Easy apply', icon: 'flash-outline', onPress: handleEasyApply, hint: 'Log easy apply' },
+      { key: 'Networking', icon: 'account-group-outline', onPress: handleNetworking, hint: 'Add networking' },
+      { key: 'Skill', icon: 'school-outline', onPress: handleSkill, hint: 'Add skill block' },
+      { key: 'Interview', icon: 'account-tie-voice', onPress: handleInterview, hint: 'Add interview prep' },
+      {
+        key: 'Prestige',
+        icon: 'crown-outline',
+        onPress: handlePrestige,
+        hint: 'Prestige (requires Level 100)',
+        disabled: l < 100,
+      },
+    ],
+    [handleLogPress, handleEasyApply, handleNetworking, handleSkill, handleInterview, handlePrestige, l]
+  );
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -3866,93 +3803,24 @@ export default function App() {
           <ProgressBar value={into} max={step} fromColor={colors.sky} toColor={colors.emerald} colors={colors} />
         </Panel>
 
-        {/* Log Application Callout */}
-        <Panel colors={colors}>
-          <View style={styles.logCallout}>
-            <View style={styles.logCalloutTextGroup}>
-              <View style={styles.logCalloutTitleRow}>
-                <MaterialCommunityIcons name="file-document-edit-outline" size={18} color={colors.sky} />
-                <Text style={[styles.logCalloutTitle, { color: colors.text }]}>Log your latest application</Text>
-              </View>
-              <Text
-                style={[
-                  styles.logCalloutSubtitle,
-                  { color: hexToRgba(colors.text, eff === 'light' ? 0.58 : 0.72) },
-                ]}
-              >
-                Keep momentum by recording each role you apply for as soon as you hit send.
-              </Text>
-            </View>
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          {quickActions.map((action) => (
             <TouchableOpacity
-              onPress={handleLogPress}
-              style={[
-                styles.logButton,
-                {
-                  backgroundColor: colors.sky,
-                  borderColor: hexToRgba(colors.sky, eff === 'light' ? 0.3 : 0.45),
-                },
-              ]}
-              activeOpacity={0.9}
-              accessibilityLabel="Log a new application"
+              key={action.key}
+              onPress={action.onPress}
+              disabled={action.disabled}
+              style={[styles.quickAction, { opacity: action.disabled ? 0.5 : 1 }]}
+              accessibilityLabel={action.hint}
             >
-              <MaterialCommunityIcons name="file-document-edit-outline" size={16} color="#0f172a" />
-              <Text style={[styles.logButtonText, { color: '#0f172a' }]}>Log application</Text>
+              <MaterialCommunityIcons name={action.icon} size={20} color="rgba(148,163,184,.95)" />
+              <Text style={styles.quickActionText}>{action.key}</Text>
             </TouchableOpacity>
-          </View>
-        </Panel>
+          ))}
+        </View>
 
-        {/* Stats Overview */}
-        <Panel colors={colors}>
-          <View style={styles.statsSection}>
-            <Text style={[styles.statsTitle, { color: colors.text }]}>At a glance</Text>
-            <View style={styles.statsGrid}>
-              {statsHighlights.map((stat) => {
-                const accentColor = colors[stat.accent] || colors.sky;
-                return (
-                  <View
-                    key={stat.key}
-                    style={[
-                      styles.statCard,
-                      {
-                        backgroundColor: colors.chipBg,
-                        borderColor: colors.surfaceBorder,
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.statIconShell,
-                        {
-                          backgroundColor: hexToRgba(accentColor, eff === 'light' ? 0.18 : 0.22),
-                          borderColor: hexToRgba(accentColor, eff === 'light' ? 0.3 : 0.42),
-                        },
-                      ]}
-                    >
-                      <MaterialCommunityIcons name={stat.icon} size={18} color={accentColor} />
-                    </View>
-                    <Text style={[styles.statValue, { color: colors.text }]}>{stat.value}</Text>
-                    <Text
-                      style={[
-                        styles.statLabel,
-                        { color: hexToRgba(colors.text, eff === 'light' ? 0.58 : 0.72) },
-                      ]}
-                    >
-                      {stat.label}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        </Panel>
-
-        <Text
-          style={[
-            styles.footerText,
-            { color: hexToRgba(colors.text, eff === 'light' ? 0.5 : 0.65) },
-          ]}
-        >
-          Stats refresh automatically every time you add progress to your hunt.
+        <Text style={styles.footerText}>
+          Mobile build. Use "Log application" to open the form.
         </Text>
         </ScrollView>
       )}
@@ -5103,76 +4971,25 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 6,
   },
-  logCallout: {
-    alignItems: 'flex-start',
-    gap: 18,
-  },
-  logCalloutTextGroup: {
-    gap: 8,
-  },
-  logCalloutTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  logCalloutTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  logCalloutSubtitle: {
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  logButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    gap: 8,
-  },
-  logButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  statsSection: {
-    gap: 16,
-  },
-  statsTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  statsGrid: {
+  quickActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
+    marginTop: 24,
+    marginBottom: 16,
   },
-  statCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    width: '47%',
-    gap: 4,
-    marginBottom: 8,
-  },
-  statIconShell: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    borderWidth: 1,
+  quickAction: {
+    width: '30%',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+    paddingVertical: 16,
+    marginBottom: 16,
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  statLabel: {
-    fontSize: 11,
+  quickActionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(148,163,184,.95)',
+    textAlign: 'center',
+    marginTop: 6,
   },
   appsToolbar: {
     flexDirection: 'row',
@@ -5514,6 +5331,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 11,
+    color: 'rgba(148,163,184,.95)',
     textAlign: 'center',
     marginBottom: 20,
   },
