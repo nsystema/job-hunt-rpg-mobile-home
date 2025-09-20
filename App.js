@@ -3069,13 +3069,10 @@ export default function App() {
   const statPrimaryColor = colors.text;
   const statLabelColor = hexToRgba(colors.text, eff === 'light' ? 0.62 : 0.8);
   const statHelperColor = hexToRgba(colors.text, eff === 'light' ? 0.48 : 0.68);
-  const statDividerColor = hexToRgba(colors.text, eff === 'light' ? 0.1 : 0.3);
   const statPanelBorderColor = colors.surfaceBorder;
   const statBorderColor = hexToRgba(colors.sky, eff === 'light' ? 0.4 : 0.6);
-  const statItemBackground = hexToRgba(colors.sky, eff === 'light' ? 0.08 : 0.2);
-  const statHeaderIconBackground = hexToRgba(colors.sky, eff === 'light' ? 0.18 : 0.32);
+  const statHeaderIconBackground = 'transparent';
   const statHeaderIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.35 : 0.45);
-  const statActionBackground = hexToRgba(colors.sky, eff === 'light' ? 0.12 : 0.28);
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -3849,46 +3846,38 @@ export default function App() {
               <Text style={[styles.statHeaderMetaText, { color: statLabelColor }]}>This week</Text>
             </View>
           </View>
-          <View style={[styles.statGrid, { borderColor: statDividerColor }]}>
-            {statsSnapshot.map((stat, index) => {
-              const itemStyles = [styles.statItem, { backgroundColor: statItemBackground }];
-              if (index >= 2) {
-                itemStyles.push(styles.statItemTopBorder, { borderTopColor: statDividerColor });
-              }
-              if (index % 2 === 1) {
-                itemStyles.push(styles.statItemLeftBorder, { borderLeftColor: statDividerColor });
-              }
-              return (
-                <View key={stat.key} style={itemStyles}>
-                  <Text style={[styles.statValue, { color: statPrimaryColor }]}>{stat.value}</Text>
-                  <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
-                  {stat.helper ? (
-                    <Text style={[styles.statHelper, { color: statHelperColor }]}>{stat.helper}</Text>
-                  ) : null}
-                </View>
-              );
-            })}
+          <View style={styles.statGrid}>
+            {statsSnapshot.map((stat) => (
+              <View key={stat.key} style={styles.statItem}>
+                <Text style={[styles.statValue, { color: statPrimaryColor }]}>{stat.value}</Text>
+                <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
+                {stat.helper ? (
+                  <Text style={[styles.statHelper, { color: statHelperColor }]}>{stat.helper}</Text>
+                ) : null}
+              </View>
+            ))}
           </View>
           <TouchableOpacity
             onPress={handleLogPress}
             activeOpacity={0.88}
-            style={[
-              styles.logApplicationButton,
-              {
-                borderColor: statBorderColor,
-                backgroundColor: statActionBackground,
-              },
-            ]}
+            style={[styles.logApplicationButton, { borderColor: statBorderColor }]}
             accessibilityLabel="Log a new job application"
           >
-            <View style={styles.logApplicationInner}>
+            <LinearGradient
+              colors={[colors.sky, colors.emerald]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.logApplicationInner}
+            >
               <MaterialCommunityIcons
                 name="file-document-edit-outline"
                 size={16}
-                color={colors.sky}
+                color="#0f172a"
               />
-              <Text style={[styles.logApplicationText, { color: colors.sky }]}>Log application</Text>
-            </View>
+              <Text style={[styles.logApplicationText, styles.logApplicationTextOnGradient]}>
+                Log application
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
         </Panel>
 
@@ -5088,47 +5077,41 @@ const styles = StyleSheet.create({
   statGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     marginBottom: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    overflow: 'hidden',
   },
   statItem: {
-    width: '50%',
+    width: '48%',
     paddingVertical: 18,
     paddingHorizontal: 16,
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-  },
-  statItemTopBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  statItemLeftBorder: {
-    borderLeftWidth: StyleSheet.hairlineWidth,
+    marginBottom: 12,
   },
   statValue: {
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: 0.2,
-    textAlign: 'left',
+    textAlign: 'center',
   },
   statLabel: {
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: 0.2,
-    textAlign: 'left',
+    textAlign: 'center',
   },
   statHelper: {
     fontSize: 12,
     fontWeight: '500',
     letterSpacing: 0.2,
-    textAlign: 'left',
+    textAlign: 'center',
   },
   logApplicationButton: {
     borderRadius: 20,
     borderWidth: 1,
     marginTop: 12,
+    overflow: 'hidden',
   },
   logApplicationInner: {
     paddingVertical: 16,
@@ -5142,6 +5125,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.2,
+  },
+  logApplicationTextOnGradient: {
+    color: '#0f172a',
   },
   appsToolbar: {
     flexDirection: 'row',
