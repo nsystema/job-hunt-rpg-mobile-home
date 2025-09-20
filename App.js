@@ -2773,9 +2773,6 @@ export default function App() {
       if (reward.chest) {
         entries.push({ icon: 'treasure-chest', color: colors.amber, label: `${reward.chest} chest` });
       }
-      if (reward.effect) {
-        entries.push({ icon: 'auto-fix', color: colors.lilac, label: reward.effect });
-      }
       if (reward.cleanse) {
         entries.push({ icon: 'sparkles', color: colors.lilac, label: `Cleanse: ${reward.cleanse}` });
       }
@@ -3401,7 +3398,9 @@ export default function App() {
               const percent = trackable
                 ? quest.percent ?? (goalValue > 0 ? Math.min(100, (progress / goalValue) * 100) : 0)
                 : 0;
-              const rewardEntries = makeRewardEntries(quest.claimReward || quest.reward);
+              const questReward = quest.claimReward || quest.reward;
+              const rewardEntries = makeRewardEntries(questReward);
+              const rewardEffect = questReward?.effect;
               const tierSummary = Array.isArray(quest.tiers)
                 ? getStageProgressSummary(quest.tiers)
                 : null;
@@ -3445,7 +3444,7 @@ export default function App() {
                     ) : null}
                   </View>
 
-                  {quest.actions?.length ? (
+                    {quest.actions?.length ? (
                     <View style={styles.questActionsRow}>
                       {quest.actions.map((action, actionIndex) => (
                         <TouchableOpacity
@@ -3465,6 +3464,21 @@ export default function App() {
                           <Text style={[styles.questActionText, { color: colors.text }]}>{action.label}</Text>
                         </TouchableOpacity>
                       ))}
+                    </View>
+                  ) : null}
+
+                  {rewardEffect ? (
+                    <View style={styles.questInfoSection}>
+                      <Text style={[styles.questInfoLabel, { color: colors.text }]}>Bonus</Text>
+                      <View
+                        style={[
+                          styles.questBonusPill,
+                          { borderColor: colors.surfaceBorder, backgroundColor: colors.chipBg },
+                        ]}
+                      >
+                        <MaterialCommunityIcons name="auto-fix" size={14} color={colors.lilac} />
+                        <Text style={[styles.questBonusText, { color: colors.text }]}>{rewardEffect}</Text>
+                      </View>
                     </View>
                   ) : null}
 
@@ -4418,6 +4432,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   questRewardText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  questBonusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  questBonusText: {
     fontSize: 12,
     fontWeight: '600',
   },
