@@ -3037,39 +3037,45 @@ export default function App() {
     const sevenDayAverage = formatAverage(weekCount, 7);
     const replyRate = totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0;
 
+    const interviewLabel = `${interviewCount} interview${interviewCount === 1 ? '' : 's'}`;
+
     return [
       {
         key: 'today',
-        label: 'TODAY',
-        helper: 'LOGGED',
+        label: 'Today',
+        helper: 'Logged today',
         value: String(todayCount),
       },
       {
         key: 'sevenDayAverage',
-        label: '7 DAY AVG',
-        helper: 'PER DAY',
+        label: '7-day avg',
+        helper: 'Per day',
         value: sevenDayAverage,
       },
       {
         key: 'pipeline',
-        label: 'PIPELINE',
-        helper: 'ACTIVE',
+        label: 'Pipeline',
+        helper: 'Active apps',
         value: String(pipelineCount),
       },
       {
         key: 'responseRate',
-        label: 'REPLY RATE',
-        helper: `${interviewCount} INTERVIEWS`,
+        label: 'Reply rate',
+        helper: interviewLabel,
         value: `${replyRate}%`,
       },
     ];
   }, [applications, currentTime]);
   const statPrimaryColor = colors.text;
-  const statLabelColor = hexToRgba(colors.text, eff === 'light' ? 0.72 : 0.82);
-  const statHelperColor = hexToRgba(colors.text, eff === 'light' ? 0.5 : 0.68);
-  const statDividerColor = hexToRgba(colors.text, eff === 'light' ? 0.18 : 0.4);
-  const statPanelBorderColor = hexToRgba(colors.text, eff === 'light' ? 0.08 : 0.28);
-  const statBorderColor = hexToRgba(colors.text, eff === 'light' ? 0.12 : 0.32);
+  const statLabelColor = hexToRgba(colors.text, eff === 'light' ? 0.62 : 0.8);
+  const statHelperColor = hexToRgba(colors.text, eff === 'light' ? 0.48 : 0.68);
+  const statDividerColor = hexToRgba(colors.text, eff === 'light' ? 0.1 : 0.3);
+  const statPanelBorderColor = colors.surfaceBorder;
+  const statBorderColor = hexToRgba(colors.sky, eff === 'light' ? 0.4 : 0.6);
+  const statItemBackground = hexToRgba(colors.sky, eff === 'light' ? 0.08 : 0.2);
+  const statHeaderIconBackground = hexToRgba(colors.sky, eff === 'light' ? 0.18 : 0.32);
+  const statHeaderIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.35 : 0.45);
+  const statActionBackground = hexToRgba(colors.sky, eff === 'light' ? 0.12 : 0.28);
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -3822,20 +3828,30 @@ export default function App() {
         </Panel>
 
         {/* Activity Snapshot */}
-        <Panel
-          colors={colors}
-          style={[
-            styles.statPanel,
-            { backgroundColor: 'transparent', borderColor: statPanelBorderColor },
-          ]}
-        >
-          <View style={styles.statSectionHeader}>
-            <Text style={[styles.statSectionTitle, { color: statPrimaryColor }]}>ACTIVITY</Text>
-            <Text style={[styles.statSectionSubtitle, { color: statHelperColor }]}>LIVE SNAPSHOT</Text>
+        <Panel colors={colors} style={[styles.statPanel, { borderColor: statPanelBorderColor }]}>
+          <View style={styles.statHeaderRow}>
+            <View style={styles.statHeaderInfo}>
+              <View
+                style={[
+                  styles.statHeaderIcon,
+                  { backgroundColor: statHeaderIconBackground, borderColor: statHeaderIconBorder },
+                ]}
+              >
+                <MaterialCommunityIcons name="pulse" size={16} color={colors.sky} />
+              </View>
+              <View>
+                <Text style={[styles.statHeaderTitle, { color: statPrimaryColor }]}>Activity</Text>
+                <Text style={[styles.statHeaderSubtitle, { color: statHelperColor }]}>Live snapshot</Text>
+              </View>
+            </View>
+            <View style={styles.statHeaderMeta}>
+              <MaterialCommunityIcons name="calendar-clock" size={16} color={statLabelColor} />
+              <Text style={[styles.statHeaderMetaText, { color: statLabelColor }]}>This week</Text>
+            </View>
           </View>
           <View style={[styles.statGrid, { borderColor: statDividerColor }]}>
             {statsSnapshot.map((stat, index) => {
-              const itemStyles = [styles.statItem];
+              const itemStyles = [styles.statItem, { backgroundColor: statItemBackground }];
               if (index >= 2) {
                 itemStyles.push(styles.statItemTopBorder, { borderTopColor: statDividerColor });
               }
@@ -3860,7 +3876,7 @@ export default function App() {
               styles.logApplicationButton,
               {
                 borderColor: statBorderColor,
-                backgroundColor: hexToRgba(statPrimaryColor, eff === 'light' ? 0.04 : 0.16),
+                backgroundColor: statActionBackground,
               },
             ]}
             accessibilityLabel="Log a new job application"
@@ -3869,9 +3885,9 @@ export default function App() {
               <MaterialCommunityIcons
                 name="file-document-edit-outline"
                 size={16}
-                color={statPrimaryColor}
+                color={colors.sky}
               />
-              <Text style={[styles.logApplicationText, { color: statPrimaryColor }]}>LOG APPLICATION</Text>
+              <Text style={[styles.logApplicationText, { color: colors.sky }]}>Log application</Text>
             </View>
           </TouchableOpacity>
         </Panel>
@@ -5029,39 +5045,59 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statPanel: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+    padding: 20,
   },
-  statSectionHeader: {
+  statHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 12,
   },
-  statSectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+  statHeaderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  statSectionSubtitle: {
-    fontSize: 10,
+  statHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  statHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  statHeaderSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  statHeaderMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 'auto',
+  },
+  statHeaderMetaText: {
+    fontSize: 13,
     fontWeight: '600',
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
   },
   statGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 20,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   statItem: {
     width: '50%',
     paddingVertical: 18,
-    paddingHorizontal: 14,
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    alignItems: 'flex-start',
     justifyContent: 'center',
     gap: 6,
   },
@@ -5072,24 +5108,22 @@ const styles = StyleSheet.create({
     borderLeftWidth: StyleSheet.hairlineWidth,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    letterSpacing: 0.4,
-    textAlign: 'center',
+    letterSpacing: 0.2,
+    textAlign: 'left',
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    textAlign: 'left',
   },
   statHelper: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+    textAlign: 'left',
   },
   logApplicationButton: {
     borderRadius: 20,
@@ -5105,10 +5139,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logApplicationText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    letterSpacing: 0.2,
   },
   appsToolbar: {
     flexDirection: 'row',
