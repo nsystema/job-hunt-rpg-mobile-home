@@ -159,6 +159,22 @@ const formatGoldValue = (value) =>
 
 const formatGold = (value) => `${formatGoldValue(value)}g`;
 
+const formatEffectDuration = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return null;
+  }
+  if (seconds >= 3600) {
+    const hours = Math.round(seconds / 3600);
+    return `${hours} hour${hours === 1 ? '' : 's'}`;
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes >= 1) {
+    return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+  }
+  const rounded = Math.round(seconds);
+  return `${rounded} second${rounded === 1 ? '' : 's'}`;
+};
+
 const createChestArt = ({
   baseGradient,
   lidGradient,
@@ -2285,6 +2301,7 @@ export default function App() {
   const [gold, setGold] = useState(260);
   const [streak, setStreak] = useState(0);
   const [activeEffects, setActiveEffects] = useState([]);
+  const [effectWarnings, setEffectWarnings] = useState([]);
   const [sprayDebuff, setSprayDebuff] = useState(null);
   const [focus, setFocus] = useState(FOCUS_BASELINE);
   const [applications, setApplications] = useState([]);
@@ -2313,6 +2330,8 @@ export default function App() {
 
   const lowQualityStreakRef = useRef(0);
   const openResultTimer = useRef(null);
+  const effectWarningTimers = useRef(new Map());
+  const announcedEffectKeysRef = useRef(new Set());
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -2335,6 +2354,75 @@ export default function App() {
       }),
     );
   }, [manualLogs, applications, currentTime]);
+
+  const pushEffectWarnings = useCallback(
+    (messages = []) => {
+      if (!Array.isArray(messages) || messages.length === 0) {
+        return;
+      }
+      setEffectWarnings((current) => [...current, ...messages]);
+      messages.forEach((message) => {
+        if (!message?.id) {
+          return;
+        }
+        const timeout = setTimeout(() => {
+          setEffectWarnings((current) => current.filter((item) => item.id !== message.id));
+          effectWarningTimers.current.delete(message.id);
+        }, 6500);
+        effectWarningTimers.current.set(message.id, timeout);
+      });
+    },
+    [setEffectWarnings],
+  );
+
+  const handleDismissEffectWarning = useCallback(
+    (id) => {
+      if (!id) {
+        return;
+      }
+      setEffectWarnings((current) => current.filter((item) => item.id !== id));
+      const existing = effectWarningTimers.current.get(id);
+      if (existing) {
+        clearTimeout(existing);
+        effectWarningTimers.current.delete(id);
+      }
+    },
+    [setEffectWarnings],
+  );
+
+  const createEffectWarningEntry = useCallback((effect, key) => {
+    if (!effect) {
+      return null;
+    }
+    const type = effect.type === 'debuff' ? 'debuff' : 'buff';
+    const baseKey =
+      key ||
+      (effect.id != null
+        ? `effect-${effect.id}`
+        : effect.name
+        ? `effect-${String(effect.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+        : 'effect');
+    const uniqueId = `${baseKey}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const description = typeof effect.description === 'string' && effect.description.trim().length
+      ? effect.description.trim()
+      : type === 'debuff'
+      ? 'A penalty is now active.'
+      : 'A boost is now active.';
+    const duration = Number.isFinite(effect.duration) && effect.duration > 0 ? effect.duration : null;
+    return {
+      id: uniqueId,
+      type,
+      name:
+        typeof effect.name === 'string' && effect.name.trim().length
+          ? effect.name.trim()
+          : type === 'debuff'
+          ? 'Penalty active'
+          : 'Boost active',
+      description,
+      duration,
+      icon: effect.icon,
+    };
+  }, []);
 
   const hasTimedEffects = useMemo(
     () => activeEffects.some((effect) => effect.expiresAt),
@@ -2387,25 +2475,80 @@ export default function App() {
 
   const sprayMultiplier = sprayActive ? 0.5 : 1;
 
-  const shopEffects = useMemo(() => {
+  const sprayEffectDetails = useMemo(() => {
     if (!sprayActive) {
+      return null;
+    }
+    const expiresAt =
+      sprayDebuff?.expiresAt ??
+      (sprayDebuff?.activatedAt ? sprayDebuff.activatedAt + SPRAY_DEBUFF_DURATION_MS : undefined);
+    return {
+      id: 'spray-and-pray',
+      name: 'Spray and Pray',
+      icon: 'spray-bottle',
+      description: 'XP and gold from applications are halved for six hours.',
+      expiresAt,
+      duration: SPRAY_DEBUFF_DURATION_SECONDS,
+      type: 'debuff',
+    };
+  }, [sprayActive, sprayDebuff]);
+
+  const shopEffects = useMemo(() => {
+    if (!sprayEffectDetails) {
       return activeEffects;
     }
-    const expiresAt = sprayDebuff?.expiresAt
-      ?? (sprayDebuff?.activatedAt ? sprayDebuff.activatedAt + SPRAY_DEBUFF_DURATION_MS : undefined);
-    return [
-      {
-        id: 'spray-and-pray',
-        name: 'Spray and Pray',
-        icon: 'spray-bottle',
-        description: 'XP and gold from applications are halved for six hours.',
-        expiresAt,
-        duration: SPRAY_DEBUFF_DURATION_SECONDS,
-        type: 'debuff',
-      },
-      ...activeEffects,
-    ];
-  }, [sprayActive, sprayDebuff, activeEffects]);
+    return [sprayEffectDetails, ...activeEffects];
+  }, [sprayEffectDetails, activeEffects]);
+
+  useEffect(() => {
+    const previous = announcedEffectKeysRef.current;
+    const next = new Set();
+    const pending = [];
+
+    const getKey = (effect, fallback) => {
+      if (!effect) {
+        return fallback;
+      }
+      const base =
+        effect.id != null
+          ? `effect-${effect.id}`
+          : effect.name
+          ? `effect-${String(effect.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+          : fallback;
+      return effect.expiresAt ? `${base}-${effect.expiresAt}` : base;
+    };
+
+    activeEffects.forEach((effect) => {
+      if (!effect) {
+        return;
+      }
+      const key = getKey(effect, 'effect');
+      next.add(key);
+      if (!previous.has(key)) {
+        const entry = createEffectWarningEntry(effect, key);
+        if (entry) {
+          pending.push(entry);
+        }
+      }
+    });
+
+    if (sprayEffectDetails) {
+      const sprayKey = getKey(sprayEffectDetails, 'spray');
+      next.add(sprayKey);
+      if (!previous.has(sprayKey)) {
+        const entry = createEffectWarningEntry(sprayEffectDetails, sprayKey);
+        if (entry) {
+          pending.push(entry);
+        }
+      }
+    }
+
+    announcedEffectKeysRef.current = next;
+
+    if (pending.length) {
+      pushEffectWarnings(pending);
+    }
+  }, [activeEffects, sprayEffectDetails, pushEffectWarnings, createEffectWarningEntry]);
 
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25;
@@ -3105,6 +3248,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    return () => {
+      effectWarningTimers.current.forEach((timeout) => clearTimeout(timeout));
+      effectWarningTimers.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
     if (focusedChestId != null && !chests.some((item) => item.id === focusedChestId)) {
       setFocusedChestId(null);
     }
@@ -3131,12 +3281,97 @@ export default function App() {
             <Text style={[styles.paletteText, { color: colors.text }]}>{pal.name}</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.headerRight}>
           <StatBadge icon="fire" count={streak} colors={colors} />
           <GoldPill colors={colors}>{gold}</GoldPill>
         </View>
       </View>
+
+      {effectWarnings.length > 0 ? (
+        <View style={styles.effectWarningsContainer}>
+          {effectWarnings.map((warning, index) => {
+            const gradientColors =
+              warning.type === 'debuff'
+                ? [hexToRgba(colors.rose, 0.28), hexToRgba(colors.amber, 0.22)]
+                : [hexToRgba(colors.sky, 0.28), hexToRgba(colors.emerald, 0.24)];
+            const borderColor =
+              warning.type === 'debuff'
+                ? hexToRgba(colors.rose, eff === 'light' ? 0.5 : 0.62)
+                : hexToRgba(colors.sky, eff === 'light' ? 0.5 : 0.64);
+            const titleColor = eff === 'light' ? '#0f172a' : colors.text;
+            const labelColor = hexToRgba(colors.text, eff === 'light' ? 0.6 : 0.72);
+            const descriptionColor = hexToRgba(colors.text, eff === 'light' ? 0.78 : 0.9);
+            const metaColor = hexToRgba(colors.text, eff === 'light' ? 0.68 : 0.82);
+            const iconBackground = hexToRgba(colors.text, eff === 'light' ? 0.12 : 0.28);
+            const iconBorder = hexToRgba(colors.text, eff === 'light' ? 0.16 : 0.34);
+            const iconColor = eff === 'light' ? '#0f172a' : colors.text;
+            const closeColor = hexToRgba(colors.text, eff === 'light' ? 0.5 : 0.7);
+            const durationLabel = warning.duration ? formatEffectDuration(warning.duration) : null;
+            const iconName = warning.icon || (warning.type === 'debuff' ? 'alert-octagon-outline' : 'flash-outline');
+
+            return (
+              <View
+                key={warning.id}
+                style={[
+                  styles.effectWarningItem,
+                  index > 0 && styles.effectWarningItemSpacing,
+                  eff === 'light' ? styles.effectWarningShadowLight : styles.effectWarningShadowDark,
+                ]}
+              >
+                <TouchableOpacity
+                  onPress={() => handleDismissEffectWarning(warning.id)}
+                  activeOpacity={0.88}
+                  style={styles.effectWarningTouchable}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${warning.name} ${warning.type === 'debuff' ? 'penalty active' : 'boost active'}`}
+                >
+                  <LinearGradient
+                    colors={gradientColors}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.effectWarningCard, { borderColor }]}
+                  >
+                    <View style={styles.effectWarningTopRow}>
+                      <View
+                        style={[
+                          styles.effectWarningIconShell,
+                          { backgroundColor: iconBackground, borderColor: iconBorder },
+                        ]}
+                      >
+                        <MaterialCommunityIcons name={iconName} size={20} color={iconColor} />
+                      </View>
+                      <View style={styles.effectWarningTextHeader}>
+                        <Text style={[styles.effectWarningLabel, { color: labelColor }]}>
+                          {warning.type === 'debuff' ? 'Penalty active' : 'Boost active'}
+                        </Text>
+                        <Text style={[styles.effectWarningTitle, { color: titleColor }]}>{warning.name}</Text>
+                      </View>
+                      <MaterialCommunityIcons
+                        name="close"
+                        size={16}
+                        color={closeColor}
+                        style={styles.effectWarningCloseIcon}
+                      />
+                    </View>
+                    {warning.description ? (
+                      <Text style={[styles.effectWarningDescription, { color: descriptionColor }]}>
+                        {warning.description}
+                      </Text>
+                    ) : null}
+                    {durationLabel ? (
+                      <View style={styles.effectWarningMetaRow}>
+                        <MaterialCommunityIcons name="clock-outline" size={13} color={metaColor} />
+                        <Text style={[styles.effectWarningMetaText, { color: metaColor }]}>Lasts {durationLabel}</Text>
+                      </View>
+                    ) : null}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
 
       {activeTab === 'Home' && (
         <ScrollView
@@ -4710,6 +4945,84 @@ const styles = StyleSheet.create({
     color: 'rgba(148,163,184,.95)',
     textAlign: 'center',
     marginBottom: 20,
+  },
+  effectWarningsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  effectWarningItem: {
+    borderRadius: 18,
+  },
+  effectWarningItemSpacing: {
+    marginTop: 12,
+  },
+  effectWarningTouchable: {
+    borderRadius: 18,
+  },
+  effectWarningCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  effectWarningTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  effectWarningIconShell: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  effectWarningTextHeader: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  effectWarningLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  effectWarningTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  effectWarningDescription: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 10,
+  },
+  effectWarningMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  effectWarningMetaText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  effectWarningCloseIcon: {
+    marginLeft: 12,
+  },
+  effectWarningShadowLight: {
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
+  },
+  effectWarningShadowDark: {
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
   },
   appCard: {
     padding: 16,
