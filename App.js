@@ -84,6 +84,9 @@ const SHOP_CATALOG_TABS = [
   { key: 'premium', label: 'Premium', icon: 'crown-outline' },
 ];
 
+const SPRAY_DEBUFF_DURATION_MS = 6 * 60 * 60 * 1000;
+const SPRAY_DEBUFF_DURATION_SECONDS = SPRAY_DEBUFF_DURATION_MS / 1000;
+
 const STATUS_META = {
   Applied: { icon: 'file-document-outline', tint: 'sky' },
   'Applied with referral': { icon: 'account-star-outline', tint: 'sky' },
@@ -945,7 +948,7 @@ const Panel = ({ children, colors, style = {} }) => (
   </View>
 );
 
-const EffectTimerRing = ({ progress, colors, eff, size = 64, children }) => {
+const EffectTimerRing = ({ progress, colors, eff, size = 64, children, gradientColors }) => {
   const strokeWidth = Math.max(4, size * 0.14);
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -953,15 +956,21 @@ const EffectTimerRing = ({ progress, colors, eff, size = 64, children }) => {
   const normalized = progress == null ? 1 : Math.max(0, Math.min(1, progress));
   const offset = circumference * (1 - normalized);
   const innerSize = size - strokeWidth * 1.6;
-  const trackColor = hexToRgba(colors.text, eff === 'light' ? 0.16 : 0.4);
+  const gradientPair =
+    Array.isArray(gradientColors) && gradientColors.length >= 2
+      ? gradientColors
+      : [colors.sky, colors.emerald];
+  const [gradientStart, gradientEnd] = gradientPair;
+  const trackBase = Array.isArray(gradientColors) ? gradientStart : colors.text;
+  const trackColor = hexToRgba(trackBase, eff === 'light' ? 0.16 : 0.4);
 
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size}>
         <Defs>
           <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor={colors.sky} stopOpacity="1" />
-            <Stop offset="100%" stopColor={colors.emerald} stopOpacity="1" />
+            <Stop offset="0%" stopColor={gradientStart} stopOpacity="1" />
+            <Stop offset="100%" stopColor={gradientEnd} stopOpacity="1" />
           </SvgLinearGradient>
         </Defs>
         <Circle
@@ -1293,7 +1302,7 @@ const ShopScreen = ({
               <View style={styles.shopSection}>
                 <View style={styles.shopSectionHeader}>
                   <Text style={[styles.shopSectionEyebrow, { color: hexToRgba(colors.text, 0.55) }]}>Active effects</Text>
-                  <Text style={[styles.shopSectionTitle, { color: colors.text }]}>Track your current boosts in real time.</Text>
+                  <Text style={[styles.shopSectionTitle, { color: colors.text }]}>Track your current boosts and penalties in real time.</Text>
                 </View>
                 {effects.length === 0 ? (
                   <View
@@ -1305,9 +1314,9 @@ const ShopScreen = ({
                   >
                     <View style={styles.shopEmptyHeader}>
                       <MaterialCommunityIcons name="auto-fix" size={18} color={colors.sky} />
-                      <Text style={[styles.shopEmptyTitle, { color: colors.text }]}>No active boosts yet</Text>
+                      <Text style={[styles.shopEmptyTitle, { color: colors.text }]}>No active effects yet</Text>
                     </View>
-                    <Text style={[styles.shopEmptyDescription, { color: hexToRgba(colors.text, 0.65) }]}>Activate a boost to double down on XP or gold. Your effects will appear here with live timers once purchased.</Text>
+                    <Text style={[styles.shopEmptyDescription, { color: hexToRgba(colors.text, 0.65) }]}>Activate a boost to double down on XP or gold. Your effects — including any penalties — will appear here with live timers once purchased.</Text>
                     <TouchableOpacity
                       onPress={() => {
                         setMainTab('catalogue');
@@ -1331,49 +1340,103 @@ const ShopScreen = ({
                       const remaining = effect.expiresAt
                         ? Math.max(0, Math.floor((effect.expiresAt - now) / 1000))
                         : null;
-                      const progress = effect.duration && remaining != null
-                        ? Math.max(0, Math.min(1, remaining / effect.duration))
-                        : null;
+                      const progress =
+                        effect.duration && remaining != null
+                          ? Math.max(0, Math.min(1, remaining / effect.duration))
+                          : null;
+                      const isDebuff = effect.type === 'debuff';
+                      const cardBackgroundColor = isDebuff
+                        ? hexToRgba(colors.rose, eff === 'light' ? 0.12 : 0.2)
+                        : filledSurface;
+                      const cardBorderColor = isDebuff
+                        ? hexToRgba(colors.rose, eff === 'light' ? 0.45 : 0.58)
+                        : colors.surfaceBorder;
+                      const iconShellStyle = isDebuff
+                        ? {
+                            borderColor: hexToRgba(colors.rose, eff === 'light' ? 0.45 : 0.6),
+                            backgroundColor: hexToRgba(colors.rose, eff === 'light' ? 0.24 : 0.34),
+                          }
+                        : { borderColor: colors.surfaceBorder, backgroundColor: colors.surface };
+                      const iconGradient = isDebuff
+                        ? [
+                            hexToRgba(colors.rose, eff === 'light' ? 0.85 : 0.7),
+                            hexToRgba(colors.rose, eff === 'light' ? 0.62 : 0.5),
+                          ]
+                        : [hexToRgba(colors.surface, 0.98), hexToRgba(colors.chipBg, 0.85)];
+                      const iconColor = isDebuff ? '#fff' : '#0f172a';
+                      const timerColor = isDebuff ? hexToRgba(colors.rose, 0.75) : hexToRgba(colors.text, 0.6);
+                      const passiveColor = isDebuff ? hexToRgba(colors.rose, 0.75) : hexToRgba(colors.text, 0.6);
+                      const descriptionColor = isDebuff
+                        ? hexToRgba(colors.rose, 0.78)
+                        : hexToRgba(colors.text, 0.65);
+                      const nameColor = isDebuff ? colors.rose : colors.text;
+
                       return (
                         <View
                           key={effect.id}
                           style={[
                             styles.shopActiveCard,
-                            { backgroundColor: filledSurface, borderColor: colors.surfaceBorder },
+                            { backgroundColor: cardBackgroundColor, borderColor: cardBorderColor },
+                            isDebuff && styles.shopActiveCardDebuff,
                             cardShadow,
                           ]}
                         >
-                          <EffectTimerRing progress={progress} colors={colors} eff={eff}>
-                            <View
-                              style={[
-                                styles.shopActiveIconShell,
-                                { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
-                              ]}
-                            >
+                          <EffectTimerRing
+                            progress={progress}
+                            colors={colors}
+                            eff={eff}
+                            gradientColors={isDebuff ? [colors.rose, colors.lilac] : undefined}
+                          >
+                            <View style={[styles.shopActiveIconShell, iconShellStyle]}>
                               <LinearGradient
-                                colors={[hexToRgba(colors.surface, 0.98), hexToRgba(colors.chipBg, 0.85)]}
+                                colors={iconGradient}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 style={styles.shopActiveIconInner}
                               >
-                                <MaterialCommunityIcons name={effect.icon || 'flash-outline'} size={22} color="#0f172a" />
+                                <MaterialCommunityIcons
+                                  name={effect.icon || (isDebuff ? 'alert-octagram-outline' : 'flash-outline')}
+                                  size={22}
+                                  color={iconColor}
+                                />
                               </LinearGradient>
                             </View>
                           </EffectTimerRing>
                           <View style={styles.shopActiveInfo}>
-                            <Text style={[styles.shopActiveName, { color: colors.text }]}>{effect.name}</Text>
+                            <View style={styles.shopActiveNameRow}>
+                              <Text style={[styles.shopActiveName, { color: nameColor }]}>{effect.name}</Text>
+                              {isDebuff ? (
+                                <View
+                                  style={[
+                                    styles.shopActiveBadge,
+                                    {
+                                      backgroundColor: hexToRgba(colors.rose, eff === 'light' ? 0.18 : 0.34),
+                                      borderColor: hexToRgba(colors.rose, eff === 'light' ? 0.38 : 0.55),
+                                    },
+                                  ]}
+                                >
+                                  <Text style={[styles.shopActiveBadgeText, { color: colors.rose }]}>Debuff</Text>
+                                </View>
+                              ) : null}
+                            </View>
                             {remaining != null && effect.duration ? (
                               <View style={styles.shopActiveTimerRow}>
-                                <MaterialCommunityIcons name="clock-time-four-outline" size={14} color={hexToRgba(colors.text, 0.6)} />
-                                <Text style={[styles.shopActiveTimerText, { color: hexToRgba(colors.text, 0.6) }]}>
+                                <MaterialCommunityIcons
+                                  name="clock-time-four-outline"
+                                  size={14}
+                                  color={timerColor}
+                                />
+                                <Text style={[styles.shopActiveTimerText, { color: timerColor }]}>
                                   {formatTime(remaining)}
                                 </Text>
                               </View>
                             ) : (
-                              <Text style={[styles.shopActivePassive, { color: hexToRgba(colors.text, 0.6) }]}>Passive boost</Text>
+                              <Text style={[styles.shopActivePassive, { color: passiveColor }]}>
+                                {isDebuff ? 'Active penalty' : 'Passive boost'}
+                              </Text>
                             )}
                             <Text
-                              style={[styles.shopActiveDescription, { color: hexToRgba(colors.text, 0.65) }]}
+                              style={[styles.shopActiveDescription, { color: descriptionColor }]}
                               numberOfLines={2}
                             >
                               {effect.description}
@@ -2002,6 +2065,7 @@ const AppFormModal = ({
   onSubmit,
   colors,
   effects = [],
+  spray = 1,
   defaults,
   title = 'Log Application',
   submitLabel = 'Add Application',
@@ -2032,8 +2096,8 @@ const AppFormModal = ({
   const { company, role, type, note, cvTailored, motivation, favorite, status, platform, country, city } = form;
 
   const { xp: xpReward, gold: goldReward } = useMemo(
-    () => computeRewards({ type, cvTailored, motivation }, { effects }),
-    [type, cvTailored, motivation, effects],
+    () => computeRewards({ type, cvTailored, motivation }, { effects, spray }),
+    [type, cvTailored, motivation, effects, spray],
   );
   const cost = useMemo(() => focusCost(type), [type]);
   const cityOptions = useMemo(() => (country ? getCitiesForCountry(country) : []), [country]);
@@ -2243,6 +2307,7 @@ export default function App() {
   const [gold, setGold] = useState(260);
   const [streak, setStreak] = useState(0);
   const [activeEffects, setActiveEffects] = useState([]);
+  const [sprayDebuff, setSprayDebuff] = useState(null);
   const [focus, setFocus] = useState(FOCUS_BASELINE);
   const [applications, setApplications] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -2267,6 +2332,7 @@ export default function App() {
   const [shopMainTab, setShopMainTab] = useState('catalogue');
   const [shopCategoryTab, setShopCategoryTab] = useState('effects');
 
+  const lowQualityStreakRef = useRef(0);
   const openResultTimer = useRef(null);
 
   useEffect(() => {
@@ -2305,6 +2371,48 @@ export default function App() {
     return () => clearInterval(interval);
   }, [hasTimedEffects]);
 
+  const sprayActive = useMemo(() => {
+    if (!sprayDebuff) {
+      return false;
+    }
+    const { expiresAt } = sprayDebuff;
+    if (!expiresAt) {
+      return true;
+    }
+    return expiresAt > currentTime;
+  }, [sprayDebuff, currentTime]);
+
+  useEffect(() => {
+    if (!sprayDebuff) {
+      return;
+    }
+    if (sprayDebuff.expiresAt && sprayDebuff.expiresAt <= currentTime) {
+      setSprayDebuff(null);
+    }
+  }, [sprayDebuff, currentTime]);
+
+  const sprayMultiplier = sprayActive ? 0.5 : 1;
+
+  const shopEffects = useMemo(() => {
+    if (!sprayActive) {
+      return activeEffects;
+    }
+    const expiresAt = sprayDebuff?.expiresAt
+      ?? (sprayDebuff?.activatedAt ? sprayDebuff.activatedAt + SPRAY_DEBUFF_DURATION_MS : undefined);
+    return [
+      {
+        id: 'spray-and-pray',
+        name: 'Spray and Pray',
+        icon: 'spray-bottle',
+        description: 'XP and gold from applications are halved for six hours.',
+        expiresAt,
+        duration: SPRAY_DEBUFF_DURATION_SECONDS,
+        type: 'debuff',
+      },
+      ...activeEffects,
+    ];
+  }, [sprayActive, sprayDebuff, activeEffects]);
+
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25;
   const into = weighted % step;
@@ -2316,6 +2424,20 @@ export default function App() {
       setXp((value) => value + base * multiplier);
     },
     [activeEffects]
+  );
+
+  const handleManualLog = useCallback(
+    (key, payload = {}) => {
+      if (!key) {
+        return;
+      }
+      setManualLogs((prev) => {
+        const entries = Array.isArray(prev[key]) ? [...prev[key]] : [];
+        entries.push({ id: Math.random().toString(36).slice(2), timestamp: Date.now(), ...payload });
+        return { ...prev, [key]: entries };
+      });
+    },
+    []
   );
 
   const addApplication = useCallback(
@@ -2331,7 +2453,10 @@ export default function App() {
       }
 
       const id = Math.random().toString(36).slice(2, 9);
-      const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(payload, { effects: activeEffects });
+      const { xp: xpReward, gold: goldReward, qs, au } = computeRewards(payload, {
+        effects: activeEffects,
+        spray: sprayMultiplier,
+      });
       const app = { id, ...payload, qs, au };
 
       setApplications((list) => [app, ...list]);
@@ -2340,9 +2465,28 @@ export default function App() {
       gainXp(xpReward, false);
       setGold((value) => value + goldReward);
       setFocus((value) => Math.max(0, value - cost));
+      let shouldTriggerSpray = false;
+      if (sprayActive) {
+        lowQualityStreakRef.current = 0;
+      } else if (qs < 2) {
+        const next = lowQualityStreakRef.current + 1;
+        if (next >= 5) {
+          shouldTriggerSpray = true;
+          lowQualityStreakRef.current = 0;
+        } else {
+          lowQualityStreakRef.current = next;
+        }
+      } else {
+        lowQualityStreakRef.current = 0;
+      }
+      if (shouldTriggerSpray) {
+        const activatedAt = Date.now();
+        setSprayDebuff({ activatedAt, expiresAt: activatedAt + SPRAY_DEBUFF_DURATION_MS });
+        handleManualLog('sprayAndPray', { timestamp: activatedAt, streak: 5 });
+      }
       return true;
     },
-    [focus, activeEffects, gainXp]
+    [focus, activeEffects, gainXp, sprayMultiplier, sprayActive, handleManualLog]
   );
 
   const handleLogPress = useCallback(() => {
@@ -2386,20 +2530,6 @@ export default function App() {
   }, [gainXp]);
 
   const handlePrestige = useCallback(() => {}, []);
-
-  const handleManualLog = useCallback(
-    (key, payload = {}) => {
-      if (!key) {
-        return;
-      }
-      setManualLogs((prev) => {
-        const entries = Array.isArray(prev[key]) ? [...prev[key]] : [];
-        entries.push({ id: Math.random().toString(36).slice(2), timestamp: Date.now(), ...payload });
-        return { ...prev, [key]: entries };
-      });
-    },
-    [],
-  );
 
   const handleQuestAction = useCallback(
     (action, quest) => {
@@ -2573,7 +2703,7 @@ export default function App() {
             return app;
           }
           const next = { ...app, ...fields };
-          const { qs, au } = computeRewards(next, { effects: activeEffects });
+          const { qs, au } = computeRewards(next, { effects: activeEffects, spray: sprayMultiplier });
           setWeighted((value) => value - (app.au || 0) + au);
           return { ...next, qs, au };
         }),
@@ -2581,7 +2711,7 @@ export default function App() {
       setEditingApp(null);
       return true;
     },
-    [editingApp, activeEffects],
+    [editingApp, activeEffects, sprayMultiplier],
   );
 
   const questMetrics = useMemo(
@@ -2907,6 +3037,13 @@ export default function App() {
         }
         if (reward.effect) {
           applyRewardEffect(reward.effect);
+        }
+        if (reward.cleanse) {
+          const cleanseLabel = String(reward.cleanse).toLowerCase();
+          if (cleanseLabel.includes('spray and pray')) {
+            setSprayDebuff(null);
+            lowQualityStreakRef.current = 0;
+          }
         }
         return next;
       });
@@ -3708,7 +3845,7 @@ export default function App() {
           eff={eff}
           gold={gold}
           setGold={setGold}
-          effects={activeEffects}
+          effects={shopEffects}
           setEffects={setActiveEffects}
           premiumProgress={premiumProgress}
           setPremiumProgress={setPremiumProgress}
@@ -3725,6 +3862,7 @@ export default function App() {
         onSubmit={addApplication}
         colors={colors}
         effects={activeEffects}
+        spray={sprayMultiplier}
         statusOptions={LOG_STATUS_OPTIONS}
       />
       <AppFormModal
@@ -3733,6 +3871,7 @@ export default function App() {
         onSubmit={handleEditSubmit}
         colors={colors}
         effects={activeEffects}
+        spray={sprayMultiplier}
         defaults={editingApp || undefined}
         title="Edit application"
         submitLabel="Save"
@@ -5357,6 +5496,9 @@ const styles = StyleSheet.create({
     maxWidth: '48%',
     minWidth: 150,
   },
+  shopActiveCardDebuff: {
+    borderWidth: 1.25,
+  },
   shopActiveIconShell: {
     width: 56,
     height: 56,
@@ -5376,9 +5518,26 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 6,
   },
+  shopActiveNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   shopActiveName: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  shopActiveBadge: {
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  shopActiveBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   shopActiveTimerRow: {
     flexDirection: 'row',
