@@ -1,5 +1,5 @@
 // Leveling mechanics
-export const xpl = (L) => Math.max(12, Math.round(20 + 0.82 * (L - 1)));
+export const xpl = (L) => Math.round(214.2 + 8.4 * (L - 1));
 
 export function lvl(x) {
   let l = 1, r = x;

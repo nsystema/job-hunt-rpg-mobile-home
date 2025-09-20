@@ -466,10 +466,10 @@ const CHEST_ART = {
 };
 
 const RARITIES = [
-  { key: 'Common', weight: 0.52, gold: [4, 12] },
-  { key: 'Rare', weight: 0.3, gold: [8, 18] },
-  { key: 'Epic', weight: 0.14, gold: [14, 28] },
-  { key: 'Legendary', weight: 0.04, gold: [24, 48] },
+  { key: 'Common', weight: 0.52, level100Weight: 0.3, gold: [8, 24] },
+  { key: 'Rare', weight: 0.3, level100Weight: 0.35, gold: [16, 36] },
+  { key: 'Epic', weight: 0.14, level100Weight: 0.25, gold: [28, 56] },
+  { key: 'Legendary', weight: 0.04, level100Weight: 0.1, gold: [48, 96] },
 ];
 
 const RARITY_DETAILS = {
@@ -525,6 +525,52 @@ const createChestFromRarity = (rarityInput) => {
     rarity: match.key,
     gold: Array.isArray(match.gold) ? [...match.gold] : match.gold,
   };
+};
+
+const CHEST_LEVEL_CAP = 100;
+
+const clampDropLevel = (level) => {
+  if (!Number.isFinite(level)) {
+    return 1;
+  }
+  return Math.min(Math.max(Math.floor(level), 1), CHEST_LEVEL_CAP);
+};
+
+const getChestWeightsForLevel = (level) => {
+  const clampedLevel = clampDropLevel(level);
+  const progress = CHEST_LEVEL_CAP <= 1 ? 1 : (clampedLevel - 1) / (CHEST_LEVEL_CAP - 1);
+  const weights = RARITIES.map((rarity) => {
+    const start = rarity.weight ?? 0;
+    const end = rarity.level100Weight ?? start;
+    const value = start + (end - start) * progress;
+    return { key: rarity.key, weight: value };
+  });
+  const total = weights.reduce((sum, entry) => sum + entry.weight, 0);
+  if (total <= 0) {
+    return weights.map((entry) => ({ ...entry, weight: 0 }));
+  }
+  return weights.map((entry) => ({ ...entry, weight: entry.weight / total }));
+};
+
+const pickChestRarityForLevel = (level) => {
+  const weights = getChestWeightsForLevel(level);
+  if (!weights.length) {
+    return null;
+  }
+  const roll = Math.random();
+  let cumulative = 0;
+  for (const entry of weights) {
+    cumulative += entry.weight;
+    if (roll < cumulative) {
+      return entry.key;
+    }
+  }
+  return weights[weights.length - 1].key;
+};
+
+const createLevelUpChest = (level) => {
+  const rarityKey = pickChestRarityForLevel(level);
+  return rarityKey ? createChestFromRarity(rarityKey) : null;
 };
 
 const rand = ([min, max]) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -2405,6 +2451,7 @@ export default function App() {
   const announcedEffectKeysRef = useRef(new Set());
   const eventSeenRef = useRef(new Map());
   const previousEventStatesRef = useRef({});
+  const previousLevelRef = useRef(null);
 
   const updateCurrentTime = useCallback(
     (hint) => {
@@ -2763,6 +2810,29 @@ export default function App() {
   const { l, rem, need } = useMemo(() => lvl(xp), [xp]);
   const step = 25;
   const into = weighted % step;
+
+  useEffect(() => {
+    const prevLevel = previousLevelRef.current;
+    if (prevLevel == null) {
+      previousLevelRef.current = l;
+      return;
+    }
+    if (l > prevLevel) {
+      const granted = [];
+      for (let level = prevLevel + 1; level <= l; level += 1) {
+        const chest = createLevelUpChest(level);
+        if (chest) {
+          granted.push(chest);
+        }
+      }
+      if (granted.length) {
+        setChests((prev) => [...prev, ...granted]);
+      }
+    }
+    if (prevLevel !== l) {
+      previousLevelRef.current = l;
+    }
+  }, [l, setChests]);
 
   const gainXp = useCallback(
     (base, applyBuff = true) => {
