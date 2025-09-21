@@ -1,6 +1,8 @@
-# Job Hunt RPG - React Native Mobile App (Expo SDK 53)
+# Jobless - React Native Mobile App (Expo SDK 53)
 
-Job Hunt RPG turns the grind of job hunting into an RPG-style progression loop. Log applications, monitor progress, pursue quests, and open treasure chests to keep motivation high while you search.
+Gamified Job Application Tracker.
+
+Jobless turns the grind of job hunting into an RPG-style progression loop. Log applications, monitor progress, pursue quests, and open treasure chests to keep motivation high while you search.
 
 ## Core Features
 

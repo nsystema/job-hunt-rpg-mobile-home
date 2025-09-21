@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "Job Hunt RPG",
-    "slug": "job-hunt-rpg-mobile",
+    "name": "Jobless",
+    "slug": "jobless",
+    "description": "Gamified Job Application Tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

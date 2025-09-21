@@ -233,7 +233,7 @@ const toTimestamp = (value) => {
   return NaN;
 };
 
-const STORAGE_KEY = 'job-hunt-rpg::state';
+const STORAGE_KEY = 'jobless::state';
 const STORAGE_VERSION = 1;
 
 const parseFiniteNumber = (value) => {
