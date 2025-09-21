@@ -3001,7 +3001,7 @@ export default function App() {
     let earliestTimestamp = Number.POSITIVE_INFINITY;
 
     const pipelineStatuses = new Set(['Applied', 'Applied with referral', 'Interview']);
-    const respondedStatuses = new Set(['Applied with referral', 'Interview']);
+    const respondedStatuses = new Set(['Applied with referral', 'Interview', 'Rejected']);
 
     applications.forEach((app) => {
       const statusKey = app?.status;
@@ -3057,33 +3057,45 @@ export default function App() {
     const statsSnapshot = [
       {
         key: 'today',
-        label: 'Logged Today',
+        label: 'Logged today',
         value: String(todayCount),
+        description: 'Applications added since midnight',
+        icon: 'calendar-check-outline',
       },
       {
         key: 'perDayAverage',
-        label: 'Per day',
+        label: 'Avg per day',
         value: perDayAverage,
+        description: 'Rolling average across tracked days',
+        icon: 'calendar-month-outline',
       },
       {
         key: 'pipeline',
         label: 'Active apps',
         value: String(pipelineCount),
+        description: 'Currently moving through your pipeline',
+        icon: 'briefcase-outline',
       },
       {
         key: 'responseRate',
         label: 'Reply rate',
         value: `${replyRate}%`,
+        description: 'Applications that received any reply',
+        icon: 'email-fast-outline',
       },
       {
         key: 'interviews',
         label: 'Interviews',
         value: String(interviewCount),
+        description: 'Scheduled or completed interviews',
+        icon: 'account-tie-voice',
       },
       {
         key: 'interviewRate',
         label: 'Interview rate',
         value: `${interviewRate}%`,
+        description: 'Share of apps leading to interviews',
+        icon: 'chart-line',
       },
     ];
 
@@ -3105,11 +3117,23 @@ export default function App() {
     return { statsSnapshot, weeklyTrend };
   }, [applications, currentTime]);
   const statPrimaryColor = colors.text;
-  const statLabelColor = 'rgba(148,163,184,.95)';
+  const statValueColor = eff === 'light' ? colors.text : hexToRgba(colors.text, 0.95);
+  const statLabelColor = hexToRgba(colors.text, eff === 'light' ? 0.55 : 0.7);
+  const statDescriptionColor = hexToRgba(colors.text, eff === 'light' ? 0.5 : 0.65);
   const statPanelBorderColor = colors.surfaceBorder;
   const statBorderColor = hexToRgba(colors.sky, eff === 'light' ? 0.4 : 0.6);
-  const statHeaderIconBackground = 'transparent';
-  const statHeaderIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.35 : 0.45);
+  const statHeaderIconBackground = hexToRgba(colors.sky, eff === 'light' ? 0.16 : 0.3);
+  const statHeaderIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.32 : 0.45);
+  const statIconBackground = hexToRgba(colors.sky, eff === 'light' ? 0.16 : 0.26);
+  const statIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.25 : 0.32);
+  const statIconColor = eff === 'light' ? colors.sky : hexToRgba(colors.sky, 0.85);
+  const statCardBackground = eff === 'light' ? hexToRgba(colors.text, 0.035) : hexToRgba(colors.text, 0.22);
+  const statCardBorderColor = hexToRgba(colors.text, eff === 'light' ? 0.08 : 0.26);
+  const statCardShadow = eff === 'light' ? styles.statCardShadowLight : styles.statCardShadowDark;
+  const statTrendNeutralColor = hexToRgba(colors.text, eff === 'light' ? 0.6 : 0.68);
+  const statTrendNeutralBackground = eff === 'light'
+    ? hexToRgba(colors.text, 0.08)
+    : hexToRgba(colors.text, 0.35);
   const trendIconName =
     weeklyTrend.direction === 'up'
       ? 'trending-up'
@@ -3121,20 +3145,21 @@ export default function App() {
       ? colors.emerald
       : weeklyTrend.direction === 'down'
       ? colors.rose
-      : statLabelColor;
+      : statTrendNeutralColor;
   const trendBackground =
     weeklyTrend.direction === 'up'
       ? hexToRgba(colors.emerald, eff === 'light' ? 0.18 : 0.32)
       : weeklyTrend.direction === 'down'
       ? hexToRgba(colors.rose, eff === 'light' ? 0.18 : 0.32)
-      : 'rgba(148,163,184,0.18)';
-  const trendLabel = `${weeklyTrend.percent > 0 ? '+' : ''}${weeklyTrend.percent}% vs last week`;
+      : statTrendNeutralBackground;
+  const trendPercent = Math.abs(weeklyTrend.percent);
+  const trendLabel = `${trendPercent}% vs last week`;
   const trendAccessibilityLabel =
     weeklyTrend.direction === 'up'
-      ? `Total applications increased ${trendLabel}`
+      ? `Total applications increased by ${trendPercent}% compared to last week`
       : weeklyTrend.direction === 'down'
-      ? `Total applications decreased ${trendLabel}`
-      : `Total applications unchanged ${trendLabel}`;
+      ? `Total applications decreased by ${trendPercent}% compared to last week`
+      : 'Total applications were unchanged compared to last week';
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -3914,9 +3939,37 @@ export default function App() {
           </View>
           <View style={styles.statGrid}>
             {statsSnapshot.map((stat) => (
-              <View key={stat.key} style={styles.statItem}>
-                <Text style={[styles.statValue, { color: statLabelColor }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
+              <View
+                key={stat.key}
+                style={[
+                  styles.statItem,
+                  statCardShadow,
+                  { backgroundColor: statCardBackground, borderColor: statCardBorderColor },
+                ]}
+              >
+                <View style={styles.statItemHeader}>
+                  <View
+                    style={[
+                      styles.statIconWrap,
+                      { backgroundColor: statIconBackground, borderColor: statIconBorder },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={stat.icon || 'information-outline'}
+                      size={16}
+                      color={statIconColor}
+                    />
+                  </View>
+                  <Text style={[styles.statLabel, { color: statLabelColor }]} numberOfLines={2}>
+                    {stat.label}
+                  </Text>
+                </View>
+                <Text style={[styles.statValue, { color: statValueColor }]}>{stat.value}</Text>
+                {stat.description ? (
+                  <Text style={[styles.statDescription, { color: statDescriptionColor }]} numberOfLines={3}>
+                    {stat.description}
+                  </Text>
+                ) : null}
               </View>
             ))}
           </View>
@@ -5140,25 +5193,62 @@ const styles = StyleSheet.create({
   },
   statItem: {
     width: '48%',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 12,
+    marginBottom: 12,
+    alignItems: 'flex-start',
+  },
+  statItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    alignSelf: 'stretch',
+  },
+  statIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    marginBottom: 8,
   },
   statValue: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 26,
+    fontWeight: '700',
     letterSpacing: 0.2,
-    textAlign: 'center',
+    textAlign: 'left',
+    lineHeight: 30,
   },
   statLabel: {
-    fontSize: 13,
-    fontWeight: '400',
-    letterSpacing: 0.2,
-    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
+    flex: 1,
+    textAlign: 'left',
+  },
+  statDescription: {
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.2,
+    textAlign: 'left',
+  },
+  statCardShadowLight: {
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  statCardShadowDark: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 6,
   },
   logApplicationButton: {
     borderRadius: 20,
