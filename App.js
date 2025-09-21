@@ -1222,7 +1222,7 @@ const IconButton = ({ onPress, icon, colors, accessibilityLabel }) => (
 const ProgressBar = ({ value, max, fromColor, toColor, colors }) => {
   const percentage = max ? Math.min(100, (value / max) * 100) : 0;
   return (
-    <View style={[styles.progressBarContainer, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.surfaceBorder }]}> 
+    <View style={[styles.progressBarContainer, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.surfaceBorder }]}>
       <LinearGradient
         colors={[fromColor, toColor]}
         start={{ x: 0, y: 0 }}
@@ -1230,6 +1230,45 @@ const ProgressBar = ({ value, max, fromColor, toColor, colors }) => {
         style={[styles.progressBarFill, { width: `${percentage}%` }]}
       />
     </View>
+  );
+};
+
+const ActivityProgressRing = ({ progress = 0, accent, trackColor }) => {
+  const size = 28;
+  const strokeWidth = 4;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const normalized =
+    typeof progress === 'number' && !Number.isNaN(progress)
+      ? Math.max(0, Math.min(1, progress))
+      : 0;
+  const normalizedAccent = accent || '#38bdf8';
+  const normalizedTrack = trackColor || 'rgba(148,163,184,0.3)';
+  const offset = circumference * (1 - normalized);
+
+  return (
+    <Svg width={size} height={size}>
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke={normalizedTrack}
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeLinecap="round"
+      />
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke={normalizedAccent}
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeDasharray={`${circumference} ${circumference}`}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 };
 
@@ -3387,6 +3426,7 @@ export default function App() {
       trackedDays = Math.max(1, Math.floor(diff / dayMs) + 1);
     }
 
+    const perDayAverageRaw = trackedDays > 0 ? totalCount / trackedDays : 0;
     const perDayAverage = formatAverage(totalCount, trackedDays);
     const replyRate = totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0;
     const interviewRate = totalCount > 0 ? Math.round((interviewCount / totalCount) * 100) : 0;
@@ -3396,31 +3436,43 @@ export default function App() {
         key: 'today',
         label: 'Logged Today',
         value: String(todayCount),
+        rawValue: todayCount,
+        type: 'count',
       },
       {
         key: 'perDayAverage',
         label: 'Per day',
         value: perDayAverage,
+        rawValue: perDayAverageRaw,
+        type: 'count',
       },
       {
         key: 'pipeline',
         label: 'Active apps',
         value: String(pipelineCount),
+        rawValue: pipelineCount,
+        type: 'count',
       },
       {
         key: 'responseRate',
         label: 'Reply rate',
         value: `${replyRate}%`,
+        rawValue: replyRate,
+        type: 'percentage',
       },
       {
         key: 'interviews',
         label: 'Interviews',
         value: String(interviewCount),
+        rawValue: interviewCount,
+        type: 'count',
       },
       {
         key: 'interviewRate',
         label: 'Interview rate',
         value: `${interviewRate}%`,
+        rawValue: interviewRate,
+        type: 'percentage',
       },
     ];
 
@@ -3442,11 +3494,14 @@ export default function App() {
     return { statsSnapshot, weeklyTrend };
   }, [applications, currentTime]);
   const statPrimaryColor = colors.text;
-  const statLabelColor = 'rgba(148,163,184,.95)';
+  const statLabelColor = hexToRgba(colors.text, eff === 'light' ? 0.62 : 0.72);
   const statPanelBorderColor = colors.surfaceBorder;
   const statBorderColor = hexToRgba(colors.sky, eff === 'light' ? 0.4 : 0.6);
   const statHeaderIconBackground = 'transparent';
   const statHeaderIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.35 : 0.45);
+  const statValueColor = eff === 'light' ? '#0f172a' : colors.text;
+  const statMutedColor = hexToRgba(colors.text, eff === 'light' ? 0.68 : 0.8);
+  const progressTrackColor = hexToRgba(colors.text, eff === 'light' ? 0.12 : 0.28);
   const trendIconName =
     weeklyTrend.direction === 'up'
       ? 'trending-up'
@@ -3472,6 +3527,48 @@ export default function App() {
       : weeklyTrend.direction === 'down'
       ? `Total applications decreased ${trendLabel}`
       : `Total applications unchanged ${trendLabel}`;
+
+  const statVisuals = useMemo(() => {
+    const isLight = eff === 'light';
+    const makeVisual = (icon, accent, secondary) => {
+      const accentFallback = secondary || accent;
+      return {
+        icon,
+        gradient: [
+          hexToRgba(accent, isLight ? 0.32 : 0.42),
+          hexToRgba(accentFallback, isLight ? 0.18 : 0.3),
+        ],
+        borderColor: hexToRgba(accent, isLight ? 0.48 : 0.6),
+        iconBackground: hexToRgba(accent, isLight ? 0.22 : 0.34),
+        iconBorder: hexToRgba(accent, isLight ? 0.38 : 0.52),
+        iconColor: isLight ? '#0f172a' : colors.text,
+        progressFill: accentFallback,
+      };
+    };
+
+    const fallback = makeVisual('chart-box-outline', colors.sky, colors.emerald);
+
+    return {
+      today: makeVisual('calendar-star', colors.sky, colors.emerald),
+      perDayAverage: makeVisual('clock-outline', colors.lilac, colors.sky),
+      pipeline: makeVisual('chart-timeline-variant', colors.amber, colors.sky),
+      responseRate: makeVisual('email-check-outline', colors.emerald, colors.sky),
+      interviews: makeVisual('account-voice', colors.lilac, colors.emerald),
+      interviewRate: makeVisual('chart-line', colors.rose, colors.amber),
+      default: fallback,
+    };
+  }, [colors, eff]);
+
+  const maxCountValue = useMemo(() => {
+    return statsSnapshot.reduce((max, stat) => {
+      if (!stat || stat.type === 'percentage') {
+        return max;
+      }
+      const numeric = typeof stat.rawValue === 'number' && !Number.isNaN(stat.rawValue) ? stat.rawValue : 0;
+      return numeric > max ? numeric : max;
+    }, 0);
+  }, [statsSnapshot]);
+  const safeMaxValue = maxCountValue > 0 ? maxCountValue : 1;
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -4415,12 +4512,51 @@ export default function App() {
             </View>
           </View>
           <View style={styles.statGrid}>
-            {statsSnapshot.map((stat) => (
-              <View key={stat.key} style={styles.statItem}>
-                <Text style={[styles.statValue, { color: statLabelColor }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
-              </View>
-            ))}
+            {statsSnapshot.map((stat) => {
+              const visual = statVisuals[stat.key] || statVisuals.default;
+              const rawValue =
+                typeof stat.rawValue === 'number' && !Number.isNaN(stat.rawValue) ? stat.rawValue : 0;
+              const baseProgress =
+                stat.type === 'percentage'
+                  ? rawValue / 100
+                  : rawValue / safeMaxValue;
+              const normalizedProgress = Math.max(0, Math.min(1, baseProgress));
+
+              return (
+                <View
+                  key={stat.key}
+                  style={[
+                    styles.statItem,
+                    eff === 'light' ? styles.statItemShadowLight : styles.statItemShadowDark,
+                  ]}
+                >
+                  <LinearGradient
+                    colors={visual.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.statCard, { borderColor: visual.borderColor }]}
+                  >
+                    <View style={styles.statCardHeader}>
+                      <View
+                        style={[
+                          styles.statCardIcon,
+                          { backgroundColor: visual.iconBackground, borderColor: visual.iconBorder },
+                        ]}
+                      >
+                        <MaterialCommunityIcons name={visual.icon} size={18} color={visual.iconColor} />
+                      </View>
+                      <ActivityProgressRing
+                        progress={normalizedProgress}
+                        accent={visual.progressFill}
+                        trackColor={progressTrackColor}
+                      />
+                    </View>
+                    <Text style={[styles.statValue, { color: statValueColor }]}>{stat.value}</Text>
+                    <Text style={[styles.statLabel, { color: statMutedColor }]}>{stat.label}</Text>
+                  </LinearGradient>
+                </View>
+              );
+            })}
           </View>
         </Panel>
         <TouchableOpacity
@@ -5423,7 +5559,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
   hydrationContainer: {
     flex: 1,
@@ -5665,25 +5801,57 @@ const styles = StyleSheet.create({
   },
   statItem: {
     width: '48%',
-    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  statItemShadowLight: {
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 3,
+  },
+  statItemShadowDark: {
+    shadowColor: '#000',
+    shadowOpacity: 0.42,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
+  },
+  statCard: {
+    borderRadius: 18,
+    paddingVertical: 16,
     paddingHorizontal: 16,
+    borderWidth: 1,
+    width: '100%',
+  },
+  statCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  statCardIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    marginBottom: 4,
+    borderWidth: 1,
   },
   statValue: {
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textAlign: 'left',
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 13,
-    fontWeight: '400',
-    letterSpacing: 0.2,
-    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textAlign: 'left',
     textTransform: 'uppercase',
+    marginTop: 4,
   },
   logApplicationButton: {
     borderRadius: 20,
