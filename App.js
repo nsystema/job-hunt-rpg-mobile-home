@@ -13,6 +13,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  Share,
   PanResponder,
   Keyboard,
 } from 'react-native';
@@ -3258,6 +3259,95 @@ export default function App() {
     [editingApp, activeEffects, sprayMultiplier, handleManualLog],
   );
 
+  const handleExportApplications = useCallback(async () => {
+    if (!applications.length) {
+      Alert.alert('Nothing to export', 'Log some applications to export them.');
+      return;
+    }
+
+    const statusEntries = Array.isArray(manualLogs?.statusChange)
+      ? manualLogs.statusChange
+      : [];
+
+    const statusByApp = statusEntries.reduce((acc, entry) => {
+      const appId = entry?.applicationId;
+      if (!appId) {
+        return acc;
+      }
+      const timestampMs = toTimestamp(entry?.timestamp ?? entry?.date ?? entry?.createdAt);
+      const hasTimestamp = Number.isFinite(timestampMs);
+      const record = {
+        from: entry?.from ?? null,
+        to: entry?.to ?? entry?.status ?? null,
+        status: entry?.status ?? entry?.to ?? null,
+        timestampMs: hasTimestamp ? timestampMs : null,
+        timestamp: hasTimestamp ? new Date(timestampMs).toISOString() : null,
+      };
+      if (!acc[appId]) {
+        acc[appId] = [];
+      }
+      acc[appId].push(record);
+      return acc;
+    }, {});
+
+    Object.values(statusByApp).forEach((list) => {
+      list.sort((a, b) => {
+        const aTime = Number.isFinite(a.timestampMs) ? a.timestampMs : 0;
+        const bTime = Number.isFinite(b.timestampMs) ? b.timestampMs : 0;
+        return aTime - bTime;
+      });
+    });
+
+    const exportItems = applications.map((app) => {
+      const loggedTimestamp = toTimestamp(app?.date ?? app?.timestamp ?? app?.createdAt);
+      const hasLoggedTimestamp = Number.isFinite(loggedTimestamp);
+      const loggedAt = hasLoggedTimestamp ? new Date(loggedTimestamp).toISOString() : null;
+      const statusHistory = (statusByApp[app.id] || []).map((entry) => ({ ...entry }));
+      const lastStatusChange = statusHistory.reduce((latest, entry) => {
+        if (!Number.isFinite(entry.timestampMs)) {
+          return latest;
+        }
+        if (!latest || entry.timestampMs > latest.timestampMs) {
+          return entry;
+        }
+        return latest;
+      }, null);
+
+      return {
+        ...app,
+        loggedAt,
+        loggedAtMs: hasLoggedTimestamp ? loggedTimestamp : null,
+        statusHistory,
+        statusLastChangedAt: lastStatusChange?.timestamp ?? null,
+        statusLastChangedAtMs: lastStatusChange?.timestampMs ?? null,
+      };
+    });
+
+    const exportPayload = {
+      exportedAt: new Date().toISOString(),
+      totalApplications: exportItems.length,
+      applications: exportItems,
+    };
+
+    const exportText = JSON.stringify(exportPayload, null, 2);
+
+    if (!Share || typeof Share.share !== 'function' || Platform.OS === 'web') {
+      // eslint-disable-next-line no-console
+      console.log('Applications export', exportPayload);
+      Alert.alert('Export generated', 'The export data has been printed to the console.');
+      return;
+    }
+
+    try {
+      await Share.share({
+        title: 'Applications Export',
+        message: exportText,
+      });
+    } catch (error) {
+      Alert.alert('Export failed', error?.message || 'Unable to export applications.');
+    }
+  }, [applications, manualLogs]);
+
   const questMetrics = useMemo(
     () => computeQuestMetrics({ applications, manualLogs, now: currentTime }),
     [applications, manualLogs, currentTime],
@@ -3975,6 +4065,12 @@ export default function App() {
               icon="swap-vertical"
               colors={colors}
               accessibilityLabel="Sort applications"
+            />
+            <IconButton
+              onPress={handleExportApplications}
+              icon="download-outline"
+              colors={colors}
+              accessibilityLabel="Export applications"
             />
           </View>
 
