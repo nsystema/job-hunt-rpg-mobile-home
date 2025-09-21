@@ -2983,18 +2983,22 @@ export default function App() {
     setOpenAllSummary({ gold: totalGold, opened: chests.length });
   }, [chests, goldMultiplier]);
 
-  const statsSnapshot = useMemo(() => {
+  const { statsSnapshot, weeklyTrend } = useMemo(() => {
     const now = Number.isFinite(currentTime) ? currentTime : Date.now();
     const startOfToday = new Date(now);
     startOfToday.setHours(0, 0, 0, 0);
     const dayMs = 24 * 60 * 60 * 1000;
     const todayStart = startOfToday.getTime();
     const weekStart = todayStart - dayMs * 6;
+    const previousWeekStart = weekStart - dayMs * 7;
 
     let todayCount = 0;
     let weekCount = 0;
+    let previousWeekCount = 0;
     let pipelineCount = 0;
     let respondedCount = 0;
+    let interviewCount = 0;
+    let earliestTimestamp = Number.POSITIVE_INFINITY;
 
     const pipelineStatuses = new Set(['Applied', 'Applied with referral', 'Interview']);
     const respondedStatuses = new Set(['Applied with referral', 'Interview']);
@@ -3007,12 +3011,20 @@ export default function App() {
       if (respondedStatuses.has(statusKey)) {
         respondedCount += 1;
       }
+      if (statusKey === 'Interview') {
+        interviewCount += 1;
+      }
       const timestamp = toTimestamp(app?.date ?? app?.timestamp ?? app?.createdAt);
       if (!Number.isFinite(timestamp)) {
         return;
       }
+      if (timestamp < earliestTimestamp) {
+        earliestTimestamp = timestamp;
+      }
       if (timestamp >= weekStart) {
         weekCount += 1;
+      } else if (timestamp >= previousWeekStart) {
+        previousWeekCount += 1;
       }
       if (timestamp >= todayStart) {
         todayCount += 1;
@@ -3029,31 +3041,73 @@ export default function App() {
     };
 
     const totalCount = applications.length;
-    const sevenDayAverage = formatAverage(weekCount, 7);
-    const replyRate = totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0;
 
-    return [
+    let trackedDays = 1;
+    if (Number.isFinite(earliestTimestamp)) {
+      const earliestDay = new Date(earliestTimestamp);
+      earliestDay.setHours(0, 0, 0, 0);
+      const diff = todayStart - earliestDay.getTime();
+      trackedDays = Math.max(1, Math.floor(diff / dayMs) + 1);
+    }
+
+    const perDayAverage = formatAverage(totalCount, trackedDays);
+    const replyRate = totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0;
+    const interviewRate = totalCount > 0 ? Math.round((interviewCount / totalCount) * 100) : 0;
+
+    const statsSnapshot = [
       {
         key: 'today',
         label: 'Logged Today',
         value: String(todayCount),
       },
       {
-        key: 'sevenDayAverage',
+        key: 'perDayAverage',
         label: 'Per day',
-        value: sevenDayAverage,
+        value: perDayAverage,
+        helper: 'Overall average',
       },
       {
         key: 'pipeline',
         label: 'Active apps',
         value: String(pipelineCount),
+        helper: 'Overall pipeline',
       },
       {
         key: 'responseRate',
         label: 'Reply rate',
         value: `${replyRate}%`,
+        helper: 'Overall',
+      },
+      {
+        key: 'interviews',
+        label: 'Interviews',
+        value: String(interviewCount),
+        helper: 'Overall',
+      },
+      {
+        key: 'interviewRate',
+        label: 'Interview rate',
+        value: `${interviewRate}%`,
+        helper: 'Overall',
       },
     ];
+
+    let percentChange = 0;
+    if (previousWeekCount === 0) {
+      percentChange = weekCount > 0 ? 100 : 0;
+    } else {
+      percentChange = Math.round(((weekCount - previousWeekCount) / previousWeekCount) * 100);
+    }
+
+    const weeklyTrend = {
+      current: weekCount,
+      previous: previousWeekCount,
+      percent: percentChange,
+      direction:
+        weekCount > previousWeekCount ? 'up' : weekCount < previousWeekCount ? 'down' : 'neutral',
+    };
+
+    return { statsSnapshot, weeklyTrend };
   }, [applications, currentTime]);
   const statPrimaryColor = colors.text;
   const statLabelColor = 'rgba(148,163,184,.95)';
@@ -3062,6 +3116,31 @@ export default function App() {
   const statBorderColor = hexToRgba(colors.sky, eff === 'light' ? 0.4 : 0.6);
   const statHeaderIconBackground = 'transparent';
   const statHeaderIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.35 : 0.45);
+  const trendIconName =
+    weeklyTrend.direction === 'up'
+      ? 'arrow-up-bold'
+      : weeklyTrend.direction === 'down'
+      ? 'arrow-down-bold'
+      : 'arrow-right-bold';
+  const trendColor =
+    weeklyTrend.direction === 'up'
+      ? colors.emerald
+      : weeklyTrend.direction === 'down'
+      ? colors.rose
+      : statLabelColor;
+  const trendBackground =
+    weeklyTrend.direction === 'up'
+      ? hexToRgba(colors.emerald, eff === 'light' ? 0.18 : 0.32)
+      : weeklyTrend.direction === 'down'
+      ? hexToRgba(colors.rose, eff === 'light' ? 0.18 : 0.32)
+      : 'rgba(148,163,184,0.18)';
+  const trendLabel = `${weeklyTrend.percent > 0 ? '+' : ''}${weeklyTrend.percent}% vs last week`;
+  const trendAccessibilityLabel =
+    weeklyTrend.direction === 'up'
+      ? `Total applications increased ${trendLabel}`
+      : weeklyTrend.direction === 'down'
+      ? `Total applications decreased ${trendLabel}`
+      : `Total applications unchanged ${trendLabel}`;
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -3829,9 +3908,14 @@ export default function App() {
                 <Text style={[styles.statHeaderTitle, { color: statPrimaryColor }]}>Activity</Text>
               </View>
             </View>
-            <View style={styles.statHeaderMeta}>
-              <MaterialCommunityIcons name="calendar-clock" size={16} color={statLabelColor} />
-              <Text style={[styles.statHeaderMetaText, { color: statLabelColor }]}>This Week</Text>
+            <View
+              style={[styles.statTrendTag, { backgroundColor: trendBackground }]}
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel={trendAccessibilityLabel}
+            >
+              <MaterialCommunityIcons name={trendIconName} size={14} color={trendColor} />
+              <Text style={[styles.statTrendText, { color: trendColor }]}>{trendLabel}</Text>
             </View>
           </View>
           <View style={styles.statGrid}>
@@ -3845,33 +3929,25 @@ export default function App() {
               </View>
             ))}
           </View>
-          <TouchableOpacity
-            onPress={handleLogPress}
-            activeOpacity={0.88}
-            style={[styles.logApplicationButton, { borderColor: statBorderColor }]}
-            accessibilityLabel="Log a new job application"
-          >
-            <LinearGradient
-              colors={[colors.sky, colors.emerald]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.logApplicationInner}
-            >
-              <MaterialCommunityIcons
-                name="file-document-edit-outline"
-                size={16}
-                color="#0f172a"
-              />
-              <Text style={[styles.logApplicationText, styles.logApplicationTextOnGradient]}>
-                Log application
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
         </Panel>
-
-        <Text style={styles.footerText}>
-          Mobile build. Use the button above to log an application.
-        </Text>
+        <TouchableOpacity
+          onPress={handleLogPress}
+          activeOpacity={0.88}
+          style={[styles.logApplicationButton, { borderColor: statBorderColor }]}
+          accessibilityLabel="Log a new job application"
+        >
+          <LinearGradient
+            colors={[colors.sky, colors.emerald]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.logApplicationInner}
+          >
+            <MaterialCommunityIcons name="file-document-edit-outline" size={16} color="#0f172a" />
+            <Text style={[styles.logApplicationText, styles.logApplicationTextOnGradient]}>
+              Log application
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
         </ScrollView>
       )}
 
@@ -5052,15 +5128,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  statHeaderMeta: {
+  statTrendTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginLeft: 'auto',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
-  statHeaderMetaText: {
-    fontSize: 13,
-    fontWeight: '400',
+  statTrendText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   statGrid: {
     flexDirection: 'row',
@@ -5455,12 +5534,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     color: 'rgba(148,163,184,.95)',
-  },
-  footerText: {
-    fontSize: 11,
-    color: 'rgba(148,163,184,.95)',
-    textAlign: 'center',
-    marginBottom: 20,
   },
   effectWarningsContainer: {
     paddingHorizontal: 20,
