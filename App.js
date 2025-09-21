@@ -3535,13 +3535,10 @@ export default function App() {
     const makeVisual = (icon) => {
       return {
         icon,
-        gradient: [
-          hexToRgba(accent, isLight ? 0.32 : 0.42),
-          hexToRgba(secondary, isLight ? 0.18 : 0.3),
-        ],
-        borderColor: hexToRgba(accent, isLight ? 0.48 : 0.6),
-        iconBackground: hexToRgba(accent, isLight ? 0.22 : 0.34),
-        iconBorder: hexToRgba(accent, isLight ? 0.38 : 0.52),
+        gradient: ['transparent', 'transparent'],
+        borderColor: 'transparent',
+        iconBackground: hexToRgba(accent, isLight ? 0.2 : 0.32),
+        iconBorder: hexToRgba(accent, isLight ? 0.32 : 0.48),
         iconColor: isLight ? '#0f172a' : colors.text,
       };
     };
@@ -4525,11 +4522,13 @@ export default function App() {
                           { backgroundColor: visual.iconBackground, borderColor: visual.iconBorder },
                         ]}
                       >
-                        <MaterialCommunityIcons name={visual.icon} size={18} color={visual.iconColor} />
+                        <MaterialCommunityIcons name={visual.icon} size={16} color={visual.iconColor} />
                       </View>
-                      <Text style={[styles.statHeaderValue, { color: statValueColor }]}>{stat.value}</Text>
+                      <View style={styles.statCardTextGroup}>
+                        <Text style={[styles.statHeaderValue, { color: statValueColor }]}>{stat.value}</Text>
+                        <Text style={[styles.statLabel, { color: statMutedColor }]}>{stat.label}</Text>
+                      </View>
                     </View>
-                    <Text style={[styles.statLabel, { color: statMutedColor }]}>{stat.label}</Text>
                   </LinearGradient>
                 </View>
               );
@@ -5799,35 +5798,42 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
+    backgroundColor: 'transparent',
     width: '100%',
   },
   statCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    justifyContent: 'flex-start',
+    gap: 12,
   },
   statCardIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
+  statCardTextGroup: {
+    height: 32,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   statHeaderValue: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.3,
-    textAlign: 'right',
+    textAlign: 'left',
+    lineHeight: 18,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
-    letterSpacing: 0.4,
-    textAlign: 'center',
+    letterSpacing: 0.3,
+    textAlign: 'left',
     textTransform: 'uppercase',
-    marginTop: 4,
+    lineHeight: 14,
   },
   logApplicationButton: {
     borderRadius: 20,
