@@ -33,6 +33,11 @@
       "expo-asset",
       "expo-font",
       "./plugins/withAsyncStorage"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9127b370-1820-453e-ac54-c6c761780b6c"
+      }
+    }
   }
 }
