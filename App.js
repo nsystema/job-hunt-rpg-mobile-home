@@ -5726,7 +5726,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statPanel: {
-    padding: 20,
+    paddingBottom: 12,
   },
   statHeaderRow: {
     flexDirection: 'row',
@@ -5821,7 +5821,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   statHeaderValue: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
     textAlign: 'left',
