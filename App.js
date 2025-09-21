@@ -2592,6 +2592,8 @@ const AppFormModal = ({
 export default function App() {
   const { mode, eff, cycle } = useTheme();
   const { cycle: cyclePal, pal } = usePalette();
+  const [iconsLoaded, iconError] = useFonts(MaterialCommunityIcons.font);
+  const fontsReady = iconsLoaded || !!iconError;
   const colors = useMemo(() => cur(eff, pal), [eff, pal]);
   const filledSurface = useMemo(
     () => (eff === 'light' ? ensureOpaque(colors.surface) : colors.surface),
@@ -2646,6 +2648,16 @@ export default function App() {
   const previousEventStatesRef = useRef({});
   const previousLevelRef = useRef(null);
   const lastPersistedRef = useRef('');
+
+  useEffect(() => {
+    if (!iconError) {
+      return;
+    }
+    const logger = globalThis?.console;
+    if (logger && typeof logger.error === 'function') {
+      logger.error('Failed to load MaterialCommunityIcons font', iconError);
+    }
+  }, [iconError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -4189,8 +4201,9 @@ export default function App() {
     }
   }, [chests, focusedChestId]);
 
-  if (!isHydrated || !iconsLoaded) {
+  if (!fontsReady || !isHydrated) {
     const errorColor = hexToRgba(colors.text, eff === 'light' ? 0.6 : 0.7);
+    const loadingMessage = !isHydrated ? 'Loading your progress...' : 'Preparing your experience...';
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
         <StatusBar
@@ -4199,10 +4212,15 @@ export default function App() {
         />
         <View style={styles.hydrationContainer}>
           <ActivityIndicator size="large" color={colors.sky} />
-          <Text style={[styles.hydrationMessage, { color: colors.text }]}>Loading your progress...</Text>
+          <Text style={[styles.hydrationMessage, { color: colors.text }]}>{loadingMessage}</Text>
           {hydrationError ? (
             <Text style={[styles.hydrationError, { color: errorColor }]}>
               {hydrationError.message || 'Unable to load saved progress.'}
+            </Text>
+          ) : null}
+          {iconError ? (
+            <Text style={[styles.hydrationError, { color: errorColor }]}>
+              {iconError.message || 'Unable to load icon fonts.'}
             </Text>
           ) : null}
         </View>
