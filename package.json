@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
+    "@react-native-async-storage/async-storage": "~1.23.1",
     "country-state-city": "^3.2.1",
     "expo": "~53.0.0",
     "expo-asset": "~11.1.7",

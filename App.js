@@ -16,9 +16,11 @@ import {
   Share,
   PanResponder,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Defs, Rect, Path, Circle, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { usePalette, cur } from './hooks/usePalette';
 import { useTheme } from './hooks/useTheme';
@@ -229,6 +231,193 @@ const toTimestamp = (value) => {
     return Number.isNaN(parsed) ? NaN : parsed;
   }
   return NaN;
+};
+
+const STORAGE_KEY = 'job-hunt-rpg::state';
+const STORAGE_VERSION = 1;
+
+const parseFiniteNumber = (value) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed.length) {
+      return null;
+    }
+    const numeric = Number(trimmed);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+  return null;
+};
+
+const sanitizeArrayOfObjects = (input) => {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+  return input.reduce((acc, item) => {
+    if (item && typeof item === 'object') {
+      acc.push({ ...item });
+    }
+    return acc;
+  }, []);
+};
+
+const sanitizeRecordOfArrays = (input) => {
+  if (!input || typeof input !== 'object') {
+    return {};
+  }
+  const result = {};
+  Object.entries(input).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      result[key] = value.reduce((entries, entry) => {
+        if (entry && typeof entry === 'object') {
+          entries.push({ ...entry });
+        }
+        return entries;
+      }, []);
+    }
+  });
+  return result;
+};
+
+const sanitizeRecordOfObjects = (input) => {
+  if (!input || typeof input !== 'object') {
+    return {};
+  }
+  const result = {};
+  Object.entries(input).forEach(([key, value]) => {
+    if (value && typeof value === 'object') {
+      result[key] = { ...value };
+    }
+  });
+  return result;
+};
+
+const sanitizePremiumProgress = (input) => {
+  if (!input || typeof input !== 'object') {
+    return {};
+  }
+  const result = {};
+  Object.entries(input).forEach(([key, value]) => {
+    const numeric = parseFiniteNumber(value);
+    if (numeric != null) {
+      result[key] = Math.max(0, numeric);
+    }
+  });
+  return result;
+};
+
+const sanitizeClaimedQuests = (input) => {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+  const unique = new Set();
+  input.forEach((value) => {
+    if (value != null) {
+      unique.add(String(value));
+    }
+  });
+  return Array.from(unique);
+};
+
+const sanitizeSprayDebuff = (input) => {
+  if (!input || typeof input !== 'object') {
+    return null;
+  }
+  const activatedAt = parseFiniteNumber(input.activatedAt);
+  const expiresAt = parseFiniteNumber(input.expiresAt);
+  if (activatedAt == null && expiresAt == null) {
+    return null;
+  }
+  const result = {};
+  if (activatedAt != null) {
+    result.activatedAt = activatedAt;
+  }
+  if (expiresAt != null) {
+    result.expiresAt = expiresAt;
+  }
+  return result;
+};
+
+const createDefaultPersistedState = () => ({
+  xp: 0,
+  apps: 0,
+  gold: 0,
+  streak: 0,
+  focus: FOCUS_BASELINE,
+  activeEffects: [],
+  sprayDebuff: null,
+  applications: [],
+  claimedQuests: [],
+  manualLogs: {},
+  eventStates: {},
+  chests: [],
+  premiumProgress: {},
+});
+
+const sanitizePersistedData = (candidate) => {
+  const defaults = createDefaultPersistedState();
+  const safe = candidate && typeof candidate === 'object' ? candidate : {};
+
+  const applications = sanitizeArrayOfObjects(safe.applications);
+  const activeEffects = sanitizeArrayOfObjects(safe.activeEffects);
+  const chests = sanitizeArrayOfObjects(safe.chests);
+  const manualLogs = sanitizeRecordOfArrays(safe.manualLogs);
+  const eventStates = sanitizeRecordOfObjects(safe.eventStates);
+  const premiumProgress = sanitizePremiumProgress(safe.premiumProgress);
+  const sprayDebuff = sanitizeSprayDebuff(safe.sprayDebuff);
+
+  const xp = parseFiniteNumber(safe.xp);
+  const appsCount = parseFiniteNumber(safe.apps);
+  const gold = parseFiniteNumber(safe.gold);
+  const streak = parseFiniteNumber(safe.streak);
+  const focus = parseFiniteNumber(safe.focus);
+
+  return {
+    xp: xp != null ? Math.max(0, xp) : defaults.xp,
+    apps: appsCount != null ? Math.max(0, appsCount) : applications.length,
+    gold: gold != null ? Math.max(0, gold) : defaults.gold,
+    streak: streak != null ? Math.max(0, streak) : defaults.streak,
+    focus: focus != null ? Math.max(0, focus) : defaults.focus,
+    activeEffects,
+    sprayDebuff,
+    applications,
+    claimedQuests: sanitizeClaimedQuests(safe.claimedQuests),
+    manualLogs,
+    eventStates,
+    chests,
+    premiumProgress,
+  };
+};
+
+const MIGRATIONS = {
+  1: (state) => sanitizePersistedData(state),
+};
+
+const migratePersistedState = (payload) => {
+  if (!payload || typeof payload !== 'object') {
+    return { version: STORAGE_VERSION, data: sanitizePersistedData() };
+  }
+  const startingVersion = Number.isInteger(payload.version) ? payload.version : 0;
+  let currentVersion = startingVersion;
+  let currentState = payload.data && typeof payload.data === 'object' ? payload.data : {};
+
+  if (currentVersion > STORAGE_VERSION) {
+    currentVersion = STORAGE_VERSION;
+  }
+
+  while (currentVersion < STORAGE_VERSION) {
+    const targetVersion = currentVersion + 1;
+    const migrate = MIGRATIONS[targetVersion];
+    if (typeof migrate === 'function') {
+      currentState = migrate(currentState);
+    }
+    currentVersion = targetVersion;
+  }
+
+  const sanitized = sanitizePersistedData(currentState);
+  return { version: STORAGE_VERSION, data: sanitized };
 };
 
 const createChestArt = ({
@@ -2438,6 +2627,8 @@ export default function App() {
   const [openAllSummary, setOpenAllSummary] = useState(null);
   const [openResult, setOpenResult] = useState(null);
   const [premiumProgress, setPremiumProgress] = useState({});
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [hydrationError, setHydrationError] = useState(null);
   const [shopMainTab, setShopMainTab] = useState('catalogue');
   const [shopCategoryTab, setShopCategoryTab] = useState('effects');
 
@@ -2448,6 +2639,143 @@ export default function App() {
   const eventSeenRef = useRef(new Map());
   const previousEventStatesRef = useRef({});
   const previousLevelRef = useRef(null);
+  const lastPersistedRef = useRef('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrate = async () => {
+      if (!AsyncStorage || typeof AsyncStorage.getItem !== 'function') {
+        if (!cancelled) {
+          setIsHydrated(true);
+        }
+        return;
+      }
+
+      try {
+        const storedValue = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!storedValue) {
+          return;
+        }
+
+        let parsed;
+        try {
+          parsed = JSON.parse(storedValue);
+        } catch (parseError) {
+          throw parseError instanceof Error
+            ? parseError
+            : new Error('Failed to parse saved progress payload.');
+        }
+
+        const { data } = migratePersistedState(parsed);
+        if (!data || typeof data !== 'object' || cancelled) {
+          return;
+        }
+
+        setXp(data.xp);
+        setApps(data.apps);
+        setGold(data.gold);
+        setStreak(data.streak);
+        setFocus(data.focus);
+        setActiveEffects(data.activeEffects);
+        setSprayDebuff(data.sprayDebuff);
+        setApplications(data.applications);
+        setManualLogs(data.manualLogs);
+        setEventStates(data.eventStates);
+        setChests(data.chests);
+        setPremiumProgress(data.premiumProgress);
+        const claimEntries = Array.isArray(data.claimedQuests) ? data.claimedQuests : [];
+        setClaimedQuests(new Set(claimEntries));
+        previousEventStatesRef.current =
+          data.eventStates && typeof data.eventStates === 'object' ? data.eventStates : {};
+        setHydrationError(null);
+      } catch (error) {
+        if (!cancelled) {
+          const logger = globalThis?.console;
+          if (logger && typeof logger.error === 'function') {
+            logger.error('Failed to hydrate saved progress', error);
+          }
+          setHydrationError(
+            error instanceof Error ? error : new Error('Failed to load saved progress.'),
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsHydrated(true);
+        }
+      }
+    };
+
+    hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const persistedStateData = useMemo(
+    () =>
+      sanitizePersistedData({
+        xp,
+        apps,
+        gold,
+        streak,
+        focus,
+        activeEffects,
+        sprayDebuff,
+        applications,
+        claimedQuests: claimedQuests instanceof Set ? Array.from(claimedQuests) : [],
+        manualLogs,
+        eventStates,
+        chests,
+        premiumProgress,
+      }),
+    [
+      xp,
+      apps,
+      gold,
+      streak,
+      focus,
+      activeEffects,
+      sprayDebuff,
+      applications,
+      claimedQuests,
+      manualLogs,
+      eventStates,
+      chests,
+      premiumProgress,
+    ],
+  );
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+    if (!AsyncStorage || typeof AsyncStorage.setItem !== 'function') {
+      return;
+    }
+
+    const basePayload = { version: STORAGE_VERSION, data: persistedStateData };
+    const serialized = JSON.stringify(basePayload);
+    if (lastPersistedRef.current === serialized) {
+      return;
+    }
+    lastPersistedRef.current = serialized;
+
+    const persist = async () => {
+      try {
+        const payload = { ...basePayload, updatedAt: new Date().toISOString() };
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (error) {
+        const logger = globalThis?.console;
+        if (logger && typeof logger.error === 'function') {
+          logger.error('Failed to persist progress state', error);
+        }
+      }
+    };
+
+    persist();
+  }, [persistedStateData, isHydrated]);
 
   const updateCurrentTime = useCallback(
     (hint) => {
@@ -3256,13 +3584,40 @@ export default function App() {
   );
 
   const handleExportApplications = useCallback(async () => {
-    if (!applications.length) {
-      Alert.alert('Nothing to export', 'Log some applications to export them.');
+    const stateSnapshot = sanitizePersistedData(persistedStateData);
+    const applicationsList = Array.isArray(stateSnapshot.applications)
+      ? stateSnapshot.applications
+      : [];
+    const manualLogsMap = stateSnapshot.manualLogs && typeof stateSnapshot.manualLogs === 'object'
+      ? stateSnapshot.manualLogs
+      : {};
+
+    const hasManualLogs = Object.values(manualLogsMap).some(
+      (entries) => Array.isArray(entries) && entries.length,
+    );
+    const hasPremiumSavings = Object.keys(stateSnapshot.premiumProgress || {}).length > 0;
+    const hasChests = Array.isArray(stateSnapshot.chests) && stateSnapshot.chests.length > 0;
+    const hasEffects = Array.isArray(stateSnapshot.activeEffects) && stateSnapshot.activeEffects.length > 0;
+    const hasClaims = Array.isArray(stateSnapshot.claimedQuests) && stateSnapshot.claimedQuests.length > 0;
+    const hasCurrency = (stateSnapshot.gold ?? 0) > 0 || (stateSnapshot.xp ?? 0) > 0;
+
+    if (
+      !(
+        applicationsList.length ||
+        hasManualLogs ||
+        hasPremiumSavings ||
+        hasChests ||
+        hasEffects ||
+        hasClaims ||
+        hasCurrency
+      )
+    ) {
+      Alert.alert('Nothing to export', 'Play a bit to generate some progress before exporting.');
       return;
     }
 
-    const statusEntries = Array.isArray(manualLogs?.statusChange)
-      ? manualLogs.statusChange
+    const statusEntries = Array.isArray(manualLogsMap?.statusChange)
+      ? manualLogsMap.statusChange
       : [];
 
     const statusByApp = statusEntries.reduce((acc, entry) => {
@@ -3294,7 +3649,7 @@ export default function App() {
       });
     });
 
-    const exportItems = applications.map((app) => {
+    const exportItems = applicationsList.map((app) => {
       const loggedTimestamp = toTimestamp(app?.date ?? app?.timestamp ?? app?.createdAt);
       const hasLoggedTimestamp = Number.isFinite(loggedTimestamp);
       const loggedAt = hasLoggedTimestamp ? new Date(loggedTimestamp).toISOString() : null;
@@ -3319,10 +3674,19 @@ export default function App() {
       };
     });
 
+    const exportedAt = new Date().toISOString();
+    const persistenceSnapshot = {
+      version: STORAGE_VERSION,
+      updatedAt: exportedAt,
+      data: stateSnapshot,
+    };
+
     const exportPayload = {
-      exportedAt: new Date().toISOString(),
+      exportedAt,
+      schemaVersion: STORAGE_VERSION,
       totalApplications: exportItems.length,
       applications: exportItems,
+      state: persistenceSnapshot,
     };
 
     const exportText = JSON.stringify(exportPayload, null, 2);
@@ -3344,7 +3708,7 @@ export default function App() {
     } catch (error) {
       Alert.alert('Export failed', error?.message || 'Unable to export applications.');
     }
-  }, [applications, manualLogs]);
+  }, [persistedStateData]);
 
   const questMetrics = useMemo(
     () => computeQuestMetrics({ applications, manualLogs, now: currentTime }),
@@ -3819,10 +4183,31 @@ export default function App() {
     }
   }, [chests, focusedChestId]);
 
+  if (!isHydrated) {
+    const errorColor = hexToRgba(colors.text, eff === 'light' ? 0.6 : 0.7);
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+        <StatusBar
+          barStyle={eff === 'light' ? 'dark-content' : 'light-content'}
+          backgroundColor={colors.bg}
+        />
+        <View style={styles.hydrationContainer}>
+          <ActivityIndicator size="large" color={colors.sky} />
+          <Text style={[styles.hydrationMessage, { color: colors.text }]}>Loading your progress...</Text>
+          {hydrationError ? (
+            <Text style={[styles.hydrationError, { color: errorColor }]}>
+              {hydrationError.message || 'Unable to load saved progress.'}
+            </Text>
+          ) : null}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar barStyle={eff === 'light' ? 'dark-content' : 'light-content'} backgroundColor={colors.bg} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -5010,6 +5395,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
+  },
+  hydrationContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  hydrationMessage: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  hydrationError: {
+    marginTop: 12,
+    fontSize: 12,
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
