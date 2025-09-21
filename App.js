@@ -3501,7 +3501,6 @@ export default function App() {
   const statHeaderIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.35 : 0.45);
   const statValueColor = eff === 'light' ? '#0f172a' : colors.text;
   const statMutedColor = hexToRgba(colors.text, eff === 'light' ? 0.68 : 0.8);
-  const progressTrackColor = hexToRgba(colors.text, eff === 'light' ? 0.12 : 0.28);
   const trendIconName =
     weeklyTrend.direction === 'up'
       ? 'trending-up'
@@ -3530,45 +3529,35 @@ export default function App() {
 
   const statVisuals = useMemo(() => {
     const isLight = eff === 'light';
-    const makeVisual = (icon, accent, secondary) => {
-      const accentFallback = secondary || accent;
+    const accent = colors.sky;
+    const secondary = colors.emerald;
+
+    const makeVisual = (icon) => {
       return {
         icon,
         gradient: [
           hexToRgba(accent, isLight ? 0.32 : 0.42),
-          hexToRgba(accentFallback, isLight ? 0.18 : 0.3),
+          hexToRgba(secondary, isLight ? 0.18 : 0.3),
         ],
         borderColor: hexToRgba(accent, isLight ? 0.48 : 0.6),
         iconBackground: hexToRgba(accent, isLight ? 0.22 : 0.34),
         iconBorder: hexToRgba(accent, isLight ? 0.38 : 0.52),
         iconColor: isLight ? '#0f172a' : colors.text,
-        progressFill: accentFallback,
       };
     };
 
-    const fallback = makeVisual('chart-box-outline', colors.sky, colors.emerald);
+    const fallback = makeVisual('chart-box-outline');
 
     return {
-      today: makeVisual('calendar-star', colors.sky, colors.emerald),
-      perDayAverage: makeVisual('clock-outline', colors.lilac, colors.sky),
-      pipeline: makeVisual('chart-timeline-variant', colors.amber, colors.sky),
-      responseRate: makeVisual('email-check-outline', colors.emerald, colors.sky),
-      interviews: makeVisual('account-voice', colors.lilac, colors.emerald),
-      interviewRate: makeVisual('chart-line', colors.rose, colors.amber),
+      today: makeVisual('calendar-star'),
+      perDayAverage: makeVisual('clock-outline'),
+      pipeline: makeVisual('chart-timeline-variant'),
+      responseRate: makeVisual('email-check-outline'),
+      interviews: makeVisual('account-voice'),
+      interviewRate: makeVisual('chart-line'),
       default: fallback,
     };
   }, [colors, eff]);
-
-  const maxCountValue = useMemo(() => {
-    return statsSnapshot.reduce((max, stat) => {
-      if (!stat || stat.type === 'percentage') {
-        return max;
-      }
-      const numeric = typeof stat.rawValue === 'number' && !Number.isNaN(stat.rawValue) ? stat.rawValue : 0;
-      return numeric > max ? numeric : max;
-    }, 0);
-  }, [statsSnapshot]);
-  const safeMaxValue = maxCountValue > 0 ? maxCountValue : 1;
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -4514,13 +4503,6 @@ export default function App() {
           <View style={styles.statGrid}>
             {statsSnapshot.map((stat) => {
               const visual = statVisuals[stat.key] || statVisuals.default;
-              const rawValue =
-                typeof stat.rawValue === 'number' && !Number.isNaN(stat.rawValue) ? stat.rawValue : 0;
-              const baseProgress =
-                stat.type === 'percentage'
-                  ? rawValue / 100
-                  : rawValue / safeMaxValue;
-              const normalizedProgress = Math.max(0, Math.min(1, baseProgress));
 
               return (
                 <View
@@ -4545,13 +4527,8 @@ export default function App() {
                       >
                         <MaterialCommunityIcons name={visual.icon} size={18} color={visual.iconColor} />
                       </View>
-                      <ActivityProgressRing
-                        progress={normalizedProgress}
-                        accent={visual.progressFill}
-                        trackColor={progressTrackColor}
-                      />
+                      <Text style={[styles.statHeaderValue, { color: statValueColor }]}>{stat.value}</Text>
                     </View>
-                    <Text style={[styles.statValue, { color: statValueColor }]}>{stat.value}</Text>
                     <Text style={[styles.statLabel, { color: statMutedColor }]}>{stat.label}</Text>
                   </LinearGradient>
                 </View>
@@ -5838,18 +5815,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  statValue: {
+  statHeaderValue: {
     fontSize: 20,
     fontWeight: '700',
     letterSpacing: 0.3,
-    textAlign: 'left',
-    marginBottom: 2,
+    textAlign: 'right',
   },
   statLabel: {
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.4,
-    textAlign: 'left',
+    textAlign: 'center',
     textTransform: 'uppercase',
     marginTop: 4,
   },
