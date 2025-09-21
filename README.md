@@ -1,85 +1,81 @@
 # Job Hunt RPG - React Native Mobile App (Expo SDK 53)
 
-A gamified job hunting experience built with React Native and Expo. Track your job applications, earn XP and gold, and level up your career journey!
+Job Hunt RPG turns the grind of job hunting into an RPG-style progression loop. Log applications, monitor progress, pursue quests, and open treasure chests to keep motivation high while you search.
 
-## Features
+## Core Features
 
-- **Gamified Job Tracking**: Log applications and earn rewards
-- **Level System**: Gain XP and level up as you apply to jobs
-- **Focus System**: Manage your energy for different types of applications
-- **Multiple Themes**: Switch between light, dark, and system themes
-- **Color Palettes**: Choose from various beautiful color schemes
-- **Mobile Optimized**: Native mobile experience with smooth animations
+### Application logging & management
+- Launch the log modal to capture company, role, application type (Full or Easy), status, platform, tailored CV and motivation toggles, favorite flag, notes, and location details for every opportunity. A live reward preview shows the XP, gold, and focus cost before you submit, and the form validates country/city selections using the built-in autocomplete data.
+- Editing preserves historical rewards, updates quest metrics, and records favorite or status changes for export-ready timelines. Entries can be searched, filtered by status or platform, sorted, exported, duplicated, favorited, or deleted from the applications tab.
+
+### Progress dashboard
+- The Home tab highlights your current level, XP remaining to the next level, total applications logged, and available focus using animated progress bars.
+- An activity snapshot summarises daily output, per-day average, active pipeline, reply rate, and interview rate while comparing the current week to the last with trend indicators and accessibility-friendly labels.
+
+### Applications workspace
+- Search as you type, toggle status or platform filters, and switch between newest, oldest, alphabetical, or favorites-first sorting to audit your pipeline. Each card displays status icons, quick stats, and action buttons for editing, duplicating, favoriting, or deleting.
+- Export produces a JSON payload containing application history and detailed status timelines. On mobile the payload is shared through the native sheet; on web and other unsupported platforms it prints to the console with a user alert.
+
+### Quest & event system
+- Daily, Weekly, Growth, and Event quest tabs are generated dynamically from quest data and current metrics. Progress bars, tier summaries, stage checklists, and manual action hooks make it clear how to advance every quest.
+- Claim quest rewards to receive gold, boosts, cleanses, or treasure chests. Event quests surface notifications when new rewards are available and automatically clear when events reset.
+
+### Rewards vault
+- Level-ups and quest rewards grant chests across Common, Rare, Epic, and Legendary rarities. The vault lets you filter by rarity, inspect chest art, open individually for animated results, or open all at once with a summary modal and toast notification of total gold gained.
+
+### Shop & boosts
+- Browse Active boosts, the general catalogue, and premium treats. Purchase temporary effects that double XP or gold, view remaining timers, and manage penalties like the Spray and Pray debuff alongside passive perks.
+- Save gold toward premium rewards in flexible increments and confirm redemptions once fully funded. Real-world reward ideas are sorted by effective cost and can be redeemed directly from the shop.
+
+### Theming & presentation
+- Custom theme and palette hooks drive cohesive light and dark presentations with gradient-heavy surfaces, SVG chest art, and MaterialCommunityIcons throughout the interface.
 
 ## Getting Started
 
 ### Prerequisites
-
 - Node.js (v18 or later)
-- NPM 9+
-- Expo Go app on your mobile device with SDK 53 support
+- npm 9+
+- Expo Go app on a device (SDK 53 compatible) or an Android/iOS simulator
 
 ### Installation
-
-1. Clone or download this project
+1. Clone or download this project.
 2. Install dependencies:
    ```bash
    npm install
    ```
-
 3. Start the development server:
    ```bash
    npx expo start
    ```
+4. Scan the QR code with Expo Go (Android) or the Camera app (iOS) when prompted.
 
-4. When the QR code appears, scan it with Expo Go (Android) or the Camera app (iOS). Ensure your Expo Go client is on SDK 53 to open the project.
+### Tests & automation
+- The repo includes a smoke test that spawns the Expo CLI and waits for readiness:
+  ```bash
+  npm run test
+  ```
+  Use it locally or in CI to validate the project boots with the configured SDK.
 
-### Running on Simulators
+## Navigating the app
+- **Home:** Monitor XP, focus, and activity stats while triggering the "Log application" action.
+- **Apps:** Manage the pipeline with search, filters, sorting, editing, duplication, favorite toggles, status changes, notes, and exports.
+- **Quests:** Review progression across daily habits, weekly targets, long-term growth goals, and time-limited events, then claim rewards when complete.
+- **Rewards:** Inspect treasure chests, filter by rarity, and open them individually or in bulk for immediate gold payouts.
+- **Shop:** Activate boosts, redeem treats, or save toward premium rewards while tracking active effect timers and penalties.
 
-- **iOS Simulator**: `npx expo start --ios`
-- **Android Emulator**: `npx expo start --android`
+## Game mechanics
+- Leveling uses a non-linear XP curve and exposes remaining XP via the `lvl` helper for accurate progress bars.
+- Focus starts at a baseline of 20 points and each application type consumes stamina (`Full` costs 1 focus, `Easy` costs 0.5) with a minimum floor, so planning balanced workloads matters.
+- Rewards scale with application effort: Full applications earn more XP/gold, tailoring the CV or adding a motivation letter boosts multipliers, streaks and active shop effects can double payouts, and the Spray and Pray penalty halves gains for six hours after spamming low-quality apps.
+- Level-ups roll weighted chest rarities that improve as you progress, while quests and the shop introduce additional sources of boosts, gold, and penalties to keep the feedback loop engaging.
 
-## Usage
-
-1. **Log Applications**: Tap "Log application" to add new job applications
-2. **Choose Application Type**: Select between "Full" (more XP/gold, costs more focus) or "Easy" (quick applications)
-3. **Add Details**: Include company, role, and optional extras like CV tailoring
-4. **Track Progress**: Watch your XP and level grow as you apply to more jobs
-5. **Manage Focus**: Your focus regenerates over time - use it wisely!
-
-## Game Mechanics
-
-- **XP System**: Earn experience points for each application
-- **Gold Currency**: Collect gold for future shop features
-- **Focus/Stamina**: Limited energy that regenerates daily
-- **Quality Bonuses**: Get extra rewards for tailored CVs and motivation letters
-- **Level Progression**: Unlock new features as you level up
-
-## Customization
-
-- **Themes**: Toggle between light, dark, and system themes
-- **Color Palettes**: Cycle through beautiful color schemes including Pastel, Ocean, Sunset, Forest, Lavender, and more
-
-## Technical Details
-
-- **Framework**: React Native with Expo
-- **UI**: Native components with custom styling
-- **Animations**: Smooth transitions and micro-interactions
-- **State Management**: React hooks and local state
-- **Persistence**: AsyncStorage for saving progress (to be implemented)
-
-## Future Features
-
-- Data persistence across app restarts
-- Statistics and analytics
-- Achievement system
-- Social features
-- Export functionality
+## Data & limitations
+- All game state lives in memory via React state hooks. Reloading the app resets progress; persistence is a future enhancement under consideration.
 
 ## Contributing
 
-This is a prototype/demo app. Feel free to fork and extend with additional features!
+This is an experimental prototype—feel free to fork it, explore new mechanics, or integrate persistence and backend services tailored to your job search workflow.
 
 ## License
 
-MIT License - feel free to use this code for your own projects.
+MIT License – you are free to use this code for your own projects.

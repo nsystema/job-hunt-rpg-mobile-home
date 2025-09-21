@@ -1,4 +1,3 @@
-// Leveling mechanics
 export const xpl = (L) => Math.round(214.2 + 8.4 * (L - 1));
 
 export function lvl(x) {
@@ -14,7 +13,6 @@ export function lvl(x) {
   return { l, rem: r, need: xpl(l) };
 }
 
-// Focus (Stamina) mechanics
 export const FOCUS_BASELINE = 20;
 export function focusCost(type, reduction = 0) {
   const base = type === "Full" ? 1 : 0.5;
@@ -22,7 +20,6 @@ export function focusCost(type, reduction = 0) {
   return Math.max(min, base - reduction);
 }
 
-// XP/Gold reward mechanics
 export function computeRewards(app, opts = {}) {
   const { streak = 0, effects = [], spray = 1 } = opts;
   const au = app.type === "Full" ? 1 : 0.5;
@@ -34,7 +31,6 @@ export function computeRewards(app, opts = {}) {
   const baseXp = 10 * au;
   const baseGold = 5 * au;
 
-  // Buff multipliers from active effects
   const xpBuff = effects.some((e) => e.id === 1 || e.id === 3) ? 2 : 1;
   const goldBuff = effects.some((e) => e.id === 2) ? 2 : 1;
 
@@ -55,7 +51,6 @@ export function computeRewards(app, opts = {}) {
   return { xp, gold, qs, au, rareWeight };
 }
 
-// Shop mechanics
 export const GAME_EFFECTS = [
   {
     id: 1,

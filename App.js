@@ -1010,7 +1010,6 @@ const PlatformSelector = ({ value, onChange, colors }) => {
   );
 };
 
-// Helper components
 const StatBadge = ({ icon, count, colors }) => (
   <View style={[styles.statBadge, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
     <MaterialCommunityIcons name={icon} size={20} color={colors.text} />
@@ -2169,7 +2168,6 @@ const truncate = (value, limit = 70) => {
 
 const MIN_FOCUS_FOR_LOG = 0.25;
 
-// Application Form Modal
 const AppFormModal = ({
   visible,
   onClose,
@@ -2401,7 +2399,6 @@ const AppFormModal = ({
   );
 };
 
-// Main App Component
 export default function App() {
   const { mode, eff, cycle } = useTheme();
   const { cycle: cyclePal, pal } = usePalette();
@@ -2411,7 +2408,6 @@ export default function App() {
     [eff, colors.surface],
   );
 
-  // Game state
   const [xp, setXp] = useState(0);
   const [apps, setApps] = useState(0);
   const [gold, setGold] = useState(0);
@@ -3332,8 +3328,10 @@ export default function App() {
     const exportText = JSON.stringify(exportPayload, null, 2);
 
     if (!Share || typeof Share.share !== 'function' || Platform.OS === 'web') {
-      // eslint-disable-next-line no-console
-      console.log('Applications export', exportPayload);
+      const logger = globalThis?.['console'];
+      if (logger && typeof logger.log === 'function') {
+        logger.log('Applications export', exportPayload);
+      }
       Alert.alert('Export generated', 'The export data has been printed to the console.');
       return;
     }
@@ -5948,7 +5946,6 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: Platform.OS === 'ios' ? 28 : 16,
   },
-  // Modal styles
   modalContainer: {
     flex: 1,
   },

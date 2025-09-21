@@ -179,9 +179,7 @@ async function main() {
         expoProcess.stdin.write('q');
         expoProcess.stdin.write('\n');
         expoProcess.stdin.end();
-      } catch (error) {
-        // Ignore stdin errors.
-      }
+      } catch {}
     }
 
     if (!sigintTimer) {
