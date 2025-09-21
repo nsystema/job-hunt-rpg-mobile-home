@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFonts } from 'expo-font';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Defs, Rect, Path, Circle, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
@@ -2589,6 +2590,7 @@ const AppFormModal = ({
 };
 
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts(MaterialCommunityIcons.font);
   const { mode, eff, cycle } = useTheme();
   const { cycle: cyclePal, pal } = usePalette();
   const colors = useMemo(() => cur(eff, pal), [eff, pal]);
@@ -2640,6 +2642,16 @@ export default function App() {
   const previousEventStatesRef = useRef({});
   const previousLevelRef = useRef(null);
   const lastPersistedRef = useRef('');
+
+  useEffect(() => {
+    if (!fontError) {
+      return;
+    }
+    const logger = globalThis?.console;
+    if (logger && typeof logger.error === 'function') {
+      logger.error('Failed to load MaterialCommunityIcons font', fontError);
+    }
+  }, [fontError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -4183,7 +4195,7 @@ export default function App() {
     }
   }, [chests, focusedChestId]);
 
-  if (!isHydrated) {
+  const renderBlockingScreen = (message, errorMessage) => {
     const errorColor = hexToRgba(colors.text, eff === 'light' ? 0.6 : 0.7);
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -4193,15 +4205,32 @@ export default function App() {
         />
         <View style={styles.hydrationContainer}>
           <ActivityIndicator size="large" color={colors.sky} />
-          <Text style={[styles.hydrationMessage, { color: colors.text }]}>Loading your progress...</Text>
-          {hydrationError ? (
-            <Text style={[styles.hydrationError, { color: errorColor }]}>
-              {hydrationError.message || 'Unable to load saved progress.'}
-            </Text>
+          <Text style={[styles.hydrationMessage, { color: colors.text }]}>{message}</Text>
+          {errorMessage ? (
+            <Text style={[styles.hydrationError, { color: errorColor }]}>{errorMessage}</Text>
           ) : null}
         </View>
       </SafeAreaView>
     );
+  };
+
+  if (fontError) {
+    const errorMessage =
+      fontError instanceof Error
+        ? fontError.message || 'Failed to load icon font.'
+        : 'Failed to load icon font.';
+    return renderBlockingScreen('Unable to load icon assets.', errorMessage);
+  }
+
+  if (!fontsLoaded) {
+    return renderBlockingScreen('Preparing icon assets...', null);
+  }
+
+  if (!isHydrated) {
+    const hydrationMessage = hydrationError
+      ? hydrationError.message || 'Unable to load saved progress.'
+      : null;
+    return renderBlockingScreen('Loading your progress...', hydrationMessage);
   }
 
   return (
