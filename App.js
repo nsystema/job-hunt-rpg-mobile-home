@@ -3001,7 +3001,7 @@ export default function App() {
     let earliestTimestamp = Number.POSITIVE_INFINITY;
 
     const pipelineStatuses = new Set(['Applied', 'Applied with referral', 'Interview']);
-    const respondedStatuses = new Set(['Applied with referral', 'Interview']);
+    const respondedStatuses = new Set(['Applied with referral', 'Interview', 'Rejected']);
 
     applications.forEach((app) => {
       const statusKey = app?.status;
@@ -5140,12 +5140,12 @@ const styles = StyleSheet.create({
   },
   statItem: {
     width: '48%',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   statValue: {
     fontSize: 17,
