@@ -19,7 +19,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFonts } from 'expo-font';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Defs, Rect, Path, Circle, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
@@ -2597,11 +2596,6 @@ export default function App() {
     () => (eff === 'light' ? ensureOpaque(colors.surface) : colors.surface),
     [eff, colors.surface],
   );
-  const [iconsLoaded] = useFonts(MaterialCommunityIcons.font);
-
-  useEffect(() => {
-    MaterialCommunityIcons.loadFont();
-  }, []);
 
   const [xp, setXp] = useState(0);
   const [apps, setApps] = useState(0);
@@ -4189,7 +4183,7 @@ export default function App() {
     }
   }, [chests, focusedChestId]);
 
-  if (!isHydrated || !iconsLoaded) {
+  if (!isHydrated) {
     const errorColor = hexToRgba(colors.text, eff === 'light' ? 0.6 : 0.7);
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
