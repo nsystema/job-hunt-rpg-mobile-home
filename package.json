@@ -12,17 +12,18 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
-    "@react-native-async-storage/async-storage": "~1.23.1",
+    "@react-native-async-storage/async-storage": "2.1.2",
     "country-state-city": "^3.2.1",
     "expo": "~53.0.0",
     "expo-asset": "~11.1.7",
+    "expo-file-system": "~18.1.11",
     "expo-font": "~13.3.2",
     "expo-linear-gradient": "~14.1.5",
     "react": "19.0.0",
     "react-native": "0.79.5",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-reanimated": "~3.17.4",
-    "react-native-svg": "^15.2.0",
+    "react-native-svg": "15.11.2",
     "react-native-url-polyfill": "^2.0.0"
   },
   "devDependencies": {

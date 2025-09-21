@@ -16,9 +16,11 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jobless.app"
     },
     "android": {
+      "package": "com.jobless.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0D14"
@@ -31,6 +33,11 @@
       "expo-asset",
       "expo-font",
       "./plugins/withAsyncStorage"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9127b370-1820-453e-ac54-c6c761780b6c"
+      }
+    }
   }
 }

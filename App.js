@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFonts } from 'expo-font';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Defs, Rect, Path, Circle, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
@@ -1221,7 +1222,7 @@ const IconButton = ({ onPress, icon, colors, accessibilityLabel }) => (
 const ProgressBar = ({ value, max, fromColor, toColor, colors }) => {
   const percentage = max ? Math.min(100, (value / max) * 100) : 0;
   return (
-    <View style={[styles.progressBarContainer, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.surfaceBorder }]}> 
+    <View style={[styles.progressBarContainer, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.surfaceBorder }]}>
       <LinearGradient
         colors={[fromColor, toColor]}
         start={{ x: 0, y: 0 }}
@@ -1229,6 +1230,45 @@ const ProgressBar = ({ value, max, fromColor, toColor, colors }) => {
         style={[styles.progressBarFill, { width: `${percentage}%` }]}
       />
     </View>
+  );
+};
+
+const ActivityProgressRing = ({ progress = 0, accent, trackColor }) => {
+  const size = 28;
+  const strokeWidth = 4;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const normalized =
+    typeof progress === 'number' && !Number.isNaN(progress)
+      ? Math.max(0, Math.min(1, progress))
+      : 0;
+  const normalizedAccent = accent || '#38bdf8';
+  const normalizedTrack = trackColor || 'rgba(148,163,184,0.3)';
+  const offset = circumference * (1 - normalized);
+
+  return (
+    <Svg width={size} height={size}>
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke={normalizedTrack}
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeLinecap="round"
+      />
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke={normalizedAccent}
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeDasharray={`${circumference} ${circumference}`}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 };
 
@@ -2589,6 +2629,7 @@ const AppFormModal = ({
 };
 
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts(MaterialCommunityIcons.font);
   const { mode, eff, cycle } = useTheme();
   const { cycle: cyclePal, pal } = usePalette();
   const colors = useMemo(() => cur(eff, pal), [eff, pal]);
@@ -2640,6 +2681,16 @@ export default function App() {
   const previousEventStatesRef = useRef({});
   const previousLevelRef = useRef(null);
   const lastPersistedRef = useRef('');
+
+  useEffect(() => {
+    if (!fontError) {
+      return;
+    }
+    const logger = globalThis?.console;
+    if (logger && typeof logger.error === 'function') {
+      logger.error('Failed to load MaterialCommunityIcons font', fontError);
+    }
+  }, [fontError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3375,6 +3426,7 @@ export default function App() {
       trackedDays = Math.max(1, Math.floor(diff / dayMs) + 1);
     }
 
+    const perDayAverageRaw = trackedDays > 0 ? totalCount / trackedDays : 0;
     const perDayAverage = formatAverage(totalCount, trackedDays);
     const replyRate = totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0;
     const interviewRate = totalCount > 0 ? Math.round((interviewCount / totalCount) * 100) : 0;
@@ -3384,31 +3436,43 @@ export default function App() {
         key: 'today',
         label: 'Logged Today',
         value: String(todayCount),
+        rawValue: todayCount,
+        type: 'count',
       },
       {
         key: 'perDayAverage',
         label: 'Per day',
         value: perDayAverage,
+        rawValue: perDayAverageRaw,
+        type: 'count',
       },
       {
         key: 'pipeline',
         label: 'Active apps',
         value: String(pipelineCount),
+        rawValue: pipelineCount,
+        type: 'count',
       },
       {
         key: 'responseRate',
         label: 'Reply rate',
         value: `${replyRate}%`,
+        rawValue: replyRate,
+        type: 'percentage',
       },
       {
         key: 'interviews',
         label: 'Interviews',
         value: String(interviewCount),
+        rawValue: interviewCount,
+        type: 'count',
       },
       {
         key: 'interviewRate',
         label: 'Interview rate',
         value: `${interviewRate}%`,
+        rawValue: interviewRate,
+        type: 'percentage',
       },
     ];
 
@@ -3430,11 +3494,13 @@ export default function App() {
     return { statsSnapshot, weeklyTrend };
   }, [applications, currentTime]);
   const statPrimaryColor = colors.text;
-  const statLabelColor = 'rgba(148,163,184,.95)';
+  const statLabelColor = hexToRgba(colors.text, eff === 'light' ? 0.62 : 0.72);
   const statPanelBorderColor = colors.surfaceBorder;
   const statBorderColor = hexToRgba(colors.sky, eff === 'light' ? 0.4 : 0.6);
   const statHeaderIconBackground = 'transparent';
   const statHeaderIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.35 : 0.45);
+  const statValueColor = eff === 'light' ? '#0f172a' : colors.text;
+  const statMutedColor = hexToRgba(colors.text, eff === 'light' ? 0.68 : 0.8);
   const trendIconName =
     weeklyTrend.direction === 'up'
       ? 'trending-up'
@@ -3460,6 +3526,35 @@ export default function App() {
       : weeklyTrend.direction === 'down'
       ? `Total applications decreased ${trendLabel}`
       : `Total applications unchanged ${trendLabel}`;
+
+  const statVisuals = useMemo(() => {
+    const isLight = eff === 'light';
+    const accent = colors.sky;
+    const secondary = colors.emerald;
+
+    const makeVisual = (icon) => {
+      return {
+        icon,
+        gradient: ['transparent', 'transparent'],
+        borderColor: 'transparent',
+        iconBackground: hexToRgba(accent, isLight ? 0.2 : 0.32),
+        iconBorder: hexToRgba(accent, isLight ? 0.32 : 0.48),
+        iconColor: isLight ? '#0f172a' : colors.text,
+      };
+    };
+
+    const fallback = makeVisual('chart-box-outline');
+
+    return {
+      today: makeVisual('calendar-star'),
+      perDayAverage: makeVisual('clock-outline'),
+      pipeline: makeVisual('chart-timeline-variant'),
+      responseRate: makeVisual('email-check-outline'),
+      interviews: makeVisual('account-voice'),
+      interviewRate: makeVisual('chart-line'),
+      default: fallback,
+    };
+  }, [colors, eff]);
 
   const totalPotential = useMemo(() => computePotential(chests), [chests]);
   const viewRange = totalPotential ? `${formatRange(totalPotential)}g` : '0g';
@@ -4183,7 +4278,7 @@ export default function App() {
     }
   }, [chests, focusedChestId]);
 
-  if (!isHydrated) {
+  const renderBlockingScreen = (message, errorMessage) => {
     const errorColor = hexToRgba(colors.text, eff === 'light' ? 0.6 : 0.7);
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -4193,15 +4288,32 @@ export default function App() {
         />
         <View style={styles.hydrationContainer}>
           <ActivityIndicator size="large" color={colors.sky} />
-          <Text style={[styles.hydrationMessage, { color: colors.text }]}>Loading your progress...</Text>
-          {hydrationError ? (
-            <Text style={[styles.hydrationError, { color: errorColor }]}>
-              {hydrationError.message || 'Unable to load saved progress.'}
-            </Text>
+          <Text style={[styles.hydrationMessage, { color: colors.text }]}>{message}</Text>
+          {errorMessage ? (
+            <Text style={[styles.hydrationError, { color: errorColor }]}>{errorMessage}</Text>
           ) : null}
         </View>
       </SafeAreaView>
     );
+  };
+
+  if (fontError) {
+    const errorMessage =
+      fontError instanceof Error
+        ? fontError.message || 'Failed to load icon font.'
+        : 'Failed to load icon font.';
+    return renderBlockingScreen('Unable to load icon assets.', errorMessage);
+  }
+
+  if (!fontsLoaded) {
+    return renderBlockingScreen('Preparing icon assets...', null);
+  }
+
+  if (!isHydrated) {
+    const hydrationMessage = hydrationError
+      ? hydrationError.message || 'Unable to load saved progress.'
+      : null;
+    return renderBlockingScreen('Loading your progress...', hydrationMessage);
   }
 
   return (
@@ -4386,12 +4498,41 @@ export default function App() {
             </View>
           </View>
           <View style={styles.statGrid}>
-            {statsSnapshot.map((stat) => (
-              <View key={stat.key} style={styles.statItem}>
-                <Text style={[styles.statValue, { color: statLabelColor }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
-              </View>
-            ))}
+            {statsSnapshot.map((stat) => {
+              const visual = statVisuals[stat.key] || statVisuals.default;
+
+              return (
+                <View
+                  key={stat.key}
+                  style={[
+                    styles.statItem,
+                    eff === 'light' ? styles.statItemShadowLight : styles.statItemShadowDark,
+                  ]}
+                >
+                  <LinearGradient
+                    colors={visual.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.statCard, { borderColor: visual.borderColor }]}
+                  >
+                    <View style={styles.statCardHeader}>
+                      <View
+                        style={[
+                          styles.statCardIcon,
+                          { backgroundColor: visual.iconBackground, borderColor: visual.iconBorder },
+                        ]}
+                      >
+                        <MaterialCommunityIcons name={visual.icon} size={16} color={visual.iconColor} />
+                      </View>
+                      <View style={styles.statCardTextGroup}>
+                        <Text style={[styles.statHeaderValue, { color: statValueColor }]}>{stat.value}</Text>
+                        <Text style={[styles.statLabel, { color: statMutedColor }]}>{stat.label}</Text>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </View>
+              );
+            })}
           </View>
         </Panel>
         <TouchableOpacity
@@ -5394,7 +5535,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
   },
   hydrationContainer: {
     flex: 1,
@@ -5585,7 +5725,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statPanel: {
-    padding: 20,
+    paddingBottom: 12,
   },
   statHeaderRow: {
     flexDirection: 'row',
@@ -5636,25 +5776,63 @@ const styles = StyleSheet.create({
   },
   statItem: {
     width: '48%',
-    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  statItemShadowLight: {
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 3,
+  },
+  statItemShadowDark: {
+    shadowColor: '#000',
+    shadowOpacity: 0.42,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
+  },
+  statCard: {
+    borderRadius: 18,
+    paddingVertical: 16,
     paddingHorizontal: 16,
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+    width: '100%',
+  },
+  statCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  statCardIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    marginBottom: 4,
+    borderWidth: 1,
   },
-  statValue: {
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    textAlign: 'center',
+  statCardTextGroup: {
+    height: 32,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  statHeaderValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textAlign: 'left',
+    lineHeight: 18,
   },
   statLabel: {
-    fontSize: 13,
-    fontWeight: '400',
-    letterSpacing: 0.2,
-    textAlign: 'center',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    textAlign: 'left',
     textTransform: 'uppercase',
+    lineHeight: 14,
   },
   logApplicationButton: {
     borderRadius: 20,

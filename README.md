@@ -58,6 +58,15 @@ Jobless turns the grind of job hunting into an RPG-style progression loop. Log a
   ```
   Use it locally or in CI to validate the project boots with the configured SDK.
 
+## Release configuration
+
+Release builds reserve specific store identifiers for this project:
+
+- **iOS bundle identifier:** `com.jobless.app`
+- **Android application ID:** `com.jobless.app`
+
+Coordinate any changes to these IDs with release engineering to avoid conflicts in the Apple Developer or Google Play Console accounts.
+
 ## Navigating the app
 - **Home:** Monitor XP, focus, and activity stats while triggering the "Log application" action.
 - **Apps:** Manage the pipeline with search, filters, sorting, editing, duplication, favorite toggles, status changes, notes, and exports.
