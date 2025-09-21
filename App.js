@@ -3064,31 +3064,26 @@ export default function App() {
         key: 'perDayAverage',
         label: 'Per day',
         value: perDayAverage,
-        helper: 'Overall average',
       },
       {
         key: 'pipeline',
         label: 'Active apps',
         value: String(pipelineCount),
-        helper: 'Overall pipeline',
       },
       {
         key: 'responseRate',
         label: 'Reply rate',
         value: `${replyRate}%`,
-        helper: 'Overall',
       },
       {
         key: 'interviews',
         label: 'Interviews',
         value: String(interviewCount),
-        helper: 'Overall',
       },
       {
         key: 'interviewRate',
         label: 'Interview rate',
         value: `${interviewRate}%`,
-        helper: 'Overall',
       },
     ];
 
@@ -3111,17 +3106,16 @@ export default function App() {
   }, [applications, currentTime]);
   const statPrimaryColor = colors.text;
   const statLabelColor = 'rgba(148,163,184,.95)';
-  const statHelperColor = hexToRgba(colors.text, eff === 'light' ? 0.48 : 0.68);
   const statPanelBorderColor = colors.surfaceBorder;
   const statBorderColor = hexToRgba(colors.sky, eff === 'light' ? 0.4 : 0.6);
   const statHeaderIconBackground = 'transparent';
   const statHeaderIconBorder = hexToRgba(colors.sky, eff === 'light' ? 0.35 : 0.45);
   const trendIconName =
     weeklyTrend.direction === 'up'
-      ? 'arrow-up-bold'
+      ? 'trending-up'
       : weeklyTrend.direction === 'down'
-      ? 'arrow-down-bold'
-      : 'arrow-right-bold';
+      ? 'trending-down'
+      : 'trending-neutral';
   const trendColor =
     weeklyTrend.direction === 'up'
       ? colors.emerald
@@ -3923,9 +3917,6 @@ export default function App() {
               <View key={stat.key} style={styles.statItem}>
                 <Text style={[styles.statValue, { color: statLabelColor }]}>{stat.value}</Text>
                 <Text style={[styles.statLabel, { color: statLabelColor }]}>{stat.label}</Text>
-                {stat.helper ? (
-                  <Text style={[styles.statHelper, { color: statHelperColor }]}>{stat.helper}</Text>
-                ) : null}
               </View>
             ))}
           </View>
@@ -5145,16 +5136,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   statItem: {
     width: '48%',
-    paddingVertical: 18,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginBottom: 12,
+    gap: 4,
+    marginBottom: 8,
   },
   statValue: {
     fontSize: 17,
@@ -5168,12 +5159,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
     textAlign: 'center',
     textTransform: 'uppercase',
-  },
-  statHelper: {
-    fontSize: 12,
-    fontWeight: '400',
-    letterSpacing: 0.2,
-    textAlign: 'center',
   },
   logApplicationButton: {
     borderRadius: 20,
