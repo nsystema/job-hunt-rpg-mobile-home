@@ -80,6 +80,17 @@ export const composeQuestClaimKey = (id, triggeredAt) => {
   return `${id}${CLAIM_KEY_SEPARATOR}${triggeredAt}`;
 };
 
+export const extractQuestIdFromClaimKey = (claimKey) => {
+  if (typeof claimKey !== 'string') {
+    return '';
+  }
+  const separatorIndex = claimKey.indexOf(CLAIM_KEY_SEPARATOR);
+  if (separatorIndex < 0) {
+    return claimKey;
+  }
+  return claimKey.slice(0, separatorIndex);
+};
+
 const createSeededRandom = (seedValue) => {
   const normalized = typeof seedValue === 'string' ? seedValue : String(seedValue ?? '');
   let seed = 0;
