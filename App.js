@@ -46,7 +46,6 @@ import {
   evaluateEventStates,
   computeEventProgressMap,
   composeQuestClaimKey,
-  extractQuestIdFromClaimKey,
 } from './questUtils';
 
 const buildInitialFormValues = () => ({
@@ -2680,7 +2679,6 @@ export default function App() {
   const announcedEffectKeysRef = useRef(new Set());
   const eventSeenRef = useRef(new Map());
   const previousEventStatesRef = useRef({});
-  const lastQuestPeriodRef = useRef({ dayKey: '', weekKey: '' });
   const previousLevelRef = useRef(null);
   const lastPersistedRef = useRef('');
 
@@ -3811,46 +3809,6 @@ export default function App() {
     () => computeQuestMetrics({ applications, manualLogs, now: currentTime }),
     [applications, manualLogs, currentTime],
   );
-
-  const todayKey = questMetrics?.todayKey || '';
-  const currentWeekKey = questMetrics?.currentWeekKey || '';
-
-  useEffect(() => {
-    const previous = lastQuestPeriodRef.current || {};
-    const previousDayKey = previous.dayKey || '';
-    const previousWeekKey = previous.weekKey || '';
-    const dailyChanged = Boolean(previousDayKey && todayKey && previousDayKey !== todayKey);
-    const weeklyChanged = Boolean(previousWeekKey && currentWeekKey && previousWeekKey !== currentWeekKey);
-
-    lastQuestPeriodRef.current = { dayKey: todayKey, weekKey: currentWeekKey };
-
-    if (!dailyChanged && !weeklyChanged) {
-      return;
-    }
-
-    setClaimedQuests((currentSet) => {
-      if (!(currentSet instanceof Set) || currentSet.size === 0) {
-        return currentSet;
-      }
-      let mutated = false;
-      const nextSet = new Set();
-      currentSet.forEach((value) => {
-        const key = typeof value === 'string' ? value : String(value);
-        const baseId = extractQuestIdFromClaimKey(key);
-        const normalizedBase = typeof baseId === 'string' ? baseId : String(baseId || '');
-        const isDailyKey = dailyChanged && normalizedBase.startsWith('D-');
-        const isWeeklyKey =
-          weeklyChanged &&
-          (normalizedBase.startsWith('W-') || normalizedBase.startsWith('WC-'));
-        if (isDailyKey || isWeeklyKey) {
-          mutated = true;
-          return;
-        }
-        nextSet.add(key);
-      });
-      return mutated ? nextSet : currentSet;
-    });
-  }, [todayKey, currentWeekKey, setClaimedQuests]);
 
   const eventProgress = useMemo(
     () =>
