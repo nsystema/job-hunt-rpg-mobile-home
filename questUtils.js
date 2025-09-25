@@ -68,7 +68,7 @@ const WEEKLY_REQUIREMENTS = {
   'WC-PORTFOLIO': (metrics) => safeNumber(metrics?.portfolioUpdate) >= 1,
 };
 
-const CLAIM_KEY_SEPARATOR = '::';
+export const CLAIM_KEY_SEPARATOR = '::';
 
 export const composeQuestClaimKey = (id, triggeredAt) => {
   if (!id) {

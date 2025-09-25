@@ -40,12 +40,14 @@ import {
 } from './gameMechanics';
 import { STATUSES, PLATFORMS, COUNTRIES, getCitiesForCountry } from './data';
 import { QUESTS } from './quests';
+import appConfig from './app.json';
 import {
   computeQuestMetrics,
   buildQuestTabs,
   evaluateEventStates,
   computeEventProgressMap,
   composeQuestClaimKey,
+  CLAIM_KEY_SEPARATOR,
 } from './questUtils';
 
 const buildInitialFormValues = () => ({
@@ -61,6 +63,55 @@ const buildInitialFormValues = () => ({
   country: '',
   city: '',
 });
+
+const APP_VERSION = appConfig?.expo?.version ?? '1.0.0';
+
+const DAILY_CLAIM_PREFIXES = ['D-'];
+const WEEKLY_CLAIM_PREFIXES = ['W-', 'WC-'];
+
+const extractClaimBaseId = (value) => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const separatorIndex = value.indexOf(CLAIM_KEY_SEPARATOR);
+  if (separatorIndex === -1) {
+    return value;
+  }
+  return value.slice(0, separatorIndex);
+};
+
+const isDailyClaimKeyValue = (value) => {
+  const baseId = extractClaimBaseId(value);
+  return DAILY_CLAIM_PREFIXES.some((prefix) => baseId.startsWith(prefix));
+};
+
+const isWeeklyClaimKeyValue = (value) => {
+  const baseId = extractClaimBaseId(value);
+  return WEEKLY_CLAIM_PREFIXES.some((prefix) => baseId.startsWith(prefix));
+};
+
+const filterClaimedQuestSet = (sourceSet, predicate) => {
+  const base = sourceSet instanceof Set ? sourceSet : new Set();
+  const next = new Set();
+  base.forEach((value) => {
+    if (predicate(value)) {
+      next.add(value);
+    }
+  });
+  if (next.size === base.size) {
+    let identical = true;
+    for (const value of base) {
+      if (!next.has(value)) {
+        identical = false;
+        break;
+      }
+    }
+    if (identical) {
+      return base;
+    }
+  }
+  return next;
+};
 
 const TYPE_OPTIONS = ['Full', 'Easy'];
 
@@ -341,6 +392,30 @@ const sanitizeSprayDebuff = (input) => {
   return result;
 };
 
+const createDefaultQuestMeta = () => ({
+  lastDailyKey: '',
+  lastWeeklyKey: '',
+  lastAppVersion: '',
+});
+
+const sanitizeQuestMeta = (input) => {
+  const defaults = createDefaultQuestMeta();
+  if (!input || typeof input !== 'object') {
+    return { ...defaults };
+  }
+  const result = { ...defaults };
+  if (typeof input.lastDailyKey === 'string') {
+    result.lastDailyKey = input.lastDailyKey;
+  }
+  if (typeof input.lastWeeklyKey === 'string') {
+    result.lastWeeklyKey = input.lastWeeklyKey;
+  }
+  if (typeof input.lastAppVersion === 'string') {
+    result.lastAppVersion = input.lastAppVersion;
+  }
+  return result;
+};
+
 const createDefaultPersistedState = () => ({
   xp: 0,
   apps: 0,
@@ -355,6 +430,7 @@ const createDefaultPersistedState = () => ({
   eventStates: {},
   chests: [],
   premiumProgress: {},
+  questMeta: createDefaultQuestMeta(),
 });
 
 const sanitizePersistedData = (candidate) => {
@@ -368,6 +444,7 @@ const sanitizePersistedData = (candidate) => {
   const eventStates = sanitizeRecordOfObjects(safe.eventStates);
   const premiumProgress = sanitizePremiumProgress(safe.premiumProgress);
   const sprayDebuff = sanitizeSprayDebuff(safe.sprayDebuff);
+  const questMeta = sanitizeQuestMeta(safe.questMeta);
 
   const xp = parseFiniteNumber(safe.xp);
   const appsCount = parseFiniteNumber(safe.apps);
@@ -389,6 +466,7 @@ const sanitizePersistedData = (candidate) => {
     eventStates,
     chests,
     premiumProgress,
+    questMeta,
   };
 };
 
@@ -2658,6 +2736,8 @@ export default function App() {
   const [editingApp, setEditingApp] = useState(null);
   const [questTab, setQuestTab] = useState('Daily');
   const [claimedQuests, setClaimedQuests] = useState(() => new Set());
+  const [questMeta, setQuestMeta] = useState(() => createDefaultQuestMeta());
+  const [questMetaReady, setQuestMetaReady] = useState(false);
   const [manualLogs, setManualLogs] = useState(() => ({}));
   const [eventStates, setEventStates] = useState(() => ({}));
   const [eventNotifications, setEventNotifications] = useState(() => ({}));
@@ -2699,6 +2779,7 @@ export default function App() {
       if (!AsyncStorage || typeof AsyncStorage.getItem !== 'function') {
         if (!cancelled) {
           setIsHydrated(true);
+          setQuestMetaReady(true);
         }
         return;
       }
@@ -2735,6 +2816,7 @@ export default function App() {
         setEventStates(data.eventStates);
         setChests(data.chests);
         setPremiumProgress(data.premiumProgress);
+        setQuestMeta(data.questMeta);
         const claimEntries = Array.isArray(data.claimedQuests) ? data.claimedQuests : [];
         setClaimedQuests(new Set(claimEntries));
         previousEventStatesRef.current =
@@ -2753,6 +2835,7 @@ export default function App() {
       } finally {
         if (!cancelled) {
           setIsHydrated(true);
+          setQuestMetaReady(true);
         }
       }
     };
@@ -2780,6 +2863,7 @@ export default function App() {
         eventStates,
         chests,
         premiumProgress,
+        questMeta,
       }),
     [
       xp,
@@ -2795,6 +2879,7 @@ export default function App() {
       eventStates,
       chests,
       premiumProgress,
+      questMeta,
     ],
   );
 
@@ -3809,6 +3894,67 @@ export default function App() {
     () => computeQuestMetrics({ applications, manualLogs, now: currentTime }),
     [applications, manualLogs, currentTime],
   );
+
+  useEffect(() => {
+    if (!questMetaReady) {
+      return;
+    }
+    const todayKey = questMetrics?.todayKey || '';
+    const weekKey = questMetrics?.currentWeekKey || '';
+    const versionChanged =
+      questMeta.lastAppVersion && questMeta.lastAppVersion !== APP_VERSION;
+
+    const shouldResetDaily =
+      versionChanged || (todayKey && todayKey !== questMeta.lastDailyKey);
+
+    const shouldResetWeekly =
+      weekKey && questMeta.lastWeeklyKey && questMeta.lastWeeklyKey !== weekKey;
+
+    if (!shouldResetDaily && !shouldResetWeekly) {
+      setQuestMeta((prev) => {
+        const nextDaily = todayKey || '';
+        const nextWeekly = weekKey || '';
+        const nextVersion = APP_VERSION;
+        if (
+          prev.lastDailyKey === nextDaily &&
+          prev.lastWeeklyKey === nextWeekly &&
+          prev.lastAppVersion === nextVersion
+        ) {
+          return prev;
+        }
+        return {
+          lastDailyKey: nextDaily,
+          lastWeeklyKey: nextWeekly,
+          lastAppVersion: nextVersion,
+        };
+      });
+      return;
+    }
+
+    setClaimedQuests((prev) => {
+      let working = prev instanceof Set ? prev : new Set();
+      if (shouldResetDaily) {
+        working = filterClaimedQuestSet(working, (value) => !isDailyClaimKeyValue(value));
+      }
+      if (shouldResetWeekly) {
+        working = filterClaimedQuestSet(working, (value) => !isWeeklyClaimKeyValue(value));
+      }
+      return working;
+    });
+
+    setQuestMeta({
+      lastDailyKey: todayKey || '',
+      lastWeeklyKey: weekKey || '',
+      lastAppVersion: APP_VERSION,
+    });
+  }, [
+    questMetaReady,
+    questMetrics?.todayKey,
+    questMetrics?.currentWeekKey,
+    questMeta.lastDailyKey,
+    questMeta.lastWeeklyKey,
+    questMeta.lastAppVersion,
+  ]);
 
   const eventProgress = useMemo(
     () =>
