@@ -46,9 +46,6 @@ import {
   evaluateEventStates,
   computeEventProgressMap,
   composeQuestClaimKey,
-  extractQuestIdFromClaimKey,
-  getDayKey,
-  getWeekKey,
 } from './questUtils';
 
 const buildInitialFormValues = () => ({
@@ -325,20 +322,6 @@ const sanitizeClaimedQuests = (input) => {
   return Array.from(unique);
 };
 
-const sanitizeQuestPeriods = (input) => {
-  const result = { daily: '', weekly: '' };
-  if (!input || typeof input !== 'object') {
-    return result;
-  }
-  if (typeof input.daily === 'string') {
-    result.daily = input.daily;
-  }
-  if (typeof input.weekly === 'string') {
-    result.weekly = input.weekly;
-  }
-  return result;
-};
-
 const sanitizeSprayDebuff = (input) => {
   if (!input || typeof input !== 'object') {
     return null;
@@ -372,7 +355,6 @@ const createDefaultPersistedState = () => ({
   eventStates: {},
   chests: [],
   premiumProgress: {},
-  questPeriods: { daily: '', weekly: '' },
 });
 
 const sanitizePersistedData = (candidate) => {
@@ -386,7 +368,6 @@ const sanitizePersistedData = (candidate) => {
   const eventStates = sanitizeRecordOfObjects(safe.eventStates);
   const premiumProgress = sanitizePremiumProgress(safe.premiumProgress);
   const sprayDebuff = sanitizeSprayDebuff(safe.sprayDebuff);
-  const questPeriods = sanitizeQuestPeriods(safe.questPeriods);
 
   const xp = parseFiniteNumber(safe.xp);
   const appsCount = parseFiniteNumber(safe.apps);
@@ -408,7 +389,6 @@ const sanitizePersistedData = (candidate) => {
     eventStates,
     chests,
     premiumProgress,
-    questPeriods,
   };
 };
 
@@ -2699,7 +2679,6 @@ export default function App() {
   const announcedEffectKeysRef = useRef(new Set());
   const eventSeenRef = useRef(new Map());
   const previousEventStatesRef = useRef({});
-  const lastQuestPeriodRef = useRef({ dayKey: '', weekKey: '' });
   const previousLevelRef = useRef(null);
   const lastPersistedRef = useRef('');
 
@@ -2756,10 +2735,8 @@ export default function App() {
         setEventStates(data.eventStates);
         setChests(data.chests);
         setPremiumProgress(data.premiumProgress);
-        const questPeriods = sanitizeQuestPeriods(data.questPeriods);
         const claimEntries = Array.isArray(data.claimedQuests) ? data.claimedQuests : [];
         setClaimedQuests(new Set(claimEntries));
-        lastQuestPeriodRef.current = questPeriods;
         previousEventStatesRef.current =
           data.eventStates && typeof data.eventStates === 'object' ? data.eventStates : {};
         setHydrationError(null);
@@ -2803,10 +2780,6 @@ export default function App() {
         eventStates,
         chests,
         premiumProgress,
-        questPeriods: {
-          daily: getDayKey(currentTime),
-          weekly: getWeekKey(currentTime),
-        },
       }),
     [
       xp,
@@ -2822,7 +2795,6 @@ export default function App() {
       eventStates,
       chests,
       premiumProgress,
-      currentTime,
     ],
   );
 
@@ -3837,46 +3809,6 @@ export default function App() {
     () => computeQuestMetrics({ applications, manualLogs, now: currentTime }),
     [applications, manualLogs, currentTime],
   );
-
-  const todayKey = questMetrics?.todayKey || '';
-  const currentWeekKey = questMetrics?.currentWeekKey || '';
-
-  useEffect(() => {
-    const previous = lastQuestPeriodRef.current || {};
-    const previousDayKey = previous.dayKey || '';
-    const previousWeekKey = previous.weekKey || '';
-    const dailyChanged = todayKey !== previousDayKey;
-    const weeklyChanged = currentWeekKey !== previousWeekKey;
-
-    lastQuestPeriodRef.current = { dayKey: todayKey, weekKey: currentWeekKey };
-
-    if (!dailyChanged && !weeklyChanged) {
-      return;
-    }
-
-    setClaimedQuests((currentSet) => {
-      if (!(currentSet instanceof Set) || currentSet.size === 0) {
-        return currentSet;
-      }
-      let mutated = false;
-      const nextSet = new Set();
-      currentSet.forEach((value) => {
-        const key = typeof value === 'string' ? value : String(value);
-        const baseId = extractQuestIdFromClaimKey(key);
-        const normalizedBase = typeof baseId === 'string' ? baseId : String(baseId || '');
-        const isDailyKey = dailyChanged && normalizedBase.startsWith('D-');
-        const isWeeklyKey =
-          weeklyChanged &&
-          (normalizedBase.startsWith('W-') || normalizedBase.startsWith('WC-'));
-        if (isDailyKey || isWeeklyKey) {
-          mutated = true;
-          return;
-        }
-        nextSet.add(key);
-      });
-      return mutated ? nextSet : currentSet;
-    });
-  }, [todayKey, currentWeekKey, setClaimedQuests]);
 
   const eventProgress = useMemo(
     () =>
