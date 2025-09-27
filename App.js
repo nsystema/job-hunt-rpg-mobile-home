@@ -71,6 +71,17 @@ import {
   migratePersistedState,
   sanitizePersistedData,
 } from './src/state/persistence/sanitizers';
+import { TextField } from './src/components/forms/TextField';
+import { AutoCompleteField } from './src/components/forms/AutoCompleteField';
+import { SegmentedControl } from './src/components/forms/SegmentedControl';
+import { IconToggle } from './src/components/forms/IconToggle';
+import { Panel } from './src/components/layout/Panel';
+import { GoldPill } from './src/components/layout/GoldPill';
+import { StatBadge } from './src/components/layout/StatBadge';
+import { IconButton } from './src/components/layout/IconButton';
+import { ProgressBar } from './src/components/layout/ProgressBar';
+import { EffectTimerRing } from './src/components/feedback/EffectTimerRing';
+import { ToastBanner } from './src/components/feedback/ToastBanner';
 
 const buildInitialFormValues = () => ({
   company: '',
@@ -588,242 +599,6 @@ const formatRange = (range) => {
   return min === max ? `${min}` : `${min} – ${max}`;
 };
 
-const TextField = ({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  colors,
-  multiline = false,
-  numberOfLines = 1,
-  containerStyle,
-  ...inputProps
-}) => (
-  <View style={[styles.formGroup, containerStyle]}>
-    <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      placeholderTextColor={`${colors.text}80`}
-      multiline={multiline}
-      numberOfLines={multiline ? numberOfLines : 1}
-      style={[
-        multiline ? styles.textArea : styles.textInput,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.surfaceBorder,
-          color: colors.text,
-        },
-      ]}
-      {...inputProps}
-    />
-  </View>
-);
-
-const AutoCompleteField = ({
-  label,
-  value,
-  onSelect,
-  colors,
-  placeholder,
-  options = [],
-  minChars = 0,
-  containerStyle,
-  disabled = false,
-}) => {
-  const [query, setQuery] = useState(value ?? '');
-  const [focused, setFocused] = useState(false);
-  const blurTimeout = useRef(null);
-
-  useEffect(() => {
-    if (!focused) {
-      setQuery(value ?? '');
-    }
-  }, [value, focused]);
-
-  useEffect(
-    () => () => {
-      if (blurTimeout.current) {
-        clearTimeout(blurTimeout.current);
-      }
-    },
-    [],
-  );
-
-  const trimmedQuery = query.trim();
-
-  const normalizedOptions = useMemo(() => options.filter(Boolean), [options]);
-
-  const suggestions = useMemo(() => {
-    if (!focused || disabled) {
-      return [];
-    }
-    if (!trimmedQuery.length) {
-      return normalizedOptions;
-    }
-    if (trimmedQuery.length < minChars) {
-      return normalizedOptions;
-    }
-    const lower = trimmedQuery.toLowerCase();
-    return normalizedOptions.filter((option) => option.toLowerCase().includes(lower));
-  }, [focused, disabled, trimmedQuery, normalizedOptions, minChars]);
-
-  const shouldShowList = focused && !disabled && normalizedOptions.length > 0;
-
-  const handleChange = (text) => {
-    if (disabled) {
-      return;
-    }
-    setQuery(text);
-    setFocused(true);
-  };
-
-  const handleSelect = (option) => {
-    setQuery(option);
-    onSelect?.(option);
-    setFocused(false);
-    Keyboard.dismiss();
-  };
-
-  const handleFocus = () => {
-    if (disabled) {
-      return;
-    }
-    setFocused(true);
-    if (!query && value) {
-      setQuery(value);
-    }
-  };
-
-  const handleBlur = () => {
-    if (blurTimeout.current) {
-      clearTimeout(blurTimeout.current);
-    }
-    blurTimeout.current = setTimeout(() => {
-      setFocused(false);
-      if ((value ?? '') !== query) {
-        setQuery(value ?? '');
-      }
-    }, 120);
-  };
-
-  const handleClear = () => {
-    setQuery('');
-    onSelect?.('');
-    setFocused(false);
-    Keyboard.dismiss();
-  };
-
-  const hasMatches = suggestions.length > 0;
-
-  return (
-    <View style={[styles.formGroup, containerStyle]}>
-      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
-      <View
-        style={[
-          styles.autoCompleteInputWrapper,
-          { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
-          disabled && styles.disabledInput,
-        ]}
-      >
-        <TextInput
-          value={query}
-          onChangeText={handleChange}
-          placeholder={placeholder}
-          placeholderTextColor={`${colors.text}80`}
-          style={[
-            styles.textInput,
-            styles.autoCompleteInput,
-            { color: colors.text, borderColor: 'transparent', backgroundColor: 'transparent' },
-          ]}
-          editable={!disabled}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          autoCapitalize="words"
-          autoCorrect={false}
-          selectTextOnFocus
-        />
-        {!!(query || value) && !disabled && (
-          <TouchableOpacity onPress={handleClear} style={styles.autoCompleteClear} hitSlop={8}>
-            <MaterialCommunityIcons name="close-circle" size={18} color={hexToRgba(colors.text, 0.5)} />
-          </TouchableOpacity>
-        )}
-      </View>
-      {shouldShowList && (
-        <View
-          style={[
-            styles.autoCompleteSuggestions,
-            { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
-          ]}
-        >
-          <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
-            {hasMatches ? (
-              suggestions.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  onPress={() => handleSelect(option)}
-                  style={styles.autoCompleteOption}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.autoCompleteOptionText, { color: colors.text }]}>{option}</Text>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <View style={styles.autoCompleteEmpty}>
-                <Text style={[styles.autoCompleteEmptyText, { color: hexToRgba(colors.text, 0.6) }]}>No matches</Text>
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      )}
-    </View>
-  );
-};
-
-const IconToggle = ({ label, icon, activeIcon, value, onToggle, colors }) => {
-  const iconName = value && activeIcon ? activeIcon : icon;
-  const glassColors = getGlassGradientColors(colors);
-  const glassBorder = getGlassBorderColor(colors);
-  const inactiveBorder = colors.surfaceBorder;
-  const inactiveBackground = colors.chipBg;
-  const activeContentColor = '#0f172a';
-  const inactiveContentColor = hexToRgba(colors.text, 0.75);
-  const contentColor = value ? activeContentColor : inactiveContentColor;
-
-  return (
-    <TouchableOpacity onPress={() => onToggle(!value)} activeOpacity={0.9} style={styles.iconToggle}>
-      <View
-        style={[
-          styles.iconToggleInner,
-          { borderColor: 'transparent', backgroundColor: 'transparent', borderWidth: 0 },
-        ]}
-      >
-        {value ? (
-          <LinearGradient
-            colors={glassColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.iconToggleIconWrap, { borderColor: glassBorder }]}
-          >
-            <MaterialCommunityIcons name={iconName} size={20} color={contentColor} />
-          </LinearGradient>
-        ) : (
-          <View
-            style={[
-              styles.iconToggleIconWrap,
-              { backgroundColor: colors.chipBg, borderColor: inactiveBorder },
-            ]}
-          >
-            <MaterialCommunityIcons name={iconName} size={20} color={contentColor} />
-          </View>
-        )}
-        <Text style={[styles.iconToggleLabel, { color: contentColor }]}>{label}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
 const RewardPreview = ({ xp, gold, focus, colors }) => {
   const glassColors = getGlassGradientColors(colors);
   const glassBorder = getGlassBorderColor(colors);
@@ -848,49 +623,6 @@ const RewardPreview = ({ xp, gold, focus, colors }) => {
           <Text style={[styles.rewardChipText, { color: chipTextColor }]}>{chip.label}</Text>
         </LinearGradient>
       ))}
-    </View>
-  );
-};
-
-const TypeSelector = ({ value, onChange, colors }) => {
-  const glassColors = getGlassGradientColors(colors);
-  const glassBorder = getGlassBorderColor(colors);
-  const activeTextColor = colors.text;
-  const inactiveTextColor = hexToRgba(colors.text, 0.75);
-
-  return (
-    <View style={styles.segmentedControl}>
-      {TYPE_OPTIONS.map((option) => {
-        const isActive = value === option;
-        return (
-          <TouchableOpacity
-            key={option}
-            onPress={() => onChange(option)}
-            activeOpacity={0.85}
-            style={styles.segmentButton}
-          >
-            {isActive ? (
-              <LinearGradient
-                colors={glassColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.segmentButtonInner, { borderColor: glassBorder }]}
-              >
-                <Text style={[styles.segmentText, { color: activeTextColor }]}>{option}</Text>
-              </LinearGradient>
-            ) : (
-              <View
-                style={[
-                  styles.segmentButtonInner,
-                  { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
-                ]}
-              >
-                <Text style={[styles.segmentText, { color: inactiveTextColor }]}>{option}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
     </View>
   );
 };
@@ -995,184 +727,6 @@ const PlatformSelector = ({ value, onChange, colors }) => {
           </TouchableOpacity>
         );
       })}
-    </View>
-  );
-};
-
-const StatBadge = ({ icon, count, colors }) => (
-  <View style={[styles.statBadge, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
-    <MaterialCommunityIcons name={icon} size={20} color={colors.text} />
-    <View style={[styles.statBadgeCount, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
-      <Text style={[styles.statBadgeCountText, { color: colors.text }]}>{count}</Text>
-    </View>
-  </View>
-);
-
-const IconButton = ({ onPress, icon, colors, accessibilityLabel }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    style={[styles.iconButton, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
-    accessibilityLabel={accessibilityLabel}
-  >
-    <MaterialCommunityIcons name={icon} size={20} color={colors.text} />
-  </TouchableOpacity>
-);
-
-const ProgressBar = ({ value, max, fromColor, toColor, colors }) => {
-  const percentage = max ? Math.min(100, (value / max) * 100) : 0;
-  return (
-    <View style={[styles.progressBarContainer, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.surfaceBorder }]}>
-      <LinearGradient
-        colors={[fromColor, toColor]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[styles.progressBarFill, { width: `${percentage}%` }]}
-      />
-    </View>
-  );
-};
-
-const ActivityProgressRing = ({ progress = 0, accent, trackColor }) => {
-  const size = 28;
-  const strokeWidth = 4;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const normalized =
-    typeof progress === 'number' && !Number.isNaN(progress)
-      ? Math.max(0, Math.min(1, progress))
-      : 0;
-  const normalizedAccent = accent || '#38bdf8';
-  const normalizedTrack = trackColor || 'rgba(148,163,184,0.3)';
-  const offset = circumference * (1 - normalized);
-
-  return (
-    <Svg width={size} height={size}>
-      <Circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        stroke={normalizedTrack}
-        strokeWidth={strokeWidth}
-        fill="none"
-        strokeLinecap="round"
-      />
-      <Circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        stroke={normalizedAccent}
-        strokeWidth={strokeWidth}
-        fill="none"
-        strokeDasharray={`${circumference} ${circumference}`}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-      />
-    </Svg>
-  );
-};
-
-const GoldPill = ({ children, colors, onPress, dim = false, style = {}, icon = 'diamond-stone' }) => {
-  const gradientColors = dim
-    ? [hexToRgba('#94a3b8', 0.18), hexToRgba('#94a3b8', 0.12)]
-    : ['#fde68a', '#f59e0b'];
-
-  const content = (
-    <LinearGradient
-      colors={gradientColors}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.goldPill, dim && styles.goldPillDim]}
-    >
-      <MaterialCommunityIcons name={icon} size={16} color={dim ? hexToRgba('#0f172a', 0.55) : '#1f2937'} />
-      <Text style={[styles.goldPillText, dim && styles.goldPillTextDim]}>{children}</Text>
-    </LinearGradient>
-  );
-
-  if (onPress) {
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={dim ? 1 : 0.85}
-        disabled={dim}
-        style={[styles.goldPillWrapper, style]}
-      >
-        {content}
-      </TouchableOpacity>
-    );
-  }
-
-  return <View style={style}>{content}</View>;
-};
-
-const Panel = ({ children, colors, style = {} }) => (
-  <View style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }, style]}>
-    {children}
-  </View>
-);
-
-const EffectTimerRing = ({ progress, colors, eff, size = 64, children, gradientColors }) => {
-  const strokeWidth = Math.max(4, size * 0.14);
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const gradientId = useMemo(() => `effect-ring-${Math.random().toString(36).slice(2, 9)}`, []);
-  const normalized = progress == null ? 1 : Math.max(0, Math.min(1, progress));
-  const offset = circumference * (1 - normalized);
-  const innerSize = size - strokeWidth * 1.6;
-  const gradientPair =
-    Array.isArray(gradientColors) && gradientColors.length >= 2
-      ? gradientColors
-      : [colors.sky, colors.emerald];
-  const [gradientStart, gradientEnd] = gradientPair;
-  const trackBase = Array.isArray(gradientColors) ? gradientStart : colors.text;
-  const trackColor = hexToRgba(trackBase, eff === 'light' ? 0.16 : 0.4);
-
-  return (
-    <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size}>
-        <Defs>
-          <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor={gradientStart} stopOpacity="1" />
-            <Stop offset="100%" stopColor={gradientEnd} stopOpacity="1" />
-          </SvgLinearGradient>
-        </Defs>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={trackColor}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={`url(#${gradientId})`}
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${circumference},${circumference}`}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          fill="none"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <View
-        style={{
-          position: 'absolute',
-          top: (size - innerSize) / 2,
-          left: (size - innerSize) / 2,
-          width: innerSize,
-          height: innerSize,
-          borderRadius: innerSize / 2,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: eff === 'light' ? hexToRgba(colors.surface, 0.98) : hexToRgba(colors.surface, 0.78),
-          borderWidth: 1,
-          borderColor: colors.surfaceBorder,
-        }}
-      >
-        {children}
-      </View>
     </View>
   );
 };
@@ -2328,7 +1882,12 @@ const AppFormModal = ({
             colors={colors}
           />
 
-          <TypeSelector value={type} onChange={setField('type')} colors={colors} />
+          <SegmentedControl
+            options={TYPE_OPTIONS}
+            value={type}
+            onChange={setField('type')}
+            colors={colors}
+          />
 
           <View style={styles.formGroup}>
             <Text style={[styles.label, { color: colors.text }]}>Status</Text>
@@ -5130,35 +4689,7 @@ export default function App() {
           </Modal>
 
           {openResult ? (
-            <View
-              pointerEvents="none"
-              style={[
-                styles.rewardsToastWrapper,
-                eff === 'light' ? styles.rewardsToastShadowLight : styles.rewardsToastShadowDark,
-              ]}
-            >
-              <LinearGradient
-                colors={[hexToRgba(colors.sky, 0.24), hexToRgba(colors.emerald, 0.2)]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.rewardsToastContainer, { borderColor: colors.surfaceBorder }]}
-              >
-                <Text
-                  style={[
-                    styles.rewardsToastTitle,
-                    { color: eff === 'light' ? 'rgba(15,23,42,0.68)' : 'rgba(226,232,240,0.78)' },
-                  ]}
-                >
-                  Fresh loot
-                </Text>
-                <View style={styles.rewardsToastValue}>
-                  <MaterialCommunityIcons name="diamond-stone" size={18} color={eff === 'light' ? '#0f172a' : colors.emerald} />
-                  <Text style={[styles.rewardsToastText, { color: eff === 'light' ? '#0f172a' : colors.text }]}>
-                    {openResult.gold}g
-                  </Text>
-                </View>
-              </LinearGradient>
-            </View>
+            <ToastBanner colors={colors} eff={eff} title="Fresh loot" icon="diamond-stone" value={`${openResult.gold}g`} />
           ) : null}
         </>
       )}
@@ -5465,76 +4996,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  statBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  statBadgeCount: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  statBadgeCountText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  goldPillWrapper: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  goldPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(15,23,42,0.1)',
-  },
-  goldPillDim: {
-    borderColor: 'rgba(15,23,42,0.12)',
-  },
-  goldPillText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#1f2937',
-  },
-  goldPillTextDim: {
-    color: 'rgba(15,23,42,0.6)',
-  },
   content: {
     flex: 1,
     paddingHorizontal: 20,
   },
   scrollContent: {
     paddingBottom: 140,
-  },
-  panel: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
   },
   panelHeader: {
     flexDirection: 'row',
@@ -5595,16 +5062,6 @@ const styles = StyleSheet.create({
   progressValue: {
     fontSize: 12,
     color: 'rgba(148,163,184,.95)',
-  },
-  progressBarContainer: {
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 6,
   },
   statPanel: {
     paddingBottom: 12,
@@ -6469,123 +5926,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 4,
   },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 14,
-  },
-  autoCompleteInputWrapper: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    position: 'relative',
-  },
-  autoCompleteInput: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-  },
-  autoCompleteClear: {
-    position: 'absolute',
-    right: 10,
-    top: 10,
-  },
-  autoCompleteSuggestions: {
-    marginTop: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    maxHeight: 160,
-    overflow: 'hidden',
-  },
-  autoCompleteOption: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  autoCompleteOptionText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  autoCompleteEmpty: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  autoCompleteEmptyText: {
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  disabledInput: {
-    opacity: 0.55,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 13,
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  segmentedControl: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    gap: 8,
-  },
-  segmentButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  segmentButtonInner: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
   iconToggleRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
     justifyContent: 'space-between',
     gap: 12,
     marginBottom: 20,
-  },
-  iconToggle: {
-    flex: 1,
-    aspectRatio: 1,
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  iconToggleInner: {
-    flex: 1,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    gap: 8,
-  },
-  iconToggleInnerActive: {
-    borderWidth: 0,
-  },
-  iconToggleIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconToggleLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   inlineFieldRow: {
     flexDirection: 'row',
@@ -7424,37 +6770,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0f172a',
   },
-  rewardsToastWrapper: {
-    position: 'absolute',
-    left: 24,
-    right: 24,
-    bottom: 120,
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  rewardsToastContainer: {
-    borderWidth: 1,
-    borderRadius: 24,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  rewardsToastTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-    marginBottom: 6,
-  },
-  rewardsToastValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  rewardsToastText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
   chestCardShadowLight: {
     shadowColor: '#0f172a',
     shadowOpacity: 0.1,
@@ -7466,20 +6781,6 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.4,
     shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
-  },
-  rewardsToastShadowLight: {
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
-  },
-  rewardsToastShadowDark: {
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
     shadowOffset: { width: 0, height: 10 },
     elevation: 8,
   },
