@@ -2804,7 +2804,18 @@ export default function App() {
           return;
         }
 
-        setXp(data.xp);
+        const xpValue = Number.isFinite(data.xp) ? data.xp : 0;
+        const hydratedLevel = lvl(xpValue);
+        if (hydratedLevel && Number.isFinite(hydratedLevel.l)) {
+          previousLevelRef.current = hydratedLevel.l;
+        } else {
+          const baselineLevel = lvl(0);
+          previousLevelRef.current = Number.isFinite(baselineLevel?.l)
+            ? baselineLevel.l
+            : null;
+        }
+
+        setXp(xpValue);
         setApps(data.apps);
         setGold(data.gold);
         setStreak(data.streak);
