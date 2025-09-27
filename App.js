@@ -1776,21 +1776,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (!EVENT_DEFINITIONS.length) {
-      return;
-    }
-    setEventStates((prev) =>
-      evaluateEventStates({
-        definitions: EVENT_DEFINITIONS,
-        previousStates: prev,
-        manualLogs,
-        applications,
-        now: currentTime,
-      }),
-    );
-  }, [manualLogs, applications, currentTime]);
-
   const pushEffectWarnings = useCallback(
     (messages = []) => {
       if (!Array.isArray(messages) || messages.length === 0) {
