@@ -1,6 +1,23 @@
 import React from 'react';
-import LegacyApp from '../../App';
+import BottomTabNavigator from './navigation/BottomTabNavigator';
+import { AppStateProvider } from '../state';
+import { PaletteProvider, ThemeProvider } from '../theme';
 
-export default function AppRoot(props) {
-  return <LegacyApp {...props} />;
-}
+const AppProviders = ({ children }) => (
+  <ThemeProvider>
+    <PaletteProvider>
+      <AppStateProvider>{children}</AppStateProvider>
+    </PaletteProvider>
+  </ThemeProvider>
+);
+
+const AppRoot = () => {
+  return (
+    <AppProviders>
+      <BottomTabNavigator />
+    </AppProviders>
+  );
+};
+
+export default AppRoot;
+export { AppProviders };
