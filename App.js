@@ -3931,6 +3931,10 @@ export default function App() {
       return;
     }
 
+    if (shouldResetDaily) {
+      setFocus((current) => (current < FOCUS_BASELINE ? FOCUS_BASELINE : current));
+    }
+
     setClaimedQuests((prev) => {
       let working = prev instanceof Set ? prev : new Set();
       if (shouldResetDaily) {
