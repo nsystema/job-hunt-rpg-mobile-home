@@ -37,18 +37,23 @@ import {
   formatTime,
   buyEffect,
   redeemReward,
-} from './gameMechanics';
-import { STATUSES, PLATFORMS, COUNTRIES, getCitiesForCountry } from './data';
-import { QUESTS } from './quests';
-import appConfig from './app.json';
+} from './src/features/progression';
 import {
+  STATUSES,
+  PLATFORMS,
+  COUNTRIES,
+  getCitiesForCountry,
+} from './src/features/applications';
+import {
+  QUESTS,
   computeQuestMetrics,
   buildQuestTabs,
   evaluateEventStates,
   computeEventProgressMap,
   composeQuestClaimKey,
   CLAIM_KEY_SEPARATOR,
-} from './questUtils';
+} from './src/features/quests';
+import appConfig from './app.json';
 
 const buildInitialFormValues = () => ({
   company: '',
