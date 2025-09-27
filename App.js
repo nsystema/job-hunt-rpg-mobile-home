@@ -11,7 +11,6 @@ import {
   StatusBar,
   Platform,
   Modal,
-  TextInput,
   Alert,
   Share,
   PanResponder,
@@ -37,12 +36,7 @@ import {
   buyEffect,
   redeemReward,
 } from './src/features/progression';
-import {
-  STATUSES,
-  PLATFORMS,
-  COUNTRIES,
-  getCitiesForCountry,
-} from './src/features/applications';
+import { STATUSES } from './src/features/applications';
 import {
   QUESTS,
   computeQuestMetrics,
@@ -53,12 +47,7 @@ import {
   CLAIM_KEY_SEPARATOR,
 } from './src/features/quests';
 import appConfig from './app.json';
-import {
-  ensureOpaque,
-  getGlassBorderColor,
-  getGlassGradientColors,
-  hexToRgba,
-} from './src/utils/color';
+import { ensureOpaque, hexToRgba } from './src/utils/color';
 import {
   formatEffectDuration,
   formatGold,
@@ -71,10 +60,11 @@ import {
   migratePersistedState,
   sanitizePersistedData,
 } from './src/state/persistence/sanitizers';
-import { TextField } from './src/components/forms/TextField';
-import { AutoCompleteField } from './src/components/forms/AutoCompleteField';
-import { SegmentedControl } from './src/components/forms/SegmentedControl';
-import { IconToggle } from './src/components/forms/IconToggle';
+import ApplicationFormModal from './src/features/applications/components/ApplicationFormModal';
+import ApplicationFilters from './src/features/applications/components/ApplicationFilters';
+import ApplicationList from './src/features/applications/components/ApplicationList';
+import { useApplicationFilters } from './hooks/useApplicationFilters';
+import { useApplicationsManager } from './hooks/useApplicationsManager';
 import { Panel } from './src/components/layout/Panel';
 import { GoldPill } from './src/components/layout/GoldPill';
 import { StatBadge } from './src/components/layout/StatBadge';
@@ -82,20 +72,6 @@ import { IconButton } from './src/components/layout/IconButton';
 import { ProgressBar } from './src/components/layout/ProgressBar';
 import { EffectTimerRing } from './src/components/feedback/EffectTimerRing';
 import { ToastBanner } from './src/components/feedback/ToastBanner';
-
-const buildInitialFormValues = () => ({
-  company: '',
-  role: '',
-  type: 'Full',
-  status: 'Applied',
-  platform: 'Company website',
-  cvTailored: false,
-  motivation: false,
-  favorite: false,
-  note: '',
-  country: '',
-  city: '',
-});
 
 const APP_VERSION = appConfig?.expo?.version ?? '1.0.0';
 
@@ -145,8 +121,6 @@ const filterClaimedQuestSet = (sourceSet, predicate) => {
   }
   return next;
 };
-
-const TYPE_OPTIONS = ['Full', 'Easy'];
 
 const QUEST_TABS = [
   { key: 'Daily', icon: 'calendar-check-outline' },
@@ -597,138 +571,6 @@ const formatRange = (range) => {
   }
   const [min, max] = range;
   return min === max ? `${min}` : `${min} – ${max}`;
-};
-
-const RewardPreview = ({ xp, gold, focus, colors }) => {
-  const glassColors = getGlassGradientColors(colors);
-  const glassBorder = getGlassBorderColor(colors);
-  const chipTextColor = colors.text;
-  const chips = [
-    { key: 'xp', icon: 'flash-outline', label: `+${xp}` },
-    { key: 'gold', icon: 'diamond-stone', label: `+${gold}` },
-    { key: 'focus', icon: 'brain', label: `-${focus}` },
-  ];
-
-  return (
-    <View style={styles.rewardPreview}>
-      {chips.map((chip) => (
-        <LinearGradient
-          key={chip.key}
-          colors={glassColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.rewardChip, { borderColor: glassBorder }]}
-        >
-          <MaterialCommunityIcons name={chip.icon} size={14} color={chipTextColor} />
-          <Text style={[styles.rewardChipText, { color: chipTextColor }]}>{chip.label}</Text>
-        </LinearGradient>
-      ))}
-    </View>
-  );
-};
-
-const StatusSelector = ({ value, onChange, colors, options = STATUSES }) => (
-  <View>
-    {options.map((status) => {
-      const isActive = value === status.key;
-      const meta = STATUS_META[status.key] || {};
-      const tintColor = meta.tint ? colors[meta.tint] : colors.sky;
-      return (
-        <TouchableOpacity
-          key={status.key}
-          onPress={() => onChange(status.key)}
-          activeOpacity={0.85}
-          style={[
-            styles.statusOption,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.surfaceBorder,
-            },
-            isActive && {
-              backgroundColor: hexToRgba(tintColor, 0.18),
-              borderColor: tintColor,
-            },
-          ]}
-        >
-          <View style={styles.statusOptionContent}>
-            {meta.icon ? (
-              <View
-                style={[
-                  styles.statusOptionIcon,
-                  {
-                    backgroundColor: isActive ? tintColor : colors.chipBg,
-                    borderColor: isActive ? tintColor : colors.surfaceBorder,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={meta.icon}
-                  size={14}
-                  color={isActive ? '#0f172a' : 'rgba(148,163,184,.95)'}
-                />
-              </View>
-            ) : null}
-            <View style={styles.statusOptionTextGroup}>
-              <Text style={[styles.statusOptionTitle, { color: colors.text }]}>{status.key}</Text>
-              {status.hint ? (
-                <Text style={[styles.statusOptionHint, { color: hexToRgba(colors.text, 0.55) }]}>
-                  {status.hint}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-          {isActive ? <MaterialCommunityIcons name="check-circle" size={18} color={tintColor} /> : null}
-        </TouchableOpacity>
-      );
-    })}
-  </View>
-);
-
-const PlatformSelector = ({ value, onChange, colors }) => {
-  const glassColors = getGlassGradientColors(colors);
-  const glassBorder = getGlassBorderColor(colors);
-  const activeLabelColor = colors.text;
-  const inactiveLabelColor = hexToRgba(colors.text, 0.75);
-
-  return (
-    <View style={styles.platformOptions}>
-      {PLATFORMS.map((platform) => {
-        const isActive = value === platform;
-        return (
-          <TouchableOpacity
-            key={platform}
-            onPress={() => onChange(platform)}
-            activeOpacity={0.85}
-            style={styles.platformChip}
-          >
-            {isActive ? (
-              <LinearGradient
-                colors={glassColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.platformChipInner, { borderColor: glassBorder }]}
-              >
-                <Text style={[styles.platformChipText, { color: activeLabelColor }]}>
-                  {platform}
-                </Text>
-              </LinearGradient>
-            ) : (
-              <View
-                style={[
-                  styles.platformChipInner,
-                  { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
-                ]}
-              >
-                <Text style={[styles.platformChipText, { color: inactiveLabelColor }]}>
-                  {platform}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
 };
 
 const GoldSlider = ({ value, max, colors, eff, onChange }) => {
@@ -1731,261 +1573,7 @@ const ChestCard = ({ chest, colors, theme, isFocused, onFocus, onOpen }) => {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const formatDateTime = (value) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const month = MONTHS[date.getMonth()];
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${month} ${day} at ${hours}:${minutes}`;
-};
-
-const truncate = (value, limit = 70) => {
-  if (!value) return '';
-  if (value.length <= limit) return value;
-  return `${value.slice(0, limit - 3)}...`;
-};
-
 const MIN_FOCUS_FOR_LOG = 0.25;
-
-const AppFormModal = ({
-  visible,
-  onClose,
-  onSubmit,
-  colors,
-  effects = [],
-  spray = 1,
-  defaults,
-  title = 'Log Application',
-  submitLabel = 'Add Application',
-  statusOptions = STATUSES,
-}) => {
-  const initialValues = useMemo(() => {
-    const base = { ...buildInitialFormValues(), ...defaults };
-    if (statusOptions.length && !statusOptions.some((option) => option.key === base.status)) {
-      base.status = statusOptions[0].key;
-    }
-    return base;
-  }, [defaults, statusOptions]);
-  const [form, setForm] = useState(initialValues);
-
-  useEffect(() => {
-    if (visible) {
-      setForm(initialValues);
-    }
-  }, [visible, initialValues]);
-
-  const setField = useCallback(
-    (field) => (value) => {
-      setForm((prev) => ({ ...prev, [field]: value }));
-    },
-    [],
-  );
-
-  const { company, role, type, note, cvTailored, motivation, favorite, status, platform, country, city } = form;
-
-  const { xp: xpReward, gold: goldReward } = useMemo(
-    () => computeRewards({ type, cvTailored, motivation }, { effects, spray }),
-    [type, cvTailored, motivation, effects, spray],
-  );
-  const cost = useMemo(() => focusCost(type), [type]);
-  const cityOptions = useMemo(() => (country ? getCitiesForCountry(country) : []), [country]);
-
-  const handleCountrySelect = useCallback((selected) => {
-    setForm((prev) => {
-      const nextCountry = selected;
-      const shouldResetCity = nextCountry !== prev.country;
-      return {
-        ...prev,
-        country: nextCountry,
-        city: shouldResetCity ? '' : prev.city,
-      };
-    });
-  }, []);
-
-  const handleCitySelect = useCallback((selected) => {
-    setForm((prev) => ({ ...prev, city: selected }));
-  }, []);
-
-  const handleCancel = useCallback(() => {
-    setForm(initialValues);
-    onClose?.();
-  }, [initialValues, onClose]);
-
-  const handleSubmit = useCallback(() => {
-    if (!company || !role) {
-      Alert.alert('Error', 'Please fill in company and role');
-      return;
-    }
-
-    if (country && !COUNTRIES.includes(country)) {
-      Alert.alert('Invalid Country', 'Please select a country from the list.');
-      return;
-    }
-
-    if (city) {
-      if (!country) {
-        Alert.alert('Invalid City', 'Please select a country before choosing a city.');
-        return;
-      }
-      const validCities = getCitiesForCountry(country);
-      if (!validCities.includes(city)) {
-        Alert.alert('Invalid City', 'Please select a city from the list.');
-        return;
-      }
-    }
-
-    const payload = { ...form };
-    if (!payload.date) {
-      payload.date = new Date().toISOString();
-    }
-    const result = onSubmit?.(payload);
-    if (result !== false) {
-      setForm(initialValues);
-      onClose?.();
-    }
-  }, [company, role, form, onSubmit, initialValues, onClose]);
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.bg }]}>
-        <View style={[styles.modalHeader, { borderBottomColor: colors.surfaceBorder }]}>
-          <View style={styles.modalTitleRow}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
-            <RewardPreview xp={xpReward} gold={goldReward} focus={cost} colors={colors} />
-          </View>
-          <TouchableOpacity onPress={handleCancel} style={[styles.closeButton, { backgroundColor: colors.chipBg }]}>
-            <MaterialCommunityIcons name="close" size={20} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          style={styles.modalContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <TextField
-            label="Company"
-            value={company}
-            onChangeText={setField('company')}
-            placeholder="Acme Inc."
-            colors={colors}
-          />
-
-          <TextField
-            label="Role"
-            value={role}
-            onChangeText={setField('role')}
-            placeholder="Data Analyst"
-            colors={colors}
-          />
-
-          <SegmentedControl
-            options={TYPE_OPTIONS}
-            value={type}
-            onChange={setField('type')}
-            colors={colors}
-          />
-
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Status</Text>
-            <StatusSelector
-              value={status}
-              onChange={setField('status')}
-              colors={colors}
-              options={statusOptions}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Platform</Text>
-            <PlatformSelector value={platform} onChange={setField('platform')} colors={colors} />
-          </View>
-
-          <View style={styles.inlineFieldRow}>
-            <AutoCompleteField
-              label="Country"
-              value={country}
-              onSelect={handleCountrySelect}
-              placeholder="Start typing..."
-              colors={colors}
-              options={COUNTRIES}
-              minChars={2}
-              containerStyle={styles.inlineField}
-            />
-            <AutoCompleteField
-              label="City"
-              value={city}
-              onSelect={handleCitySelect}
-              placeholder={country ? 'Start typing...' : 'Select country first'}
-              colors={colors}
-              options={cityOptions}
-              minChars={1}
-              containerStyle={styles.inlineField}
-              disabled={!country}
-            />
-          </View>
-
-          <TextField
-            label="Notes (optional)"
-            value={note}
-            onChangeText={setField('note')}
-            placeholder="Additional notes..."
-            colors={colors}
-            multiline
-            numberOfLines={3}
-          />
-
-          <View style={styles.iconToggleRow}>
-            <IconToggle
-              label="CV"
-              icon="file-document-edit-outline"
-              activeIcon="file-check"
-              value={cvTailored}
-              onToggle={setField('cvTailored')}
-              colors={colors}
-            />
-            <IconToggle
-              label="Motivation"
-              icon="email-edit-outline"
-              activeIcon="email-check-outline"
-              value={motivation}
-              onToggle={setField('motivation')}
-              colors={colors}
-            />
-            <IconToggle
-              label="Fav"
-              icon="star-outline"
-              activeIcon="star"
-              value={favorite}
-              onToggle={setField('favorite')}
-              colors={colors}
-            />
-          </View>
-        </ScrollView>
-
-        <View style={[styles.modalFooter, { borderTopColor: colors.surfaceBorder }]}>
-          <TouchableOpacity onPress={handleCancel} style={[styles.cancelButton, { backgroundColor: colors.chipBg }]}>
-            <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleSubmit} style={styles.submitButtonWrapper}>
-            <LinearGradient
-              colors={[colors.sky, colors.emerald]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitButton}
-            >
-              <Text style={styles.submitButtonText}>{submitLabel}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </Modal>
-  );
-};
-
 export default function App() {
   const [fontsLoaded, fontError] = useFonts(MaterialCommunityIcons.font);
   const { mode, eff, cycle } = useTheme();
@@ -2007,10 +1595,6 @@ export default function App() {
   const [applications, setApplications] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('Home');
-  const [appsQuery, setAppsQuery] = useState('');
-  const [filterStatuses, setFilterStatuses] = useState([]);
-  const [filterPlatforms, setFilterPlatforms] = useState([]);
-  const [sortKey, setSortKey] = useState('Newest');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [sortModalVisible, setSortModalVisible] = useState(false);
   const [editingApp, setEditingApp] = useState(null);
@@ -2032,6 +1616,19 @@ export default function App() {
   const [hydrationError, setHydrationError] = useState(null);
   const [shopMainTab, setShopMainTab] = useState('catalogue');
   const [shopCategoryTab, setShopCategoryTab] = useState('effects');
+
+  const {
+    appsQuery,
+    setAppsQuery,
+    filterStatuses,
+    toggleFilterStatus,
+    filterPlatforms,
+    toggleFilterPlatform,
+    clearFilters,
+    sortKey,
+    setSortKey,
+    filteredApps,
+  } = useApplicationFilters(applications);
 
   const lowQualityStreakRef = useRef(0);
   const openResultTimer = useRef(null);
@@ -2958,228 +2555,26 @@ export default function App() {
     []
   );
 
-  const filteredApps = useMemo(() => {
-    let list = [...applications];
-    const query = appsQuery.trim().toLowerCase();
-    if (query) {
-      list = list.filter((app) =>
-        `${app.company} ${app.role} ${app.platform}`.toLowerCase().includes(query),
-      );
-    }
-    if (filterStatuses.length) {
-      list = list.filter((app) => filterStatuses.includes(app.status));
-    }
-    if (filterPlatforms.length) {
-      list = list.filter((app) => filterPlatforms.includes(app.platform));
-    }
-    switch (sortKey) {
-      case 'Oldest':
-        list.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-        break;
-      case 'Company A-Z':
-        list.sort((a, b) => {
-          const compare = a.company.localeCompare(b.company);
-          if (compare !== 0) {
-            return compare;
-          }
-          return new Date(b.date || 0) - new Date(a.date || 0);
-        });
-        break;
-      case 'Favorites first':
-        list.sort(
-          (a, b) =>
-            (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) ||
-            new Date(b.date || 0) - new Date(a.date || 0),
-        );
-        break;
-      default:
-        list.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-    }
-    return list;
-  }, [applications, appsQuery, filterStatuses, filterPlatforms, sortKey]);
-
-  const toggleFilterStatus = useCallback((value) => {
-    setFilterStatuses((list) =>
-      list.includes(value) ? list.filter((item) => item !== value) : [...list, value],
-    );
-  }, []);
-
-  const toggleFilterPlatform = useCallback((value) => {
-    setFilterPlatforms((list) =>
-      list.includes(value) ? list.filter((item) => item !== value) : [...list, value],
-    );
-  }, []);
-
-  const clearFilters = useCallback(() => {
-    setFilterStatuses([]);
-    setFilterPlatforms([]);
-  }, []);
-
-  const handleDeleteApp = useCallback((id) => {
-    setApplications((list) => {
-      const target = list.find((item) => item.id === id);
-      if (!target) {
-        return list;
-      }
-      setApps((value) => Math.max(0, value - 1));
-      return list.filter((item) => item.id !== id);
-    });
-  }, []);
-
-  const handleEditSubmit = useCallback(
-    (fields) => {
-      if (!editingApp) {
-        return false;
-      }
-      const previous = editingApp;
-      const updated = { ...previous, ...fields };
-      const { qs, au } = computeRewards(updated, { effects: activeEffects, spray: sprayMultiplier });
-      updated.qs = qs;
-      updated.au = au;
-      setApplications((list) => list.map((app) => (app.id === previous.id ? updated : app)));
-      setEditingApp(null);
-      if (!previous.favorite && updated.favorite) {
-        handleManualLog('favoriteMarked', { applicationId: previous.id });
-      }
-      if (previous.status !== updated.status) {
-        handleManualLog('statusChange', {
-          applicationId: previous.id,
-          from: previous.status,
-          to: updated.status,
-          status: updated.status,
-        });
-      }
-      return true;
-    },
-    [editingApp, activeEffects, sprayMultiplier, handleManualLog],
-  );
-
-  const handleExportApplications = useCallback(async () => {
-    const stateSnapshot = sanitizePersistedData(persistedStateData);
-    const applicationsList = Array.isArray(stateSnapshot.applications)
-      ? stateSnapshot.applications
-      : [];
-    const manualLogsMap = stateSnapshot.manualLogs && typeof stateSnapshot.manualLogs === 'object'
-      ? stateSnapshot.manualLogs
-      : {};
-
-    const hasManualLogs = Object.values(manualLogsMap).some(
-      (entries) => Array.isArray(entries) && entries.length,
-    );
-    const hasPremiumSavings = Object.keys(stateSnapshot.premiumProgress || {}).length > 0;
-    const hasChests = Array.isArray(stateSnapshot.chests) && stateSnapshot.chests.length > 0;
-    const hasEffects = Array.isArray(stateSnapshot.activeEffects) && stateSnapshot.activeEffects.length > 0;
-    const hasClaims = Array.isArray(stateSnapshot.claimedQuests) && stateSnapshot.claimedQuests.length > 0;
-    const hasCurrency = (stateSnapshot.gold ?? 0) > 0 || (stateSnapshot.xp ?? 0) > 0;
-
-    if (
-      !(
-        applicationsList.length ||
-        hasManualLogs ||
-        hasPremiumSavings ||
-        hasChests ||
-        hasEffects ||
-        hasClaims ||
-        hasCurrency
-      )
-    ) {
-      Alert.alert('Nothing to export', 'Play a bit to generate some progress before exporting.');
-      return;
-    }
-
-    const statusEntries = Array.isArray(manualLogsMap?.statusChange)
-      ? manualLogsMap.statusChange
-      : [];
-
-    const statusByApp = statusEntries.reduce((acc, entry) => {
-      const appId = entry?.applicationId;
-      if (!appId) {
-        return acc;
-      }
-      const timestampMs = toTimestamp(entry?.timestamp ?? entry?.date ?? entry?.createdAt);
-      const hasTimestamp = Number.isFinite(timestampMs);
-      const record = {
-        from: entry?.from ?? null,
-        to: entry?.to ?? entry?.status ?? null,
-        status: entry?.status ?? entry?.to ?? null,
-        timestampMs: hasTimestamp ? timestampMs : null,
-        timestamp: hasTimestamp ? new Date(timestampMs).toISOString() : null,
-      };
-      if (!acc[appId]) {
-        acc[appId] = [];
-      }
-      acc[appId].push(record);
-      return acc;
-    }, {});
-
-    Object.values(statusByApp).forEach((list) => {
-      list.sort((a, b) => {
-        const aTime = Number.isFinite(a.timestampMs) ? a.timestampMs : 0;
-        const bTime = Number.isFinite(b.timestampMs) ? b.timestampMs : 0;
-        return aTime - bTime;
-      });
-    });
-
-    const exportItems = applicationsList.map((app) => {
-      const loggedTimestamp = toTimestamp(app?.date ?? app?.timestamp ?? app?.createdAt);
-      const hasLoggedTimestamp = Number.isFinite(loggedTimestamp);
-      const loggedAt = hasLoggedTimestamp ? new Date(loggedTimestamp).toISOString() : null;
-      const statusHistory = (statusByApp[app.id] || []).map((entry) => ({ ...entry }));
-      const lastStatusChange = statusHistory.reduce((latest, entry) => {
-        if (!Number.isFinite(entry.timestampMs)) {
-          return latest;
-        }
-        if (!latest || entry.timestampMs > latest.timestampMs) {
-          return entry;
-        }
-        return latest;
-      }, null);
-
-      return {
-        ...app,
-        loggedAt,
-        loggedAtMs: hasLoggedTimestamp ? loggedTimestamp : null,
-        statusHistory,
-        statusLastChangedAt: lastStatusChange?.timestamp ?? null,
-        statusLastChangedAtMs: lastStatusChange?.timestampMs ?? null,
-      };
-    });
-
-    const exportedAt = new Date().toISOString();
-    const persistenceSnapshot = {
-      version: STORAGE_VERSION,
-      updatedAt: exportedAt,
-      data: stateSnapshot,
-    };
-
-    const exportPayload = {
-      exportedAt,
-      schemaVersion: STORAGE_VERSION,
-      totalApplications: exportItems.length,
-      applications: exportItems,
-      state: persistenceSnapshot,
-    };
-
-    const exportText = JSON.stringify(exportPayload, null, 2);
-
-    if (!Share || typeof Share.share !== 'function' || Platform.OS === 'web') {
-      const logger = globalThis?.['console'];
-      if (logger && typeof logger.log === 'function') {
-        logger.log('Applications export', exportPayload);
-      }
-      Alert.alert('Export generated', 'The export data has been printed to the console.');
-      return;
-    }
-
-    try {
-      await Share.share({
-        title: 'Applications Export',
-        message: exportText,
-      });
-    } catch (error) {
-      Alert.alert('Export failed', error?.message || 'Unable to export applications.');
-    }
-  }, [persistedStateData]);
+  const { addApplication, deleteApplication, submitEdit, exportApplications } = useApplicationsManager({
+    focus,
+    setFocus,
+    setGold,
+    setApps,
+    setApplications,
+    activeEffects,
+    sprayMultiplier,
+    sprayActive,
+    gainXp,
+    setSprayDebuff,
+    lowQualityStreakRef,
+    sprayDebuffDurationMs: SPRAY_DEBUFF_DURATION_MS,
+    handleManualLog,
+    updateCurrentTime,
+    editingApp,
+    setEditingApp,
+    persistedStateData,
+    storageVersion: STORAGE_VERSION,
+  });
 
   const questMetrics = useMemo(
     () => computeQuestMetrics({ applications, manualLogs, now: currentTime }),
@@ -4003,171 +3398,34 @@ export default function App() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.appsToolbar}>
-            <View
-              style={[
-                styles.searchInput,
-                { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
-              ]}
-            >
-              <MaterialCommunityIcons name="magnify" size={16} color="rgba(148,163,184,.95)" />
-              <TextInput
-                value={appsQuery}
-                onChangeText={setAppsQuery}
-                placeholder="Search applications"
-                placeholderTextColor="rgba(148,163,184,.65)"
-                style={[styles.searchInputField, { color: colors.text }]}
-              />
-            </View>
-            <IconButton
-              onPress={() => setFilterModalVisible(true)}
-              icon="tune-variant"
-              colors={colors}
-              accessibilityLabel="Filter applications"
-            />
-            <IconButton
-              onPress={() => setSortModalVisible(true)}
-              icon="swap-vertical"
-              colors={colors}
-              accessibilityLabel="Sort applications"
-            />
-            <IconButton
-              onPress={handleExportApplications}
-              icon="download-outline"
-              colors={colors}
-              accessibilityLabel="Export applications"
-            />
-          </View>
-
-          {filteredApps.length ? (
-            filteredApps.map((app) => {
-              const extras = [
-                { key: 'cv', icon: 'file-document-outline', active: app.cvTailored },
-                { key: 'motivation', icon: 'email-outline', active: app.motivation },
-                { key: 'favorite', icon: 'star-outline', active: app.favorite },
-              ];
-              const statusInfo = statusIcons[app.status] || {};
-              const status = statusLookup[app.status];
-              const dateLabel = formatDateTime(app.date);
-              const notePreview = truncate(app.note);
-              const handleDelete = () => {
-                Alert.alert('Delete application', 'Remove this application?', [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Delete', style: 'destructive', onPress: () => handleDeleteApp(app.id) },
-                ]);
-              };
-
-              return (
-                <View
-                  key={app.id}
-                  style={[
-                    styles.appCard,
-                    { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, marginBottom: 12 },
-                  ]}
-                >
-                  <View style={styles.appHeader}>
-                    <View style={styles.appTitle}>
-                      <Text style={[styles.appCompany, { color: colors.text }]}>{app.company}</Text>
-                      <Text style={styles.appRole}>{app.role}</Text>
-                      {notePreview ? <Text style={styles.appNote}>{notePreview}</Text> : null}
-                    </View>
-                    <View style={styles.appsCardMeta}>
-                      {dateLabel ? <Text style={styles.appMetaText}>{dateLabel}</Text> : null}
-                      <View style={styles.appsCardActions}>
-                        <TouchableOpacity
-                          onPress={() => setEditingApp(app)}
-                          style={[styles.appsActionButton, { borderColor: colors.surfaceBorder }]}
-                        >
-                          <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.text} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={handleDelete}
-                          style={[styles.appsActionButton, { borderColor: colors.surfaceBorder }]}
-                        >
-                          <MaterialCommunityIcons name="trash-can-outline" size={16} color={colors.rose} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles.appExtras}>
-                    {extras.map((extra, extraIndex) => {
-                      const marginStyle = { marginRight: extraIndex === extras.length - 1 ? 0 : 8 };
-                      if (extra.active) {
-                        return (
-                          <LinearGradient
-                            key={extra.key}
-                            colors={[colors.sky, colors.emerald]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={[styles.appExtraIcon, marginStyle]}
-                          >
-                            <MaterialCommunityIcons name={extra.icon} size={14} color="#0f172a" />
-                          </LinearGradient>
-                        );
-                      }
-                      return (
-                        <View
-                          key={extra.key}
-                          style={[
-                            styles.appExtraIcon,
-                            marginStyle,
-                            { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder, borderWidth: 1 },
-                          ]}
-                        >
-                          <MaterialCommunityIcons name={extra.icon} size={14} color="rgba(148,163,184,.95)" />
-                        </View>
-                      );
-                    })}
-                  </View>
-
-                  <View style={[styles.appFooter, { borderTopColor: colors.surfaceBorder }]}>
-                    <View style={styles.appChips}>
-                      <View
-                        style={[
-                          styles.appChip,
-                          { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder, marginRight: 8 },
-                        ]}
-                      >
-                        {statusInfo.icon ? (
-                          <MaterialCommunityIcons
-                            name={statusInfo.icon}
-                            size={14}
-                            color={statusInfo.tint || colors.text}
-                            style={styles.appChipIcon}
-                          />
-                        ) : null}
-                        <Text style={[styles.appChipText, { color: colors.text }]}>{status?.key || app.status}</Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.appChip,
-                          { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
-                        ]}
-                      >
-                        <Text style={[styles.appChipText, { color: colors.text }]}>{app.platform}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              );
-            })
-          ) : (
-            <View
-              style={[
-                styles.appEmpty,
-                { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
-              ]}
-            >
-              <Text style={[styles.appEmptyText, { color: colors.text }]}>No applications yet.</Text>
-              <TouchableOpacity
-                onPress={handleLogPress}
-                style={[styles.appEmptyButton, { backgroundColor: colors.sky }]}
-              >
-                <Text style={styles.appEmptyButtonText}>Log application</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <ApplicationFilters
+            colors={colors}
+            appsQuery={appsQuery}
+            onChangeQuery={setAppsQuery}
+            onOpenFilter={() => setFilterModalVisible(true)}
+            onOpenSort={() => setSortModalVisible(true)}
+            onExport={exportApplications}
+            filterModalVisible={filterModalVisible}
+            onCloseFilter={() => setFilterModalVisible(false)}
+            filterStatuses={filterStatuses}
+            toggleFilterStatus={toggleFilterStatus}
+            filterPlatforms={filterPlatforms}
+            toggleFilterPlatform={toggleFilterPlatform}
+            clearFilters={clearFilters}
+            sortModalVisible={sortModalVisible}
+            onCloseSort={() => setSortModalVisible(false)}
+            sortKey={sortKey}
+            onSelectSortKey={setSortKey}
+          />
+          <ApplicationList
+            applications={filteredApps}
+            colors={colors}
+            statusIcons={statusIcons}
+            statusLookup={statusLookup}
+            onEdit={setEditingApp}
+            onDelete={deleteApplication}
+            onEmptyAction={handleLogPress}
+          />
         </ScrollView>
       )}
 
@@ -4711,7 +3969,7 @@ export default function App() {
         />
       )}
 
-      <AppFormModal
+      <ApplicationFormModal
         visible={showForm}
         onClose={() => setShowForm(false)}
         onSubmit={addApplication}
@@ -4719,11 +3977,12 @@ export default function App() {
         effects={activeEffects}
         spray={sprayMultiplier}
         statusOptions={LOG_STATUS_OPTIONS}
+        statusMeta={STATUS_META}
       />
-      <AppFormModal
+      <ApplicationFormModal
         visible={!!editingApp}
         onClose={() => setEditingApp(null)}
-        onSubmit={handleEditSubmit}
+        onSubmit={submitEdit}
         colors={colors}
         effects={activeEffects}
         spray={sprayMultiplier}
@@ -4731,155 +3990,9 @@ export default function App() {
         title="Edit application"
         submitLabel="Save"
         statusOptions={STATUSES}
+        statusMeta={STATUS_META}
       />
 
-      <Modal visible={filterModalVisible} transparent animationType="fade">
-        <TouchableWithoutFeedback onPress={() => setFilterModalVisible(false)} accessible={false}>
-          <View style={styles.sheetOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}} accessible={false}>
-              <View
-                style={[styles.sheetBody, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
-              >
-                <View style={[styles.sheetHeader, { borderBottomColor: colors.surfaceBorder }]}>
-                  <Text style={[styles.sheetTitle, { color: colors.text }]}>Filters</Text>
-                  <TouchableOpacity
-                    onPress={() => setFilterModalVisible(false)}
-                    style={[styles.closeButton, { backgroundColor: colors.chipBg }]}
-                  >
-                    <MaterialCommunityIcons name="close" size={20} color={colors.text} />
-                  </TouchableOpacity>
-                </View>
-                <ScrollView
-                  style={styles.sheetContent}
-                  contentContainerStyle={styles.sheetContentContainer}
-                  showsVerticalScrollIndicator={false}
-                >
-                  <View>
-                    <Text style={[styles.sheetSubtitle, { color: colors.text }]}>Status</Text>
-                    <View style={styles.sheetOptionRow}>
-                      {STATUSES.map((status) => {
-                        const active = filterStatuses.includes(status.key);
-                        return (
-                          <TouchableOpacity
-                            key={status.key}
-                            onPress={() => toggleFilterStatus(status.key)}
-                            style={[
-                              styles.sheetOption,
-                              {
-                                backgroundColor: active ? colors.sky : colors.chipBg,
-                                borderColor: colors.surfaceBorder,
-                              },
-                            ]}
-                          >
-                            <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>
-                              {status.key}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-                  <View>
-                    <Text style={[styles.sheetSubtitle, { color: colors.text }]}>Platform</Text>
-                    <View style={styles.sheetOptionWrap}>
-                      {PLATFORMS.map((platform) => {
-                        const active = filterPlatforms.includes(platform);
-                        return (
-                          <TouchableOpacity
-                            key={platform}
-                            onPress={() => toggleFilterPlatform(platform)}
-                            style={[
-                              styles.sheetOption,
-                              {
-                                backgroundColor: active ? colors.emerald : colors.chipBg,
-                                borderColor: colors.surfaceBorder,
-                              },
-                            ]}
-                          >
-                            <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>
-                              {platform}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-                </ScrollView>
-                <View style={[styles.sheetFooter, { borderTopColor: colors.surfaceBorder }]}>
-                  <TouchableOpacity
-                    onPress={clearFilters}
-                    style={[
-                      styles.sheetSecondaryButton,
-                      { backgroundColor: colors.chipBg, borderColor: colors.surfaceBorder },
-                    ]}
-                  >
-                    <Text style={[styles.sheetSecondaryButtonText, { color: colors.text }]}>Reset</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setFilterModalVisible(false)} style={styles.sheetPrimaryButton}>
-                    <LinearGradient
-                      colors={[colors.sky, colors.emerald]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.sheetPrimaryButtonGradient}
-                    >
-                      <Text style={styles.sheetPrimaryButtonText}>Done</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      <Modal visible={sortModalVisible} transparent animationType="fade">
-        <TouchableWithoutFeedback onPress={() => setSortModalVisible(false)} accessible={false}>
-          <View style={styles.sheetOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}} accessible={false}>
-              <View
-                style={[styles.sheetBody, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
-              >
-                <View style={[styles.sheetHeader, { borderBottomColor: colors.surfaceBorder }]}>
-                  <Text style={[styles.sheetTitle, { color: colors.text }]}>Sort by</Text>
-                  <TouchableOpacity
-                    onPress={() => setSortModalVisible(false)}
-                    style={[styles.closeButton, { backgroundColor: colors.chipBg }]}
-                  >
-                    <MaterialCommunityIcons name="close" size={20} color={colors.text} />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.sheetContent}>
-                  <View style={styles.sheetOptionList}>
-                    {['Newest', 'Oldest', 'Company A-Z', 'Favorites first'].map((option) => {
-                      const active = sortKey === option;
-                      return (
-                        <TouchableOpacity
-                          key={option}
-                          onPress={() => {
-                            setSortKey(option);
-                            setSortModalVisible(false);
-                          }}
-                          style={[
-                            styles.sheetOption,
-                            {
-                              backgroundColor: active ? colors.sky : colors.chipBg,
-                              borderColor: colors.surfaceBorder,
-                            },
-                          ]}
-                        >
-                          <Text style={[styles.sheetOptionText, { color: active ? '#0f172a' : colors.text }]}>
-                            {option}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
 
       <View
         style={[
@@ -5195,30 +4308,7 @@ const styles = StyleSheet.create({
   logApplicationTextOnGradient: {
     color: '#0f172a',
   },
-  appsToolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 4,
-    marginBottom: 20,
-  },
-  searchInput: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-    height: 38,
-    paddingHorizontal: 12,
-    paddingVertical: 0,
-    gap: 8,
-  },
-  searchInputField: {
-    flex: 1,
-    fontSize: 14,
-    paddingVertical: 0,
-  },
-  questTabsRow: {
+questTabsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -5611,30 +4701,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     elevation: 6,
   },
-  appCard: {
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  appHeader: {
+appHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  appTitle: {
-    flex: 1,
-    marginRight: 12,
-  },
-  appCompany: {
+appCompany: {
     fontSize: 15,
     fontWeight: '700',
   },
-  appRole: {
-    fontSize: 12,
-    color: 'rgba(148,163,184,.95)',
-    marginTop: 2,
-  },
-  appNote: {
+appNote: {
     fontSize: 11,
     color: 'rgba(148,163,184,.95)',
     marginTop: 6,
@@ -5646,34 +4722,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(148,163,184,.95)',
   },
-  appsCardMeta: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  appsCardActions: {
+appsCardActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  appsActionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appExtras: {
+appExtras: {
     flexDirection: 'row',
     marginTop: 12,
   },
-  appExtraIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appFooter: {
+appFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -5681,11 +4738,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
   },
-  appChips: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  appChip: {
+appChip: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 999,
@@ -5693,124 +4746,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  appChipIcon: {
-    marginRight: 6,
-  },
-  appChipText: {
+appChipText: {
     fontSize: 11,
     fontWeight: '600',
   },
-  appEmpty: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 28,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  appEmptyText: {
+appEmptyText: {
     fontSize: 12,
     opacity: 0.75,
     textAlign: 'center',
   },
-  appEmptyButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  appEmptyButtonText: {
+appEmptyButtonText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#0f172a',
   },
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.55)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  sheetBody: {
+sheetBody: {
     borderRadius: 24,
     borderWidth: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 20,
   },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    marginBottom: 16,
-  },
-  sheetTitle: {
+sheetTitle: {
     fontSize: 18,
     fontWeight: '600',
   },
-  sheetContent: {
-    flexGrow: 0,
-  },
-  sheetContentContainer: {
+sheetContentContainer: {
     gap: 20,
     paddingBottom: 8,
   },
-  sheetSubtitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  sheetOptionRow: {
+sheetOptionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  sheetOptionWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  sheetOptionList: {
+sheetOptionList: {
     gap: 12,
   },
-  sheetOption: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  sheetOptionText: {
+sheetOptionText: {
     fontSize: 13,
     fontWeight: '600',
   },
-  sheetFooter: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    marginTop: 16,
-  },
-  sheetSecondaryButton: {
+sheetSecondaryButton: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     paddingVertical: 12,
   },
-  sheetSecondaryButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  sheetPrimaryButton: {
+sheetPrimaryButton: {
     flex: 1,
     borderRadius: 12,
     overflow: 'hidden',
   },
-  sheetPrimaryButtonGradient: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  sheetPrimaryButtonText: {
+sheetPrimaryButtonText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#0f172a',
@@ -5865,10 +4854,7 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: Platform.OS === 'ios' ? 28 : 16,
   },
-  modalContainer: {
-    flex: 1,
-  },
-  modalHeader: {
+modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -5876,24 +4862,14 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  modalTitleRow: {
+modalTitleRow: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     flexWrap: 'wrap',
   },
-  rewardPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexShrink: 0,
-  },
-  rewardChip: {
+rewardChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
@@ -5901,48 +4877,22 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  rewardChipText: {
-    marginLeft: 4,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalContent: {
+modalContent: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-  formGroup: {
-    marginBottom: 16,
-  },
-  label: {
+label: {
     fontSize: 12,
     fontWeight: '500',
     marginBottom: 4,
   },
-  iconToggleRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 20,
-  },
-  inlineFieldRow: {
+inlineFieldRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginHorizontal: -6,
   },
-  inlineField: {
-    flex: 1,
-    marginHorizontal: 6,
-  },
-  statusOption: {
+statusOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -5952,13 +4902,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 12,
   },
-  statusOptionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
-  },
-  statusOptionIcon: {
+statusOptionIcon: {
     width: 32,
     height: 32,
     borderRadius: 12,
@@ -5967,28 +4911,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  statusOptionTextGroup: {
-    flexShrink: 1,
-  },
-  statusOptionTitle: {
+statusOptionTitle: {
     fontSize: 13,
     fontWeight: '600',
   },
-  statusOptionHint: {
-    fontSize: 11,
-  },
-  platformOptions: {
+platformOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginHorizontal: -6,
   },
-  platformChip: {
-    marginHorizontal: 6,
-    marginBottom: 12,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  platformChipInner: {
+platformChipInner: {
     borderWidth: 1,
     borderRadius: 14,
     paddingHorizontal: 14,
@@ -5996,11 +4928,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  platformChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  modalFooter: {
+modalFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
@@ -6008,32 +4936,17 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     gap: 12,
   },
-  cancelButton: {
+cancelButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+submitButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
   },
-  cancelButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  submitButtonWrapper: {
-    flex: 1,
-    borderRadius: 12,
-  },
-  submitButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  rewardsSummary: {
+rewardsSummary: {
     borderRadius: 24,
     padding: 20,
     marginBottom: 20,
