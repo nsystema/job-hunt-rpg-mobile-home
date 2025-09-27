@@ -34,7 +34,6 @@ import {
   GAME_EFFECTS,
   REAL_REWARDS,
   PREMIUM_REWARDS,
-  formatTime,
   buyEffect,
   redeemReward,
 } from './src/features/progression';
@@ -54,6 +53,24 @@ import {
   CLAIM_KEY_SEPARATOR,
 } from './src/features/quests';
 import appConfig from './app.json';
+import {
+  ensureOpaque,
+  getGlassBorderColor,
+  getGlassGradientColors,
+  hexToRgba,
+} from './src/utils/color';
+import {
+  formatEffectDuration,
+  formatGold,
+  formatGoldValue,
+  formatTime,
+} from './src/utils/formatters';
+import { toTimestamp } from './src/utils/time';
+import {
+  createDefaultQuestMeta,
+  migratePersistedState,
+  sanitizePersistedData,
+} from './src/state/persistence/sanitizers';
 
 const buildInitialFormValues = () => ({
   company: '',
@@ -198,311 +215,10 @@ const LOG_STATUS_OPTIONS = STATUSES.filter(
   (status) => status.key === 'Applied' || status.key === 'Applied with referral',
 );
 
-const hexToRgba = (hex, alpha) => {
-  if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
-    return `rgba(148, 163, 184, ${alpha})`;
-  }
-  const sanitized = hex.replace('#', '');
-  const normalized =
-    sanitized.length === 3
-      ? sanitized
-          .split('')
-          .map((char) => char + char)
-          .join('')
-      : sanitized.slice(0, 6);
-  const bigint = parseInt(normalized, 16);
-  if (Number.isNaN(bigint)) {
-    return `rgba(148, 163, 184, ${alpha})`;
-  }
-  const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
-const getGlassGradientColors = (colors) => [
-  hexToRgba(colors.sky, 0.35),
-  hexToRgba(colors.emerald, 0.35),
-];
-
-const getGlassBorderColor = (colors) => hexToRgba(colors.sky, 0.45);
-
-const ensureOpaque = (color, fallback = '#fff') => {
-  if (!color || typeof color !== 'string') {
-    return fallback;
-  }
-  const normalized = color.replace(/\s+/g, '');
-  const rgbaMatch = normalized.match(/^rgba?\(([-\d.]+),([-\d.]+),([-\d.]+)(?:,([-\d.]+))?\)$/i);
-  if (rgbaMatch) {
-    const r = Math.round(Number(rgbaMatch[1]));
-    const g = Math.round(Number(rgbaMatch[2]));
-    const b = Math.round(Number(rgbaMatch[3]));
-    if ([r, g, b].every((value) => !Number.isNaN(value))) {
-      return `rgb(${r}, ${g}, ${b})`;
-    }
-  }
-  if (normalized.startsWith('#')) {
-    return color;
-  }
-  return fallback;
-};
-
 const costFor = (item) => Math.round(item.minutes * (item.pleasure ?? 1));
-
-const formatGoldValue = (value) =>
-  Math.max(0, value).toLocaleString(undefined, {
-    maximumFractionDigits: 0,
-  });
-
-const formatGold = (value) => `${formatGoldValue(value)}g`;
-
-const formatEffectDuration = (seconds) => {
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return null;
-  }
-  if (seconds >= 3600) {
-    const hours = Math.round(seconds / 3600);
-    return `${hours} hour${hours === 1 ? '' : 's'}`;
-  }
-  const minutes = Math.round(seconds / 60);
-  if (minutes >= 1) {
-    return `${minutes} minute${minutes === 1 ? '' : 's'}`;
-  }
-  const rounded = Math.round(seconds);
-  return `${rounded} second${rounded === 1 ? '' : 's'}`;
-};
-
-const toTimestamp = (value) => {
-  if (value == null) {
-    return NaN;
-  }
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : NaN;
-  }
-  if (value instanceof Date) {
-    const time = value.getTime();
-    return Number.isFinite(time) ? time : NaN;
-  }
-  if (typeof value === 'string' && value.trim().length) {
-    const parsed = Date.parse(value);
-    return Number.isNaN(parsed) ? NaN : parsed;
-  }
-  return NaN;
-};
 
 const STORAGE_KEY = 'jobless::state';
 const STORAGE_VERSION = 1;
-
-const parseFiniteNumber = (value) => {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null;
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed.length) {
-      return null;
-    }
-    const numeric = Number(trimmed);
-    return Number.isFinite(numeric) ? numeric : null;
-  }
-  return null;
-};
-
-const sanitizeArrayOfObjects = (input) => {
-  if (!Array.isArray(input)) {
-    return [];
-  }
-  return input.reduce((acc, item) => {
-    if (item && typeof item === 'object') {
-      acc.push({ ...item });
-    }
-    return acc;
-  }, []);
-};
-
-const sanitizeRecordOfArrays = (input) => {
-  if (!input || typeof input !== 'object') {
-    return {};
-  }
-  const result = {};
-  Object.entries(input).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      result[key] = value.reduce((entries, entry) => {
-        if (entry && typeof entry === 'object') {
-          entries.push({ ...entry });
-        }
-        return entries;
-      }, []);
-    }
-  });
-  return result;
-};
-
-const sanitizeRecordOfObjects = (input) => {
-  if (!input || typeof input !== 'object') {
-    return {};
-  }
-  const result = {};
-  Object.entries(input).forEach(([key, value]) => {
-    if (value && typeof value === 'object') {
-      result[key] = { ...value };
-    }
-  });
-  return result;
-};
-
-const sanitizePremiumProgress = (input) => {
-  if (!input || typeof input !== 'object') {
-    return {};
-  }
-  const result = {};
-  Object.entries(input).forEach(([key, value]) => {
-    const numeric = parseFiniteNumber(value);
-    if (numeric != null) {
-      result[key] = Math.max(0, numeric);
-    }
-  });
-  return result;
-};
-
-const sanitizeClaimedQuests = (input) => {
-  if (!Array.isArray(input)) {
-    return [];
-  }
-  const unique = new Set();
-  input.forEach((value) => {
-    if (value != null) {
-      unique.add(String(value));
-    }
-  });
-  return Array.from(unique);
-};
-
-const sanitizeSprayDebuff = (input) => {
-  if (!input || typeof input !== 'object') {
-    return null;
-  }
-  const activatedAt = parseFiniteNumber(input.activatedAt);
-  const expiresAt = parseFiniteNumber(input.expiresAt);
-  if (activatedAt == null && expiresAt == null) {
-    return null;
-  }
-  const result = {};
-  if (activatedAt != null) {
-    result.activatedAt = activatedAt;
-  }
-  if (expiresAt != null) {
-    result.expiresAt = expiresAt;
-  }
-  return result;
-};
-
-const createDefaultQuestMeta = () => ({
-  lastDailyKey: '',
-  lastWeeklyKey: '',
-  lastAppVersion: '',
-});
-
-const sanitizeQuestMeta = (input) => {
-  const defaults = createDefaultQuestMeta();
-  if (!input || typeof input !== 'object') {
-    return { ...defaults };
-  }
-  const result = { ...defaults };
-  if (typeof input.lastDailyKey === 'string') {
-    result.lastDailyKey = input.lastDailyKey;
-  }
-  if (typeof input.lastWeeklyKey === 'string') {
-    result.lastWeeklyKey = input.lastWeeklyKey;
-  }
-  if (typeof input.lastAppVersion === 'string') {
-    result.lastAppVersion = input.lastAppVersion;
-  }
-  return result;
-};
-
-const createDefaultPersistedState = () => ({
-  xp: 0,
-  apps: 0,
-  gold: 0,
-  streak: 0,
-  focus: FOCUS_BASELINE,
-  activeEffects: [],
-  sprayDebuff: null,
-  applications: [],
-  claimedQuests: [],
-  manualLogs: {},
-  eventStates: {},
-  chests: [],
-  premiumProgress: {},
-  questMeta: createDefaultQuestMeta(),
-});
-
-const sanitizePersistedData = (candidate) => {
-  const defaults = createDefaultPersistedState();
-  const safe = candidate && typeof candidate === 'object' ? candidate : {};
-
-  const applications = sanitizeArrayOfObjects(safe.applications);
-  const activeEffects = sanitizeArrayOfObjects(safe.activeEffects);
-  const chests = sanitizeArrayOfObjects(safe.chests);
-  const manualLogs = sanitizeRecordOfArrays(safe.manualLogs);
-  const eventStates = sanitizeRecordOfObjects(safe.eventStates);
-  const premiumProgress = sanitizePremiumProgress(safe.premiumProgress);
-  const sprayDebuff = sanitizeSprayDebuff(safe.sprayDebuff);
-  const questMeta = sanitizeQuestMeta(safe.questMeta);
-
-  const xp = parseFiniteNumber(safe.xp);
-  const appsCount = parseFiniteNumber(safe.apps);
-  const gold = parseFiniteNumber(safe.gold);
-  const streak = parseFiniteNumber(safe.streak);
-  const focus = parseFiniteNumber(safe.focus);
-
-  return {
-    xp: xp != null ? Math.max(0, xp) : defaults.xp,
-    apps: appsCount != null ? Math.max(0, appsCount) : applications.length,
-    gold: gold != null ? Math.max(0, gold) : defaults.gold,
-    streak: streak != null ? Math.max(0, streak) : defaults.streak,
-    focus: focus != null ? Math.max(0, focus) : defaults.focus,
-    activeEffects,
-    sprayDebuff,
-    applications,
-    claimedQuests: sanitizeClaimedQuests(safe.claimedQuests),
-    manualLogs,
-    eventStates,
-    chests,
-    premiumProgress,
-    questMeta,
-  };
-};
-
-const MIGRATIONS = {
-  1: (state) => sanitizePersistedData(state),
-};
-
-const migratePersistedState = (payload) => {
-  if (!payload || typeof payload !== 'object') {
-    return { version: STORAGE_VERSION, data: sanitizePersistedData() };
-  }
-  const startingVersion = Number.isInteger(payload.version) ? payload.version : 0;
-  let currentVersion = startingVersion;
-  let currentState = payload.data && typeof payload.data === 'object' ? payload.data : {};
-
-  if (currentVersion > STORAGE_VERSION) {
-    currentVersion = STORAGE_VERSION;
-  }
-
-  while (currentVersion < STORAGE_VERSION) {
-    const targetVersion = currentVersion + 1;
-    const migrate = MIGRATIONS[targetVersion];
-    if (typeof migrate === 'function') {
-      currentState = migrate(currentState);
-    }
-    currentVersion = targetVersion;
-  }
-
-  const sanitized = sanitizePersistedData(currentState);
-  return { version: STORAGE_VERSION, data: sanitized };
-};
 
 const createChestArt = ({
   baseGradient,
@@ -2804,7 +2520,7 @@ export default function App() {
             : new Error('Failed to parse saved progress payload.');
         }
 
-        const { data } = migratePersistedState(parsed);
+        const { data } = migratePersistedState(parsed, STORAGE_VERSION);
         if (!data || typeof data !== 'object' || cancelled) {
           return;
         }
