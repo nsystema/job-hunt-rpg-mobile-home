@@ -37,15 +37,11 @@ import {
   redeemReward,
 } from './src/features/progression';
 import { STATUSES } from './src/features/applications';
-import {
-  QUESTS,
-  computeQuestMetrics,
-  buildQuestTabs,
-  evaluateEventStates,
-  computeEventProgressMap,
-  composeQuestClaimKey,
-  CLAIM_KEY_SEPARATOR,
-} from './src/features/quests';
+import { QUESTS, composeQuestClaimKey, CLAIM_KEY_SEPARATOR } from './src/features/quests';
+import { useQuestBoard } from './src/features/quests/hooks/useQuestBoard';
+import { useQuestNotifications } from './src/features/quests/hooks/useQuestNotifications';
+import QuestTabs from './src/features/quests/components/QuestTabs';
+import QuestCard from './src/features/quests/components/QuestCard';
 import appConfig from './app.json';
 import { ensureOpaque, hexToRgba } from './src/utils/color';
 import {
@@ -128,43 +124,6 @@ const QUEST_TABS = [
   { key: 'Growth', icon: 'chart-line' },
   { key: 'Events', icon: 'party-popper' },
 ];
-
-const EVENT_DEFINITIONS = (QUESTS.Events || []).filter((quest) => quest?.type === 'event');
-
-const collectStageIds = (quest) => {
-  if (!quest?.id) {
-    return [];
-  }
-  const stageIds = [];
-  if (Array.isArray(quest?.tiers)) {
-    quest.tiers.forEach((tier, index) => {
-      const tierId = tier?.id || `${quest.id}-tier-${index}`;
-      if (tierId) {
-        stageIds.push(tierId);
-      }
-    });
-  }
-  if (Array.isArray(quest?.steps)) {
-    quest.steps.forEach((step, index) => {
-      const stepId = step?.id || `${quest.id}-step-${index}`;
-      if (stepId) {
-        stageIds.push(stepId);
-      }
-    });
-  }
-  return stageIds;
-};
-
-const EVENT_STAGE_IDS = EVENT_DEFINITIONS.reduce((acc, quest) => {
-  if (quest?.id) {
-    acc[quest.id] = collectStageIds(quest);
-  }
-  return acc;
-}, {});
-
-const isQuestTrackable = (quest) => quest?.trackable === true;
-
-const isQuestClaimable = (quest) => quest?.claimable === true;
 
 const BOTTOM_TABS = [
   { key: 'Home', label: 'Home', icon: 'home-variant' },
@@ -1604,7 +1563,6 @@ export default function App() {
   const [questMetaReady, setQuestMetaReady] = useState(false);
   const [manualLogs, setManualLogs] = useState(() => ({}));
   const [eventStates, setEventStates] = useState(() => ({}));
-  const [eventNotifications, setEventNotifications] = useState(() => ({}));
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [chests, setChests] = useState([]);
   const [chestFilter, setChestFilter] = useState('All');
@@ -1635,7 +1593,7 @@ export default function App() {
   const effectWarningTimers = useRef(new Map());
   const announcedEffectKeysRef = useRef(new Set());
   const eventSeenRef = useRef(new Map());
-  const previousEventStatesRef = useRef({});
+  const eventsReactivatedRef = useRef(null);
   const previousLevelRef = useRef(null);
   const lastPersistedRef = useRef('');
 
@@ -1832,133 +1790,6 @@ export default function App() {
       }),
     );
   }, [manualLogs, applications, currentTime]);
-
-  useEffect(() => {
-    const prevStates = previousEventStatesRef.current || {};
-    const currentStates = eventStates && typeof eventStates === 'object' ? eventStates : {};
-    previousEventStatesRef.current = currentStates;
-
-    const cleanupTargets = [];
-    const reactivatedEventIds = [];
-
-    Object.entries(currentStates).forEach(([eventId, state]) => {
-      if (!state || state.active !== true || !Number.isFinite(state.triggeredAt)) {
-        return;
-      }
-      const prevState = prevStates[eventId];
-      const prevTrigger = Number.isFinite(prevState?.triggeredAt) ? prevState.triggeredAt : undefined;
-      if (prevTrigger == null || prevTrigger === state.triggeredAt) {
-        return;
-      }
-      const stageIds = EVENT_STAGE_IDS[eventId] || [];
-      cleanupTargets.push({
-        ids: [eventId, ...stageIds],
-        triggeredAt: prevTrigger,
-      });
-      reactivatedEventIds.push(eventId);
-    });
-
-    if (cleanupTargets.length) {
-      setClaimedQuests((currentSet) => {
-        if (!(currentSet instanceof Set) || currentSet.size === 0) {
-          return currentSet;
-        }
-        let mutated = false;
-        const nextSet = new Set(currentSet);
-        cleanupTargets.forEach(({ ids, triggeredAt }) => {
-          ids.forEach((id) => {
-            if (!id) {
-              return;
-            }
-            const compositeKey = composeQuestClaimKey(id, triggeredAt);
-            if (compositeKey && nextSet.delete(compositeKey)) {
-              mutated = true;
-            }
-            if (nextSet.delete(id)) {
-              mutated = true;
-            }
-          });
-        });
-        return mutated ? nextSet : currentSet;
-      });
-    }
-
-    if (reactivatedEventIds.length) {
-      const seenMap = eventSeenRef.current;
-      if (seenMap && typeof seenMap.delete === 'function') {
-        reactivatedEventIds.forEach((eventId) => {
-          seenMap.delete(eventId);
-        });
-      }
-    }
-
-    setEventNotifications((currentNotifications) => {
-      const safeCurrent =
-        currentNotifications && typeof currentNotifications === 'object'
-          ? currentNotifications
-          : {};
-      let nextNotifications = safeCurrent;
-      let changed = false;
-
-      Object.entries(safeCurrent).forEach(([eventId, triggerAt]) => {
-        const state = currentStates[eventId];
-        if (
-          !state ||
-          state.active !== true ||
-          !Number.isFinite(state.triggeredAt) ||
-          state.triggeredAt !== triggerAt
-        ) {
-          if (!changed) {
-            nextNotifications = { ...nextNotifications };
-            changed = true;
-          }
-          delete nextNotifications[eventId];
-        }
-      });
-
-      Object.entries(currentStates).forEach(([eventId, state]) => {
-        if (!state || state.active !== true || !Number.isFinite(state.triggeredAt)) {
-          return;
-        }
-        const prevState = prevStates[eventId];
-        const prevActive = prevState?.active === true && Number.isFinite(prevState?.triggeredAt);
-        const seenTrigger = eventSeenRef.current.get(eventId);
-        const isNewTrigger = !prevActive || prevState.triggeredAt !== state.triggeredAt;
-        const alreadySeen = seenTrigger === state.triggeredAt;
-        const alreadyNotified = nextNotifications[eventId] === state.triggeredAt;
-
-        if (isNewTrigger && !alreadySeen && !alreadyNotified) {
-          if (!changed) {
-            nextNotifications = { ...nextNotifications };
-            changed = true;
-          }
-          nextNotifications[eventId] = state.triggeredAt;
-        }
-      });
-
-      return changed ? nextNotifications : safeCurrent;
-    });
-  }, [eventStates]);
-
-  useEffect(() => {
-    if (questTab !== 'Events') {
-      return;
-    }
-    setEventNotifications((current) => {
-      const safeCurrent = current && typeof current === 'object' ? current : {};
-      const entries = Object.entries(safeCurrent);
-      if (!entries.length) {
-        return current;
-      }
-      const seenMap = eventSeenRef.current;
-      entries.forEach(([eventId, triggeredAt]) => {
-        if (Number.isFinite(triggeredAt)) {
-          seenMap.set(eventId, triggeredAt);
-        }
-      });
-      return {};
-    });
-  }, [questTab, eventNotifications]);
 
   const pushEffectWarnings = useCallback(
     (messages = []) => {
@@ -2284,18 +2115,6 @@ export default function App() {
     setShowForm(true);
   }, [focus]);
 
-  const handleQuestAction = useCallback(
-    (action, quest) => {
-      if (!action) {
-        return;
-      }
-      if (action.type === 'log' && action.key) {
-        handleManualLog(action.key, { questId: quest?.id, actionKey: action.key });
-      }
-    },
-    [handleManualLog],
-  );
-
   const openChest = useCallback(
     (chest) => {
       if (!chest) {
@@ -2576,10 +2395,16 @@ export default function App() {
     storageVersion: STORAGE_VERSION,
   });
 
-  const questMetrics = useMemo(
-    () => computeQuestMetrics({ applications, manualLogs, now: currentTime }),
-    [applications, manualLogs, currentTime],
-  );
+  const { questMetrics, questsByTab, unclaimedByTab } = useQuestBoard({
+    applications,
+    manualLogs,
+    currentTime,
+    claimedQuests,
+    setClaimedQuests,
+    eventStates,
+    setEventStates,
+    eventsReactivatedRef,
+  });
 
   useEffect(() => {
     if (!questMetaReady) {
@@ -2646,69 +2471,29 @@ export default function App() {
     questMeta.lastAppVersion,
   ]);
 
-  const eventProgress = useMemo(
-    () =>
-      computeEventProgressMap({
-        events: eventStates,
-        applications,
-        manualLogs,
-        now: currentTime,
-      }),
-    [eventStates, applications, manualLogs, currentTime],
-  );
-
-  const { questsByTab, unclaimedByTab } = useMemo(
-    () =>
-      buildQuestTabs({
-        base: QUESTS,
-        metrics: questMetrics,
-        claimed: claimedQuests,
-        events: eventStates,
-        eventProgress,
-      }),
-    [questMetrics, claimedQuests, eventStates, eventProgress],
-  );
-
-  const eventNotificationIds = useMemo(
-    () =>
-      Object.keys(
-        eventNotifications && typeof eventNotifications === 'object'
-          ? eventNotifications
-          : {},
-      ),
-    [eventNotifications],
-  );
-
-  const eventNotificationCount = eventNotificationIds.length;
-
-  const eventClaimableIds = useMemo(() => {
-    const eventsList = questsByTab?.Events || [];
-    const ids = new Set();
-    eventsList.forEach((quest) => {
-      if (quest?.type === 'event' && quest.claimable) {
-        ids.add(quest.id);
-      }
-    });
-    return ids;
-  }, [questsByTab]);
-
-  const unseenClaimableEventCount = useMemo(
-    () =>
-      eventNotificationIds.reduce(
-        (count, id) => (eventClaimableIds.has(id) ? count + 1 : count),
-        0,
-      ),
-    [eventNotificationIds, eventClaimableIds],
-  );
+  const { eventTabBadgeCount, handleQuestAction, getStageProgressSummary } = useQuestNotifications({
+    eventStates,
+    questsByTab,
+    questTab,
+    unclaimedByTab,
+    onManualLog: handleManualLog,
+    eventSeenRef,
+    eventsReactivatedRef,
+  });
 
   const additionalEventNotifications = useMemo(
-    () => Math.max(0, eventNotificationCount - unseenClaimableEventCount),
-    [eventNotificationCount, unseenClaimableEventCount],
+    () => Math.max(0, eventTabBadgeCount - (unclaimedByTab.Events || 0)),
+    [eventTabBadgeCount, unclaimedByTab],
   );
 
-  const eventTabBadgeCount = useMemo(
-    () => (unclaimedByTab.Events || 0) + additionalEventNotifications,
-    [unclaimedByTab, additionalEventNotifications],
+  const questTabBadges = useMemo(
+    () => ({
+      Daily: unclaimedByTab.Daily || 0,
+      Weekly: unclaimedByTab.Weekly || 0,
+      Growth: unclaimedByTab.Growth || 0,
+      Events: eventTabBadgeCount,
+    }),
+    [unclaimedByTab, eventTabBadgeCount],
   );
 
   const quests = useMemo(() => {
@@ -2792,177 +2577,6 @@ export default function App() {
       return entries;
     },
     [colors],
-  );
-
-  const renderMetaRow = useCallback(
-    (icon, label, value, key) => {
-      if (!value) {
-        return null;
-      }
-      return (
-        <View key={key} style={styles.questMetaRow}>
-          <MaterialCommunityIcons name={icon} size={14} color={colors.sky} />
-          <Text style={[styles.questMetaLabel, { color: hexToRgba(colors.text, 0.7) }]}>{label}:</Text>
-          <Text style={[styles.questMetaValue, { color: colors.text }]}>{value}</Text>
-        </View>
-      );
-    },
-    [colors],
-  );
-
-  const renderStages = useCallback(
-    (stages, label, keyPrefix, quest, options = {}) => {
-      if (!stages || !stages.length) {
-        return null;
-      }
-
-      const { sequential = false } = options;
-      const visibleStages = [];
-      let allowNext = true;
-
-      stages.forEach((stage, stageIndex) => {
-        if (!sequential) {
-          visibleStages.push({ stage, stageIndex });
-          return;
-        }
-
-        if (stage.completed === true) {
-          visibleStages.push({ stage, stageIndex });
-          return;
-        }
-
-        if (allowNext) {
-          visibleStages.push({ stage, stageIndex });
-          allowNext = false;
-        }
-      });
-
-      return (
-        <View style={styles.questStageList}>
-          {visibleStages.map(({ stage, stageIndex }) => {
-            const stageRewards = makeRewardEntries(stage.reward);
-            const isClaimed = stage.claimed === true;
-            const isCompleted = stage.completed === true;
-            const isReady = !isClaimed && isCompleted;
-            const showProgress =
-              typeof stage.progress === 'number' && typeof stage.goalValue === 'number' && stage.goalValue > 0;
-            const progressValue = showProgress
-              ? `${Math.min(stage.progress, stage.goalValue)} / ${stage.goalValue}`
-              : null;
-            const backgroundColor = isClaimed
-              ? hexToRgba(colors.emerald, 0.12)
-              : isReady
-              ? hexToRgba(colors.amber, 0.12)
-              : colors.chipBg;
-            const borderColor = isClaimed
-              ? hexToRgba(colors.emerald, 0.45)
-              : isReady
-              ? hexToRgba(colors.amber, 0.45)
-              : colors.surfaceBorder;
-            const statusColor = isClaimed ? colors.emerald : isReady ? colors.amber : null;
-            return (
-              <View
-                key={`${keyPrefix}-${stageIndex}`}
-                style={[
-                  styles.questStageRow,
-                  {
-                    backgroundColor,
-                    borderColor,
-                  },
-                ]}
-              >
-                <View style={styles.questStageHeader}>
-                  <View style={styles.questStageTitleRow}>
-                    <Text style={[styles.questStageTitle, { color: colors.text }]}>
-                      {`${label} ${stageIndex + 1}`}
-                    </Text>
-                    {statusColor ? (
-                      <MaterialCommunityIcons
-                        name="check-circle"
-                        size={16}
-                        color={statusColor}
-                        style={styles.questStageStatusIcon}
-                      />
-                    ) : null}
-                  </View>
-                  {stageRewards.length ? (
-                    <View style={styles.questRewardMeta}>
-                      {stageRewards.map((entry, rewardIndex) => (
-                        <View
-                          key={`${keyPrefix}-${stageIndex}-reward-${rewardIndex}`}
-                          style={styles.questRewardPill}
-                        >
-                          <MaterialCommunityIcons name={entry.icon} size={14} color={entry.color} />
-                          <Text style={[styles.questRewardText, { color: colors.text }]}>{entry.label}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-                <Text style={[styles.questStageGoal, { color: hexToRgba(colors.text, 0.75) }]}>{stage.goal}</Text>
-                {progressValue ? (
-                  <Text style={[styles.questStageProgress, { color: hexToRgba(colors.text, 0.68) }]}>{progressValue}</Text>
-                ) : null}
-                {stage.manualKey ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      handleManualLog(stage.manualKey, { questId: quest?.id, stageId: stage.id || stage.index })
-                    }
-                    style={[
-                      styles.questStageButton,
-                      { borderColor: colors.surfaceBorder, backgroundColor: colors.chipBg },
-                    ]}
-                    activeOpacity={0.85}
-                  >
-                    <MaterialCommunityIcons name="plus-circle-outline" size={14} color={colors.sky} />
-                    <Text style={[styles.questStageButtonText, { color: colors.text }]}>Log progress</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
-      );
-    },
-    [colors, handleManualLog, makeRewardEntries],
-  );
-
-  const getStageProgressSummary = useCallback((stages) => {
-    if (!Array.isArray(stages) || !stages.length) {
-      return null;
-    }
-    const total = stages.length;
-    const completed = stages.reduce((count, stage) => {
-      if (stage?.claimed === true) {
-        return count + 1;
-      }
-      if (stage?.claimed === false) {
-        return count;
-      }
-      return stage?.completed ? count + 1 : count;
-    }, 0);
-    const current = Math.min(completed + 1, total);
-    return `${current}/${total}`;
-  }, []);
-
-  const rarityKeys = useMemo(() => ['All', ...RARITIES.map((r) => r.key)], []);
-
-  const rarityCounts = useMemo(() => {
-    const counts = Object.fromEntries(rarityKeys.map((key) => [key, 0]));
-    chests.forEach((item) => {
-      const key = item.rarity || 'Common';
-      counts[key] = (counts[key] || 0) + 1;
-      counts.All = (counts.All || 0) + 1;
-    });
-    return counts;
-  }, [chests, rarityKeys]);
-
-  const visibleChests = useMemo(
-    () =>
-      chests.filter(
-        (item) => chestFilter === 'All' || (item.rarity || 'Common') === chestFilter,
-      ),
-    [chests, chestFilter],
   );
 
   const goldMultiplier = useMemo(
@@ -3435,57 +3049,17 @@ export default function App() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View
-            style={[
-              styles.questTabsRow,
-              { backgroundColor: colors.surface, borderColor: colors.surfaceBorder },
-            ]}
-          >
-            {QUEST_TABS.map((tab) => {
-              const isActive = questTab === tab.key;
-              const badge =
-                tab.key === 'Events' ? eventTabBadgeCount : unclaimedByTab[tab.key] || 0;
-              return (
-                <TouchableOpacity
-                  key={tab.key}
-                  onPress={() => setQuestTab(tab.key)}
-                  activeOpacity={0.85}
-                  style={[
-                    styles.questTabButton,
-                    { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
-                  ]}
-                >
-                  {isActive ? (
-                    <LinearGradient
-                      colors={[colors.sky, colors.emerald]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={[StyleSheet.absoluteFillObject, styles.questTabButtonGradient]}
-                      pointerEvents="none"
-                    />
-                  ) : null}
-                  <View style={styles.questTabButtonContent}>
-                    <MaterialCommunityIcons
-                      name={tab.icon}
-                      size={16}
-                      color={isActive ? '#0f172a' : colors.text}
-                      style={styles.questTabIcon}
-                    />
-                    <Text style={[styles.questTabText, { color: isActive ? '#0f172a' : colors.text }]}>{tab.key}</Text>
-                  </View>
-                  {badge > 0 && (
-                    <View style={[styles.questTabBadge, questBadgeShadow]}>
-                      <Text style={styles.questTabBadgeText}>{badge}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <QuestTabs
+            tabs={QUEST_TABS}
+            activeTab={questTab}
+            onSelect={setQuestTab}
+            colors={colors}
+            badgeShadow={questBadgeShadow}
+            badgeCounts={questTabBadges}
+          />
 
           <View style={styles.questList}>
             {quests.map((quest, index) => {
-              const isLast = index === quests.length - 1;
               if (quest.type === 'section') {
                 return (
                   <View
@@ -3494,7 +3068,7 @@ export default function App() {
                       styles.questSectionHeading,
                       {
                         marginTop: index === 0 ? 0 : 24,
-                        marginBottom: isLast ? 0 : 12,
+                        marginBottom: index === quests.length - 1 ? 0 : 12,
                       },
                     ]}
                   >
@@ -3510,231 +3084,21 @@ export default function App() {
                 );
               }
 
-              const trackable = quest.trackable === true;
-              const progress = trackable ? quest.progress ?? 0 : 0;
-              const goalValue = trackable ? quest.goalValue ?? 0 : 0;
-              const claimed = quest.claimed === true;
-              const claimable = quest.claimable === true;
-              const percent = trackable
-                ? quest.percent ?? (goalValue > 0 ? Math.min(100, (progress / goalValue) * 100) : 0)
-                : 0;
-              const questReward = quest.claimReward || quest.reward;
-              const rewardEntries = makeRewardEntries(questReward);
-              const rewardBonuses = [];
-              if (questReward?.effect) {
-                rewardBonuses.push({
-                  icon: 'auto-fix',
-                  color: colors.lilac,
-                  label: questReward.effect,
-                });
-              }
-              if (questReward?.cleanse) {
-                rewardBonuses.push({
-                  icon: 'broom',
-                  color: colors.sky,
-                  label: `Cleanse: ${questReward.cleanse}`,
-                });
-              }
-              const tierSummary = Array.isArray(quest.tiers)
-                ? getStageProgressSummary(quest.tiers)
-                : null;
-              const isMilestoneChain = quest.stageLabel === 'Milestone';
-              const milestoneSummary =
-                isMilestoneChain && Array.isArray(quest.steps)
-                  ? getStageProgressSummary(quest.steps)
-                  : null;
-              const showTaskStages =
-                Array.isArray(quest.steps) && quest.steps.length > 0 && !isMilestoneChain;
-              const isEventQuest = quest.type === 'event';
-              const remainingSeconds =
-                isEventQuest && Number.isFinite(quest.expiresAt)
-                  ? Math.max(0, Math.ceil((quest.expiresAt - currentTime) / 1000))
-                  : null;
-              const timeRemainingLabel =
-                isEventQuest && remainingSeconds > 0 ? formatTime(remainingSeconds) : null;
-
               return (
-                <View
+                <QuestCard
                   key={quest.id}
-                  style={[
-                    styles.questCard,
-                    {
-                      backgroundColor: filledSurface,
-                      borderColor: colors.surfaceBorder,
-                      marginBottom: isLast ? 0 : 12,
-                    },
-                    questCardShadow,
-                  ]}
-                >
-                  <View style={styles.questCardHeader}>
-                    <View style={styles.questTitleGroup}>
-                      <Text style={[styles.questTitle, { color: colors.text }]}>{quest.title}</Text>
-                      {quest.subtitle ? (
-                        <Text style={[styles.questSubtitle, { color: hexToRgba(colors.text, 0.72) }]}>{quest.subtitle}</Text>
-                      ) : null}
-                    </View>
-                    {rewardEntries.length ? (
-                      <View style={styles.questRewardMeta}>
-                        {rewardEntries.map((entry, rewardIndex) => (
-                          <View key={`${quest.id}-reward-${rewardIndex}`} style={styles.questRewardPill}>
-                            <MaterialCommunityIcons name={entry.icon} size={14} color={entry.color} />
-                            <Text style={[styles.questRewardText, { color: colors.text }]}>{entry.label}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    ) : null}
-                  </View>
-
-                    {quest.actions?.length ? (
-                    <View style={styles.questActionsRow}>
-                      {quest.actions.map((action, actionIndex) => (
-                        <TouchableOpacity
-                          key={`${quest.id}-action-${actionIndex}`}
-                          onPress={() => handleQuestAction(action, quest)}
-                          style={[
-                          styles.questActionButton,
-                          { borderColor: colors.surfaceBorder, backgroundColor: colors.chipBg },
-                        ]}
-                          activeOpacity={0.85}
-                        >
-                          <MaterialCommunityIcons
-                            name={action.icon || 'plus-circle-outline'}
-                            size={14}
-                            color={colors.sky}
-                          />
-                          <Text style={[styles.questActionText, { color: colors.text }]}>{action.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  ) : null}
-
-                  {rewardBonuses.length ? (
-                    <View style={styles.questInfoSection}>
-                      <Text style={[styles.questInfoLabel, { color: colors.text }]}>Bonus</Text>
-                      <View style={styles.questBonusList}>
-                        {rewardBonuses.map((bonus, bonusIndex) => (
-                          <View
-                            key={`${quest.id}-bonus-${bonusIndex}`}
-                            style={[
-                              styles.questBonusPill,
-                              { borderColor: colors.surfaceBorder, backgroundColor: colors.chipBg },
-                            ]}
-                          >
-                            <MaterialCommunityIcons name={bonus.icon} size={14} color={bonus.color} />
-                            <Text style={[styles.questBonusText, { color: colors.text }]}>{bonus.label}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {quest.goals?.length ? (
-                    <View style={styles.questInfoSection}>
-                      {quest.goals.map((goal, goalIndex) => (
-                        <Text
-                          key={`${quest.id}-goal-${goalIndex}`}
-                          style={[styles.questGoalText, { color: colors.text }]}
-                        >
-                          {goal}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-
-                  {quest.tasks?.length ? (
-                    <View style={styles.questInfoSection}>
-                      <Text style={[styles.questInfoLabel, { color: colors.text }]}>Tasks</Text>
-                      {renderStages(quest.tasks, quest.stageLabel || 'Task', `${quest.id}-task`, quest)}
-                    </View>
-                  ) : null}
-
-                  {tierSummary ? (
-                    <View style={styles.questInfoSection}>
-                      <Text style={[styles.questStageSummaryText, { color: colors.text }]}>
-                        {`Tier progress (${tierSummary})`}
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  {milestoneSummary ? (
-                    <View style={styles.questInfoSection}>
-                      <Text style={[styles.questStageSummaryText, { color: colors.text }]}>
-                        {`Milestone progress (${milestoneSummary})`}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {showTaskStages ? (
-                    <View style={styles.questInfoSection}>
-                      <Text style={[styles.questInfoLabel, { color: colors.text }]}>
-                        {quest.stageLabel ? `${quest.stageLabel}s` : 'Steps'}
-                      </Text>
-                      {renderStages(quest.steps, quest.stageLabel || 'Step', `${quest.id}-step`, quest, { sequential: true })}
-                    </View>
-                  ) : null}
-
-                  {quest.trigger ? renderMetaRow('flag-outline', 'Trigger', quest.trigger, `${quest.id}-trigger`) : null}
-                  {quest.duration
-                    ? renderMetaRow('clock-time-four-outline', 'Duration', quest.duration, `${quest.id}-duration`)
-                    : null}
-                  {timeRemainingLabel
-                    ? renderMetaRow('timer-sand', 'Time left', timeRemainingLabel, `${quest.id}-remaining`)
-                    : null}
-                  {quest.lock ? renderMetaRow('lock-outline', 'Lock', quest.lock, `${quest.id}-lock`) : null}
-                  {quest.requires ? renderMetaRow('link-variant', 'Requires', quest.requires, `${quest.id}-requires`) : null}
-
-                  {trackable ? (
-                    <>
-                      <View style={styles.questProgressSection}>
-                        <View
-                          style={[
-                            styles.questProgressTrack,
-                            { backgroundColor: colors.chipBg },
-                          ]}
-                        >
-                          <LinearGradient
-                            colors={[colors.sky, colors.emerald]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={[styles.questProgressFill, { width: `${percent}%` }]}
-                          />
-                        </View>
-                        <Text style={[styles.questProgressLabel, { color: 'rgba(148,163,184,.95)' }]}>
-                          {progress} / {goalValue}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => handleClaimQuest(quest)}
-                        disabled={!claimable}
-                        activeOpacity={0.85}
-                        style={[
-                          styles.questClaimButton,
-                          {
-                            borderColor: colors.surfaceBorder,
-                            backgroundColor: claimable ? 'transparent' : colors.chipBg,
-                          },
-                        ]}
-                      >
-                        {claimable ? (
-                          <LinearGradient
-                            colors={[colors.sky, colors.emerald]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={[StyleSheet.absoluteFillObject, styles.questClaimGradient]}
-                            pointerEvents="none"
-                          />
-                        ) : null}
-                        <Text
-                          style={[
-                            styles.questClaimText,
-                            { color: claimable ? '#0f172a' : 'rgba(148,163,184,.95)' },
-                          ]}
-                        >
-                          {claimed ? 'Claimed' : 'Claim'}
-                        </Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : null}
-                </View>
+                  quest={quest}
+                  colors={colors}
+                  currentTime={currentTime}
+                  makeRewardEntries={makeRewardEntries}
+                  getStageProgressSummary={getStageProgressSummary}
+                  onClaim={handleClaimQuest}
+                  onAction={handleQuestAction}
+                  onLogStage={handleManualLog}
+                  filledSurface={filledSurface}
+                  questCardShadow={questCardShadow}
+                  isLast={index === quests.length - 1}
+                />
               );
             })}
             {!quests.length && (
@@ -3742,7 +3106,7 @@ export default function App() {
                 <Text style={styles.questEmptyText}>No quests available.</Text>
               </View>
             )}
-      </View>
+          </View>
         </ScrollView>
       )}
 
